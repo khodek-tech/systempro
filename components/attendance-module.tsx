@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleCheck, Play, Square, ChevronDown } from 'lucide-react';
+import { Circle, CircleCheck, Play, Square, ChevronDown } from 'lucide-react';
 import { WorkplaceType } from '@/types';
 import { stores } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
@@ -41,12 +41,11 @@ export function AttendanceModule({
             : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100'
         )}
       >
-        <CircleCheck
-          className={cn(
-            'w-5 h-5',
-            kasaConfirmed ? 'text-green-500' : 'text-slate-400'
-          )}
-        />
+        {kasaConfirmed ? (
+          <CircleCheck className="w-5 h-5 text-green-500" />
+        ) : (
+          <Circle className="w-5 h-5 text-slate-400" />
+        )}
         <span
           className={cn(
             'text-base font-medium',
