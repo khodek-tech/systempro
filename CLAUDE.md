@@ -1,5 +1,10 @@
 # Pravidla pro vývoj
 
+## Kvalita kódu
+- **Zero tolerance pro ESLint chyby a varování** - `npm run lint` musí projít bez jakýchkoliv chyb nebo varování
+- Před commitem vždy spustit `npm run lint`
+- Nepoužívat `// eslint-disable` komentáře bez schválení
+
 ## State Management
 - Všechna data musí být uložena v Zustand store
 - Komponenty nesmí přímo manipulovat s daty, pouze volat akce ze store

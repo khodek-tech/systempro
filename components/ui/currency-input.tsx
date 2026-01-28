@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CurrencyInputProps {
@@ -16,8 +16,8 @@ export function CurrencyInput({
   placeholder = '0 Kč',
   className,
 }: CurrencyInputProps) {
-  const [displayValue, setDisplayValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [localValue, setLocalValue] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Format number with spaces as thousand separators
@@ -32,23 +32,22 @@ export function CurrencyInput({
     return parseInt(cleaned, 10) || 0;
   };
 
-  // Update display when value changes externally
-  useEffect(() => {
-    if (!isFocused) {
-      setDisplayValue(value ? `${formatNumber(value)} Kč` : '');
+  // Compute display value based on focus state
+  const displayValue = useMemo(() => {
+    if (isFocused && localValue !== null) {
+      return localValue;
     }
-  }, [value, isFocused]);
+    return value ? `${formatNumber(value)} Kč` : '';
+  }, [value, isFocused, localValue]);
 
   const handleFocus = () => {
     setIsFocused(true);
-    // Show raw number without Kč when focused
-    setDisplayValue(value ? formatNumber(value) : '');
+    setLocalValue(value ? formatNumber(value) : '');
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    // Add Kč suffix when blurred
-    setDisplayValue(value ? `${formatNumber(value)} Kč` : '');
+    setLocalValue(null);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,8 +60,8 @@ export function CurrencyInput({
     // Update the numeric value
     onChange(numericValue);
 
-    // Format and display with thousand separators
-    setDisplayValue(numericValue ? formatNumber(numericValue) : '');
+    // Update local display value
+    setLocalValue(numericValue ? formatNumber(numericValue) : '');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
