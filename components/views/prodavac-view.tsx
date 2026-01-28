@@ -1,55 +1,42 @@
 'use client';
 
-import { useState } from 'react';
 import { Wallet, Send, Umbrella, Package } from 'lucide-react';
 import { CashMonitor } from '@/components/cash-monitor';
 import { SalesModal } from '@/components/modals/sales-modal';
 import { CollectModal } from '@/components/modals/collect-modal';
 import { AbsenceModal } from '@/components/modals/absence-modal';
-import { ExtraRow } from '@/types';
+import { useUIStore } from '@/stores/ui-store';
+import { useSalesStore } from '@/stores/sales-store';
 
 interface ProdavacViewProps {
   isWarehouse: boolean;
-  cashToCollect: number;
-  formData: {
-    cash: number;
-    card: number;
-    partner: number;
-    incomes: ExtraRow[];
-    expenses: ExtraRow[];
-  };
-  total: number;
-  collectionPeriod: string;
-  onUpdateField: (field: 'cash' | 'card' | 'partner', value: number) => void;
-  onAddIncome: () => void;
-  onAddExpense: () => void;
-  onUpdateIncome: (id: string, field: 'amount' | 'note', value: number | string) => void;
-  onUpdateExpense: (id: string, field: 'amount' | 'note', value: number | string) => void;
-  onRemoveIncome: (id: string) => void;
-  onRemoveExpense: (id: string) => void;
-  onSubmitSales: () => { valid: boolean; error?: string };
-  onSubmitCollection: (driverName: string) => { success: boolean; error?: string };
 }
 
-export function ProdavacView({
-  isWarehouse,
-  cashToCollect,
-  formData,
-  total,
-  collectionPeriod,
-  onUpdateField,
-  onAddIncome,
-  onAddExpense,
-  onUpdateIncome,
-  onUpdateExpense,
-  onRemoveIncome,
-  onRemoveExpense,
-  onSubmitSales,
-  onSubmitCollection,
-}: ProdavacViewProps) {
-  const [salesModalOpen, setSalesModalOpen] = useState(false);
-  const [collectModalOpen, setCollectModalOpen] = useState(false);
-  const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
+export function ProdavacView({ isWarehouse }: ProdavacViewProps) {
+  const {
+    salesModalOpen,
+    collectModalOpen,
+    absenceModalOpen,
+    setSalesModalOpen,
+    setCollectModalOpen,
+    setAbsenceModalOpen,
+  } = useUIStore();
+
+  const {
+    cashToCollect,
+    formData,
+    calculateTotal,
+    getCollectionPeriod,
+    updateField,
+    addIncomeRow,
+    addExpenseRow,
+    updateIncomeRow,
+    updateExpenseRow,
+    removeIncomeRow,
+    removeExpenseRow,
+    submitSales,
+    submitCollection,
+  } = useSalesStore();
 
   if (isWarehouse) {
     return (
@@ -132,23 +119,23 @@ export function ProdavacView({
         open={salesModalOpen}
         onOpenChange={setSalesModalOpen}
         formData={formData}
-        total={total}
-        onUpdateField={onUpdateField}
-        onAddIncome={onAddIncome}
-        onAddExpense={onAddExpense}
-        onUpdateIncome={onUpdateIncome}
-        onUpdateExpense={onUpdateExpense}
-        onRemoveIncome={onRemoveIncome}
-        onRemoveExpense={onRemoveExpense}
-        onSubmit={onSubmitSales}
+        total={calculateTotal()}
+        onUpdateField={updateField}
+        onAddIncome={addIncomeRow}
+        onAddExpense={addExpenseRow}
+        onUpdateIncome={updateIncomeRow}
+        onUpdateExpense={updateExpenseRow}
+        onRemoveIncome={removeIncomeRow}
+        onRemoveExpense={removeExpenseRow}
+        onSubmit={submitSales}
       />
 
       <CollectModal
         open={collectModalOpen}
         onOpenChange={setCollectModalOpen}
         amount={cashToCollect}
-        period={collectionPeriod}
-        onSubmit={onSubmitCollection}
+        period={getCollectionPeriod()}
+        onSubmit={submitCollection}
       />
 
       <AbsenceModal open={absenceModalOpen} onOpenChange={setAbsenceModalOpen} />

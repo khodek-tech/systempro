@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { ChartColumnIncreasing, ShieldCheck, Store, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KpiCards } from '@/components/admin/kpi-cards';
@@ -8,52 +7,27 @@ import { AttendanceTable } from '@/components/admin/attendance-table';
 import { SalesTable } from '@/components/admin/sales-table';
 import { LastPickups } from '@/components/admin/last-pickups';
 import { AbsenceRequests } from '@/components/admin/absence-requests';
-import { mockData, adminStores, months, years } from '@/lib/mock-data';
-
-type AdminSubView = 'main' | 'reports';
+import { adminStores, months, years } from '@/lib/mock-data';
+import { useVedouciStore } from '@/stores/vedouci-store';
 
 export function VedouciView() {
-  const [subView, setSubView] = useState<AdminSubView>('main');
-  const [storeFilter, setStoreFilter] = useState('all');
-  const [monthFilter, setMonthFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('all');
+  const {
+    subView,
+    storeFilter,
+    monthFilter,
+    yearFilter,
+    setSubView,
+    setStoreFilter,
+    setMonthFilter,
+    setYearFilter,
+    getFilteredData,
+    getKpiData,
+    getVisibleStores,
+  } = useVedouciStore();
 
-  const filteredData = useMemo(() => {
-    return mockData.filter((d) => {
-      const parts = d.date.split('. ');
-      const m = parts[1];
-      const y = parts[2];
-      const matchStore =
-        storeFilter === 'all' || d.store.toLowerCase().includes(storeFilter);
-      const matchMonth = monthFilter === 'all' || m === monthFilter;
-      const matchYear = yearFilter === 'all' || y === yearFilter;
-      return matchStore && matchMonth && matchYear;
-    });
-  }, [storeFilter, monthFilter, yearFilter]);
-
-  const kpiData = useMemo(() => {
-    let totalSales = 0;
-    let totalCash = 0;
-    let pendingAbsence = 0;
-
-    filteredData.forEach((r) => {
-      totalSales += r.cash + r.card + r.partner;
-      if (!r.collected) {
-        totalCash += r.cash + (parseInt(r.flows) || 0);
-      }
-      if (r.abs && r.abs !== '-') {
-        pendingAbsence++;
-      }
-    });
-
-    return { totalSales, totalCash, pendingAbsence };
-  }, [filteredData]);
-
-  const visibleStores = useMemo(() => {
-    const allStores = ['Praha 1', 'Brno', 'Ostrava'];
-    if (storeFilter === 'all') return allStores;
-    return allStores.filter((s) => s.toLowerCase().includes(storeFilter));
-  }, [storeFilter]);
+  const filteredData = getFilteredData();
+  const kpiData = getKpiData();
+  const visibleStores = getVisibleStores();
 
   if (subView === 'main') {
     return (

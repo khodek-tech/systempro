@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { AbsenceType } from '@/types';
 import { absenceTypes } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
+import { useAbsenceStore } from '@/stores/absence-store';
 
 interface AbsenceModalProps {
   open: boolean;
@@ -19,28 +19,38 @@ interface AbsenceModalProps {
 }
 
 export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
-  const [absenceType, setAbsenceType] = useState<AbsenceType>('Dovolená');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [timeFrom, setTimeFrom] = useState('');
-  const [timeTo, setTimeTo] = useState('');
-  const [note, setNote] = useState('');
-
-  const showTimeSection = absenceType === 'Lékař';
+  const {
+    formData,
+    setAbsenceType,
+    setDateFrom,
+    setDateTo,
+    setTimeFrom,
+    setTimeTo,
+    setNote,
+    showTimeSection,
+    submitAbsence,
+    resetForm,
+  } = useAbsenceStore();
 
   const handleSubmit = () => {
-    alert('Žádost odeslána!');
-    setAbsenceType('Dovolená');
-    setDateFrom('');
-    setDateTo('');
-    setTimeFrom('');
-    setTimeTo('');
-    setNote('');
-    onOpenChange(false);
+    const result = submitAbsence();
+    if (result.success) {
+      alert('Žádost odeslána!');
+      onOpenChange(false);
+    } else if (result.error) {
+      alert(`⚠️ ${result.error}`);
+    }
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      resetForm();
+    }
+    onOpenChange(isOpen);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md rounded-2xl p-8">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-slate-800 text-center">
@@ -50,7 +60,7 @@ export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
 
         <div className="space-y-5 mt-6">
           <select
-            value={absenceType}
+            value={formData.type}
             onChange={(e) => setAbsenceType(e.target.value as AbsenceType)}
             className="w-full bg-slate-50 p-4 rounded-xl font-semibold text-base outline-none cursor-pointer border border-slate-200 focus:border-orange-300"
           >
@@ -64,13 +74,13 @@ export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <Input
               type="date"
-              value={dateFrom}
+              value={formData.dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="bg-slate-50 p-4 rounded-xl font-medium text-base border border-slate-200 focus:border-orange-300 h-auto"
             />
             <Input
               type="date"
-              value={dateTo}
+              value={formData.dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="bg-slate-50 p-4 rounded-xl font-medium text-base border border-slate-200 focus:border-orange-300 h-auto"
             />
@@ -79,25 +89,25 @@ export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
           <div
             className={cn(
               'grid grid-cols-2 gap-4 animate-in slide-in-from-top-1',
-              !showTimeSection && 'hidden'
+              !showTimeSection() && 'hidden'
             )}
           >
             <Input
               type="time"
-              value={timeFrom}
+              value={formData.timeFrom || ''}
               onChange={(e) => setTimeFrom(e.target.value)}
               className="bg-blue-50 p-4 rounded-xl font-semibold text-base text-center text-blue-600 border border-blue-200 outline-none h-auto"
             />
             <Input
               type="time"
-              value={timeTo}
+              value={formData.timeTo || ''}
               onChange={(e) => setTimeTo(e.target.value)}
               className="bg-blue-50 p-4 rounded-xl font-semibold text-base text-center text-blue-600 border border-blue-200 outline-none h-auto"
             />
           </div>
 
           <textarea
-            value={note}
+            value={formData.note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Poznámka ke schválení..."
             className="w-full bg-slate-50 p-5 rounded-xl font-medium text-base outline-none border border-slate-200 focus:border-orange-300 resize-none"

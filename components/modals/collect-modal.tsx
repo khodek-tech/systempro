@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCollectStore } from '@/stores/collect-store';
 
 interface CollectModalProps {
   open: boolean;
@@ -25,21 +25,28 @@ export function CollectModal({
   period,
   onSubmit,
 }: CollectModalProps) {
-  const [driverName, setDriverName] = useState('');
+  const { driverName, setDriverName, resetForm } = useCollectStore();
 
   const handleSubmit = () => {
     const result = onSubmit(driverName);
     if (result.success) {
       alert('✅ Hotovost odevzdána.');
-      setDriverName('');
+      resetForm();
       onOpenChange(false);
     } else if (result.error) {
       alert(`⚠️ ${result.error}`);
     }
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      resetForm();
+    }
+    onOpenChange(isOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md rounded-2xl p-10 text-center">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-purple-900 mb-4">
