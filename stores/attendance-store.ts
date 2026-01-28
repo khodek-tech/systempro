@@ -4,33 +4,34 @@ import { WorkplaceType } from '@/types';
 interface AttendanceState {
   isInWork: boolean;
   kasaConfirmed: boolean;
-  workplace: WorkplaceType;
+  workplaceType: WorkplaceType;
+  workplaceId: string;
+  workplaceName: string;
+  requiresKasa: boolean;
 }
 
 interface AttendanceActions {
-  // Computed
-  isWarehouse: () => boolean;
-
   // Actions
   toggleAttendance: () => { success: boolean; error?: string };
   confirmKasa: (confirmed: boolean) => void;
-  changeWorkplace: (workplace: WorkplaceType) => void;
+  setWorkplace: (type: WorkplaceType, id: string, name: string, requiresKasa: boolean) => void;
 }
 
 export const useAttendanceStore = create<AttendanceState & AttendanceActions>((set, get) => ({
   // Initial state
   isInWork: false,
   kasaConfirmed: false,
-  workplace: 'praha 1',
-
-  // Computed
-  isWarehouse: () => get().workplace === 'sklad',
+  workplaceType: 'store',
+  workplaceId: 'store-1',
+  workplaceName: 'Praha 1',
+  requiresKasa: true,
 
   // Actions
   toggleAttendance: () => {
-    const { isInWork, kasaConfirmed } = get();
+    const { isInWork, kasaConfirmed, requiresKasa } = get();
 
-    if (isInWork && !kasaConfirmed) {
+    // When checking out, require kasa confirmation only if workplace requires it
+    if (isInWork && requiresKasa && !kasaConfirmed) {
       return { success: false, error: 'Před odchodem potvrďte stav kasy!' };
     }
 
@@ -44,10 +45,16 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
 
   confirmKasa: (confirmed) => set({ kasaConfirmed: confirmed }),
 
-  changeWorkplace: (newWorkplace) => {
+  setWorkplace: (type, id, name, requiresKasa) => {
     const { isInWork } = get();
+    // Only allow workplace change when not in work
     if (!isInWork) {
-      set({ workplace: newWorkplace });
+      set({
+        workplaceType: type,
+        workplaceId: id,
+        workplaceName: name,
+        requiresKasa,
+      });
     }
   },
 }));

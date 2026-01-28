@@ -1,10 +1,50 @@
-export type Role = 'prodavac' | 'vedouci';
+// Role types - 8 available roles
+export type RoleType =
+  | 'prodavac'
+  | 'skladnik'
+  | 'administrator'
+  | 'vedouci-sklad'
+  | 'obsluha-eshop'
+  | 'obchodnik'
+  | 'vedouci-velkoobchod'
+  | 'majitel';
 
-export type WorkplaceType = 'praha 1' | 'brno' | 'ostrava' | 'sklad';
+// Workplace types
+export type WorkplaceType = 'store' | 'role';
 
+// Store interface
+export interface Store {
+  id: string;
+  name: string;
+  address: string;
+  active: boolean;
+}
+
+// Role interface
+export interface Role {
+  id: string;
+  name: string;
+  type: RoleType;
+  active: boolean;
+}
+
+// User interface
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  roleIds: string[];
+  storeIds: string[];
+  active: boolean;
+}
+
+// Attendance record with new workplace structure
 export interface AttendanceRecord {
   date: string;
   store: string;
+  workplaceType: WorkplaceType;
+  workplaceId: string;
+  workplaceName: string;
   user: string;
   in: string;
   out: string;

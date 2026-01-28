@@ -2,10 +2,12 @@ import { create } from 'zustand';
 import { AttendanceRecord } from '@/types';
 import { mockData } from '@/lib/mock-data';
 
-type AdminSubView = 'main' | 'reports';
+type AdminSubView = 'main' | 'reports' | 'settings';
+type SettingsTab = 'stores' | 'roles' | 'employees';
 
-interface VedouciState {
+interface AdminState {
   subView: AdminSubView;
+  settingsTab: SettingsTab;
   storeFilter: string;
   monthFilter: string;
   yearFilter: string;
@@ -17,11 +19,13 @@ interface KpiData {
   pendingAbsence: number;
 }
 
-interface VedouciActions {
+interface AdminActions {
   // Navigation
   setSubView: (view: AdminSubView) => void;
   goToMain: () => void;
   goToReports: () => void;
+  goToSettings: () => void;
+  setSettingsTab: (tab: SettingsTab) => void;
 
   // Filters
   setStoreFilter: (filter: string) => void;
@@ -35,9 +39,10 @@ interface VedouciActions {
   getVisibleStores: () => string[];
 }
 
-export const useVedouciStore = create<VedouciState & VedouciActions>((set, get) => ({
+export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   // Initial state
   subView: 'main',
+  settingsTab: 'stores',
   storeFilter: 'all',
   monthFilter: 'all',
   yearFilter: 'all',
@@ -46,6 +51,8 @@ export const useVedouciStore = create<VedouciState & VedouciActions>((set, get) 
   setSubView: (view) => set({ subView: view }),
   goToMain: () => set({ subView: 'main' }),
   goToReports: () => set({ subView: 'reports' }),
+  goToSettings: () => set({ subView: 'settings', settingsTab: 'stores' }),
+  setSettingsTab: (tab) => set({ settingsTab: tab }),
 
   // Filters
   setStoreFilter: (filter) => set({ storeFilter: filter }),
