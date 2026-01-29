@@ -1,10 +1,9 @@
 # SYSTEM.PRO
 
 Interní systém pro správu tržeb a docházky zaměstnanců v maloobchodní síti.
-Aplikace podporuje dvě role: **Prodavač** (evidence tržeb, docházky, absencí)
-a **Vedoucí** (reporty, KPI, správa dat).
+Aplikace podporuje **8 různých rolí** s multi-role systémem - uživatel může mít přiřazeno více rolí a přepínat mezi nimi.
 
-**Verze:** Enterprise v5.2
+**Verze:** Enterprise v5.3
 **Stav:** Frontend only (bez backendu, mock data)
 
 ---
@@ -33,41 +32,59 @@ systempro/
 │   └── globals.css     # Tailwind + custom animace
 │
 ├── components/
-│   ├── admin/          # Komponenty pro Vedoucí
+│   ├── admin/          # Komponenty pro Vedoucí/Admin
 │   │   ├── kpi-cards.tsx        # 4 KPI karty (tržby, hotovost, absence, svozy)
 │   │   ├── attendance-table.tsx # Tabulka docházky
 │   │   ├── sales-table.tsx      # Tabulka tržeb
 │   │   ├── last-pickups.tsx     # Panel posledních svozů
 │   │   └── absence-requests.tsx # Panel žádostí o volno
 │   │
+│   ├── admin-dashboard/         # Nastavení pro Administrator
+│   │   └── settings/
+│   │       ├── EmployeesSettings.tsx  # Správa zaměstnanců
+│   │       ├── RolesSettings.tsx      # Správa rolí
+│   │       └── StoresSettings.tsx     # Správa prodejen
+│   │
 │   ├── modals/
 │   │   ├── sales-modal.tsx      # Formulář denních tržeb
 │   │   ├── collect-modal.tsx    # Formulář odevzdání hotovosti
 │   │   └── absence-modal.tsx    # Formulář nahlášení absence
+│   │
+│   ├── shared/          # Sdílené komponenty napříč views
+│   │   └── absence-card.tsx     # Karta pro hlášení absence
 │   │
 │   ├── ui/             # Základní UI komponenty
 │   │   ├── button.tsx, dialog.tsx, input.tsx, select.tsx
 │   │   ├── checkbox.tsx, table.tsx, card.tsx
 │   │   └── currency-input.tsx   # Custom input pro Kč
 │   │
-│   ├── views/
-│   │   ├── prodavac-view.tsx    # Hlavní view prodavače
-│   │   └── vedouci-view.tsx     # Dashboard vedoucího
+│   ├── views/          # Views pro jednotlivé role
+│   │   ├── prodavac-view.tsx           # Prodavač
+│   │   ├── skladnik-view.tsx           # Skladník
+│   │   ├── vedouci-sklad-view.tsx      # Vedoucí skladu
+│   │   ├── obsluha-eshop-view.tsx      # Obsluha e-shopu
+│   │   ├── obchodnik-view.tsx          # Obchodník
+│   │   ├── vedouci-velkoobchod-view.tsx # Vedoucí velkoobchodu
+│   │   ├── admin-view.tsx              # Administrator
+│   │   └── majitel-view.tsx            # Majitel
 │   │
 │   ├── header.tsx               # Hlavička s logo, role, docházka, hodiny
-│   ├── role-switcher.tsx        # Přepínač Prodavač/Vedoucí
+│   ├── role-switcher.tsx        # Přepínač rolí (multi-role)
 │   ├── attendance-module.tsx    # Modul docházky (příchod/odchod)
 │   ├── live-clock.tsx           # Živé hodiny
 │   └── cash-monitor.tsx         # Banner s hotovostí k odevzdání
 │
 ├── stores/             # Zustand state management
-│   ├── role-store.ts
-│   ├── attendance-store.ts
-│   ├── sales-store.ts
-│   ├── absence-store.ts
-│   ├── collect-store.ts
-│   ├── ui-store.ts
-│   └── vedouci-store.ts
+│   ├── auth-store.ts            # Autentizace, aktivní role/prodejna
+│   ├── users-store.ts           # Správa uživatelů
+│   ├── roles-store.ts           # Správa rolí
+│   ├── stores-store.ts          # Správa prodejen
+│   ├── attendance-store.ts      # Docházka
+│   ├── sales-store.ts           # Tržby
+│   ├── absence-store.ts         # Absence
+│   ├── collect-store.ts         # Odvody
+│   ├── ui-store.ts              # UI stav (modály, filtry)
+│   └── vedouci-store.ts         # Dashboard vedoucího
 │
 ├── lib/
 │   ├── mock-data.ts    # Testovací data + select options
@@ -83,6 +100,19 @@ systempro/
 
 ## Role a funkcionalita
 
+### Přehled rolí
+
+| Role | Typ | Docházka | Absence | Popis |
+|------|-----|----------|---------|-------|
+| Prodavač | prodavac | ✅ | ✅ | Evidence tržeb, docházky, absencí |
+| Skladník | skladnik | ✅ | ✅ | Práce ve skladu |
+| Vedoucí skladu | vedouci_sklad | ✅ | ✅ | Správa skladu |
+| Obsluha e-shop | obsluha_eshop | ✅ | ✅ | Zpracování online objednávek |
+| Obchodník | obchodnik | ✅ | ✅ | Obchodní činnost |
+| Vedoucí velkoobchod | vedouci_velkoobchod | ✅ | ✅ | Správa velkoobchodu |
+| Administrator | administrator | ❌ | ❌ | Správa systému, uživatelů, rolí |
+| Majitel | majitel | ❌ | ❌ | Přehled a reporting |
+
 ### Prodavač
 
 - **Docházka**: Příchod/Odchod, volba pracoviště, potvrzení kasy
@@ -91,25 +121,62 @@ systempro/
 - **Absence**: Dovolená, Nemoc, Lékař, Neplacené volno
 - **Úkoly**: (TODO - placeholder)
 
-### Vedoucí
+### Skladník, Vedoucí skladu, Obsluha e-shop, Obchodník, Vedoucí velkoobchod
 
-- **Main view**: Navigace na Tržba a Docházka, Práva, Prodejny
+- **Absence**: Dovolená, Nemoc, Lékař, Neplacené volno
+- Další funkce ve vývoji
+
+### Administrator
+
+- **Nastavení systému**:
+  - Správa zaměstnanců (přidávání, úprava, mazání)
+  - Správa rolí (aktivace/deaktivace)
+  - Správa prodejen (aktivace/deaktivace)
+- **Reports**: Přístup k reportům tržeb a docházky
+
+### Majitel
+
+- **Dashboard**: Přehled KPI a reportů
 - **Reports**:
   - Filtry (prodejna, měsíc, rok)
   - KPI karty (měsíční tržba, hotovost v trezorech, čekající absence, svozový status)
-  - Tabulka docházky (datum, prodejna, zaměstnanec, příchod, odchod, absence, hodiny)
-  - Tabulka tržeb (datum, prodavač, hotovost, karty, partner, pohyby, odvod)
+  - Tabulka docházky
+  - Tabulka tržeb
   - Poslední svozy, Žádosti o volno
 
 ---
 
 ## Zustand Stores
 
-### useRoleStore
+### useAuthStore
 
 ```typescript
-State: role: 'prodavac' | 'vedouci'
-Actions: switchRole(), isProdavac(), isVedouci()
+State: currentUser, activeRoleId, activeStoreId, _hydrated
+Actions: setCurrentUser(), setActiveRole(), setActiveStore()
+Computed: getActiveRole(), getAvailableRoles(), getAvailableStores(),
+          needsStoreSelection(), getActiveRoleType(),
+          hasAttendance(), canReportAbsence()
+```
+
+### useUsersStore
+
+```typescript
+State: users[]
+Actions: addUser(), updateUser(), deleteUser(), getUserById()
+```
+
+### useRolesStore
+
+```typescript
+State: roles[]
+Actions: updateRole(), getRoleById(), getActiveRoles()
+```
+
+### useStoresStore
+
+```typescript
+State: stores[]
+Actions: updateStore(), getStoreById(), getActiveStores()
 ```
 
 ### useAttendanceStore
@@ -139,13 +206,6 @@ Actions: setAbsenceType(), setDateFrom/To(), setTimeFrom/To(), setNote(),
 Logika: Čas pouze pro typ "Lékař"
 ```
 
-### useCollectStore
-
-```typescript
-State: driverName
-Actions: setDriverName(), resetForm()
-```
-
 ### useUIStore
 
 ```typescript
@@ -154,47 +214,55 @@ State: salesModalOpen, collectModalOpen, absenceModalOpen,
 Actions: open/close/set modály, setSubView(), setFilters(), resetFilters()
 ```
 
-### useVedouciStore
-
-```typescript
-State: subView, storeFilter, monthFilter, yearFilter
-Actions: navigation (goToMain, goToReports), filtry,
-         getFilteredData(), getKpiData(), getVisibleStores()
-```
-
 ---
 
 ## Datové typy
 
 ```typescript
-// Základní typy
-type Role = 'prodavac' | 'vedouci'
-type WorkplaceType = 'praha 1' | 'brno' | 'ostrava' | 'sklad'
-type AbsenceType = 'Dovolená' | 'Nemoc / Neschopenka' | 'Lékař' | 'Neplacené volno'
+// Role typy
+type RoleType =
+  | 'prodavac'
+  | 'skladnik'
+  | 'vedouci_sklad'
+  | 'obsluha_eshop'
+  | 'obchodnik'
+  | 'vedouci_velkoobchod'
+  | 'administrator'
+  | 'majitel'
 
-// Hlavní datová struktura
-interface AttendanceRecord {
-  date: string           // "27. 01. 2024"
-  store: string          // Prodejna
-  user: string           // Zaměstnanec
-  in: string             // Příchod (HH:MM)
-  out: string            // Odchod (HH:MM)
-  abs: string            // Absence nebo "-"
-  hrs: string            // Odpracované hodiny
-  absNote: string        // Poznámka k absenci
-  cash: number           // Hotovost
-  card: number           // Karty
-  partner: number        // Partner T-L
-  flows: string          // Pohyby (+/-)
-  saleNote: string       // Poznámka k tržbě
-  collected: string | false  // Kdo sbíral
+// Hlavní entity
+interface User {
+  id: string
+  name: string
+  email: string
+  roleIds: string[]      // Multi-role podpora
+  storeIds: string[]
+  defaultRoleId?: string
+  defaultStoreId?: string
+  active: boolean
 }
+
+interface Role {
+  id: string
+  name: string
+  type: RoleType
+  active: boolean
+}
+
+interface Store {
+  id: string
+  name: string
+  address: string
+  active: boolean
+}
+
+// Absence typy
+type AbsenceType = 'Dovolená' | 'Nemoc / Neschopenka' | 'Lékař' | 'Neplacené volno'
 
 // Formuláře
 interface ExtraRow { id: string, amount: number, note: string }
 interface SalesFormData { cash, card, partner, incomes[], expenses[] }
 interface AbsenceFormData { type, dateFrom, dateTo, timeFrom?, timeTo?, note }
-interface CollectionFormData { driverName, amount, period }
 ```
 
 ---
@@ -229,6 +297,6 @@ npm run build        # Produkční build
 ## TODO / Rozpracované funkce
 
 - [ ] Tlačítko "Úkoly" - zatím placeholder
-- [ ] Tlačítka "Práva" a "Prodejny" ve Vedoucí view - disabled
+- [ ] Views pro role Skladník, Vedoucí skladu, Obsluha e-shop, Obchodník, Vedoucí velkoobchod - základní funkčnost (absence), další ve vývoji
 - [ ] Backend integrace - aktuálně mock data
 - [ ] Export XLS - připravené tlačítko
