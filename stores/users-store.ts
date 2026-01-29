@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { MOCK_USERS, MOCK_ROLES } from '@/lib/mock-data';
 
@@ -19,7 +20,9 @@ interface UsersActions {
   validateUser: (user: Partial<User>, excludeUserId?: string) => { valid: boolean; error?: string };
 }
 
-export const useUsersStore = create<UsersState & UsersActions>((set, get) => ({
+export const useUsersStore = create<UsersState & UsersActions>()(
+  persist(
+    (set, get) => ({
   // Initial state
   users: MOCK_USERS,
 
@@ -30,8 +33,25 @@ export const useUsersStore = create<UsersState & UsersActions>((set, get) => ({
       return { success: false, error: validation.error };
     }
 
+    // Sanitize default values
+    const sanitizedData = { ...userData };
+
+    // Reset defaultRoleId if not in roleIds
+    if (sanitizedData.defaultRoleId !== undefined) {
+      if (!sanitizedData.roleIds.includes(sanitizedData.defaultRoleId)) {
+        sanitizedData.defaultRoleId = sanitizedData.roleIds[0];
+      }
+    }
+
+    // Reset defaultStoreId if not in storeIds
+    if (sanitizedData.defaultStoreId !== undefined) {
+      if (!sanitizedData.storeIds.includes(sanitizedData.defaultStoreId)) {
+        sanitizedData.defaultStoreId = sanitizedData.storeIds[0];
+      }
+    }
+
     const newUser: User = {
-      ...userData,
+      ...sanitizedData,
       id: `user-${Date.now()}`,
     } as User;
 
@@ -54,8 +74,27 @@ export const useUsersStore = create<UsersState & UsersActions>((set, get) => ({
       return { success: false, error: validation.error };
     }
 
+    // Sanitize default values
+    const sanitizedUpdates = { ...updates };
+    const finalRoleIds = updates.roleIds ?? currentUser.roleIds;
+    const finalStoreIds = updates.storeIds ?? currentUser.storeIds;
+
+    // Reset defaultRoleId if not in roleIds
+    if (sanitizedUpdates.defaultRoleId !== undefined) {
+      if (!finalRoleIds.includes(sanitizedUpdates.defaultRoleId)) {
+        sanitizedUpdates.defaultRoleId = finalRoleIds[0];
+      }
+    }
+
+    // Reset defaultStoreId if not in storeIds
+    if (sanitizedUpdates.defaultStoreId !== undefined) {
+      if (!finalStoreIds.includes(sanitizedUpdates.defaultStoreId)) {
+        sanitizedUpdates.defaultStoreId = finalStoreIds[0];
+      }
+    }
+
     set((state) => ({
-      users: state.users.map((user) => (user.id === id ? { ...user, ...updates } : user)),
+      users: state.users.map((user) => (user.id === id ? { ...user, ...sanitizedUpdates } : user)),
     }));
 
     return { success: true };
@@ -117,4 +156,7 @@ export const useUsersStore = create<UsersState & UsersActions>((set, get) => ({
 
     return { valid: true };
   },
-}));
+    }),
+    { name: 'systempro-users' }
+  )
+);

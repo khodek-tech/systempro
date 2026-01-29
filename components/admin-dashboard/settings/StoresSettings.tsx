@@ -1,17 +1,41 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Pencil, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStoresStore } from '@/stores/stores-store';
 import { StoreFormModal } from './StoreFormModal';
 import { Store } from '@/types';
+
+type SortField = 'name' | 'address' | null;
+type SortDirection = 'asc' | 'desc';
 
 export function StoresSettings() {
   const { stores, toggleStoreActive } = useStoresStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [modalKey, setModalKey] = useState(0);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedStores = useMemo(() => {
+    if (!sortField) return stores;
+    return [...stores].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      const comparison = aValue.localeCompare(bValue, 'cs');
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [stores, sortField, sortDirection]);
 
   const handleAdd = () => {
     setEditingStore(null);
@@ -49,11 +73,33 @@ export function StoresSettings() {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50">
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Název
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('name')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Název
+                  {sortField === 'name' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Adresa
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('address')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Adresa
+                  {sortField === 'address' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
               <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Stav
@@ -64,7 +110,7 @@ export function StoresSettings() {
             </tr>
           </thead>
           <tbody>
-            {stores.map((store) => (
+            {sortedStores.map((store) => (
               <tr key={store.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-sm font-medium text-slate-800">{store.name}</td>
                 <td className="px-4 py-3 text-sm text-slate-600">{store.address}</td>

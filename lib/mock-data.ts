@@ -2,10 +2,16 @@ import { AttendanceRecord, Store, Role, User } from '@/types';
 
 // Mock stores
 export const MOCK_STORES: Store[] = [
-  { id: 'store-1', name: 'Praha 1', address: 'Václavské náměstí 1, Praha 1', active: true },
-  { id: 'store-2', name: 'Brno', address: 'Masarykova 5, Brno', active: true },
-  { id: 'store-3', name: 'Ostrava', address: 'Stodolní 10, Ostrava', active: true },
-  { id: 'store-4', name: 'Plzeň', address: 'Americká 15, Plzeň', active: false },
+  { id: 'store-1', name: 'Bohnice', address: '', active: true },
+  { id: 'store-2', name: 'Butovice', address: '', active: true },
+  { id: 'store-3', name: 'Brno', address: '', active: true },
+  { id: 'store-4', name: 'Č Most', address: '', active: true },
+  { id: 'store-5', name: 'OC Šestka', address: '', active: true },
+  { id: 'store-6', name: 'Prosek', address: '', active: true },
+  { id: 'store-7', name: 'Ústí', address: '', active: true },
+  { id: 'store-8', name: 'Chodov', address: '', active: true },
+  { id: 'store-9', name: 'Vysočany', address: '', active: true },
+  { id: 'store-10', name: 'Zličín', address: '', active: true },
 ];
 
 // Mock roles (8 roles)
@@ -20,59 +26,46 @@ export const MOCK_ROLES: Role[] = [
   { id: 'role-8', name: 'Majitel', type: 'majitel', active: true },
 ];
 
-// Mock users
+// Mock users (27 employees)
 export const MOCK_USERS: User[] = [
-  {
-    id: 'user-1',
-    username: 'admin',
-    fullName: 'Jan Administrátor',
-    roleIds: ['role-2'],
-    storeIds: [],
-    active: true,
-  },
-  {
-    id: 'user-2',
-    username: 'prodavac1',
-    fullName: 'Petr Novák',
-    roleIds: ['role-1'],
-    storeIds: ['store-1', 'store-2'],
-    active: true,
-  },
-  {
-    id: 'user-3',
-    username: 'skladnik1',
-    fullName: 'Marie Skladová',
-    roleIds: ['role-3', 'role-1'],
-    storeIds: ['store-3'],
-    active: true,
-  },
-  {
-    id: 'user-4',
-    username: 'majitel',
-    fullName: 'Karel Vlastník',
-    roleIds: ['role-8'],
-    storeIds: [],
-    active: true,
-  },
-  {
-    id: 'user-5',
-    username: 'multi',
-    fullName: 'Eva Multifunkční',
-    roleIds: ['role-1', 'role-5', 'role-6'],
-    storeIds: ['store-1', 'store-2', 'store-3'],
-    active: true,
-  },
+  { id: 'user-1', username: 'pbures', fullName: 'Bureš Pavel', roleIds: ['role-1', 'role-2'], storeIds: [], active: true },
+  { id: 'user-2', username: 'aburianova', fullName: 'Burianová Aneta', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-3', username: 'mcapek', fullName: 'Čapek Michal', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-4', username: 'lferova', fullName: 'Férová Lucie', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-5', username: 'afratricova', fullName: 'Fratričová Alžbeta', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-6', username: 'khodek', fullName: 'Hodek Karel', roleIds: ['role-1', 'role-2'], storeIds: [], active: true },
+  { id: 'user-7', username: 'dhysek', fullName: 'Hýsek David', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-8', username: 'ajindra', fullName: 'Jindra Aleš', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-9', username: 'jkafagi', fullName: 'Kafagi Jakub', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-10', username: 'zkakur', fullName: 'Kakur Zdenko', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-11', username: 'mkunik', fullName: 'Kunik Martin', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-12', username: 'hkuresova', fullName: 'Kurešová Hana', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-13', username: 'jlhotak', fullName: 'Lhoták Jan', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-14', username: 'tlhotak', fullName: 'Lhoták Tomáš', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-15', username: 'tlink', fullName: 'Link Tomáš', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-16', username: 'kmarkova', fullName: 'Marková Kateřina', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-17', username: 'mnadionova', fullName: 'Nadionová Markéta', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-18', username: 'krabasova', fullName: 'Rabasová Kateřina', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-19', username: 'vsmizansky', fullName: 'Smižanský Vilém', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-20', username: 'jsnasel', fullName: 'Snášel Jakub', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-21', username: 'osoucek', fullName: 'Souček Ondřej', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-22', username: 'tstransky', fullName: 'Stránský Tadeáš', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-23', username: 'vszkatul', fullName: 'Szkatuláková Věra', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-24', username: 'zszolga', fullName: 'Szolga Zsolt', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-25', username: 'lstepnickova', fullName: 'Štěpničková Lucie', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-26', username: 'pbartunek', fullName: 'Bartůněk Petr', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-27', username: 'pkot', fullName: 'Kot Patrícia', roleIds: ['role-1'], storeIds: [], active: true },
 ];
 
 // Mock attendance data (updated structure)
 export const mockData: AttendanceRecord[] = [
   {
     date: '27. 01. 2024',
-    store: 'Praha 1',
+    store: 'Bohnice',
     workplaceType: 'store',
     workplaceId: 'store-1',
-    workplaceName: 'Praha 1',
-    user: 'Petr Novák',
+    workplaceName: 'Bohnice',
+    user: 'Bureš Pavel',
     in: '08:00',
     out: '10:30',
     abs: 'Lékař',
@@ -87,11 +80,11 @@ export const mockData: AttendanceRecord[] = [
   },
   {
     date: '27. 01. 2024',
-    store: 'Praha 1',
+    store: 'Bohnice',
     workplaceType: 'store',
     workplaceId: 'store-1',
-    workplaceName: 'Praha 1',
-    user: 'Jana Malá',
+    workplaceName: 'Bohnice',
+    user: 'Burianová Aneta',
     in: '10:30',
     out: '18:00',
     abs: '-',
@@ -108,9 +101,9 @@ export const mockData: AttendanceRecord[] = [
     date: '26. 01. 2024',
     store: 'Brno',
     workplaceType: 'store',
-    workplaceId: 'store-2',
+    workplaceId: 'store-3',
     workplaceName: 'Brno',
-    user: 'Michal H.',
+    user: 'Čapek Michal',
     in: '09:00',
     out: '17:30',
     abs: '-',
@@ -121,15 +114,15 @@ export const mockData: AttendanceRecord[] = [
     partner: 0,
     flows: '0',
     saleNote: 'Běžný provoz',
-    collected: 'Karel',
+    collected: 'Hodek Karel',
   },
   {
     date: '25. 01. 2024',
-    store: 'Ostrava',
+    store: 'Chodov',
     workplaceType: 'store',
-    workplaceId: 'store-3',
-    workplaceName: 'Ostrava',
-    user: 'Lucie P.',
+    workplaceId: 'store-8',
+    workplaceName: 'Chodov',
+    user: 'Férová Lucie',
     in: '08:00',
     out: '18:00',
     abs: '-',
@@ -146,17 +139,31 @@ export const mockData: AttendanceRecord[] = [
 
 // Legacy stores dropdown (for backwards compatibility)
 export const stores = [
-  { value: 'store-1', label: 'Prodejna Praha 1' },
-  { value: 'store-2', label: 'Prodejna Brno' },
-  { value: 'store-3', label: 'Prodejna Ostrava' },
+  { value: 'store-1', label: 'Prodejna Bohnice' },
+  { value: 'store-2', label: 'Prodejna Butovice' },
+  { value: 'store-3', label: 'Prodejna Brno' },
+  { value: 'store-4', label: 'Prodejna Č Most' },
+  { value: 'store-5', label: 'Prodejna OC Šestka' },
+  { value: 'store-6', label: 'Prodejna Prosek' },
+  { value: 'store-7', label: 'Prodejna Ústí' },
+  { value: 'store-8', label: 'Prodejna Chodov' },
+  { value: 'store-9', label: 'Prodejna Vysočany' },
+  { value: 'store-10', label: 'Prodejna Zličín' },
 ];
 
 // Admin stores dropdown
 export const adminStores = [
   { value: 'all', label: 'VŠECHNY PRODEJNY' },
-  { value: 'praha 1', label: 'PRAHA 1' },
+  { value: 'bohnice', label: 'BOHNICE' },
+  { value: 'butovice', label: 'BUTOVICE' },
   { value: 'brno', label: 'BRNO' },
-  { value: 'ostrava', label: 'OSTRAVA' },
+  { value: 'c most', label: 'Č MOST' },
+  { value: 'oc sestka', label: 'OC ŠESTKA' },
+  { value: 'prosek', label: 'PROSEK' },
+  { value: 'usti', label: 'ÚSTÍ' },
+  { value: 'chodov', label: 'CHODOV' },
+  { value: 'vysocany', label: 'VYSOČANY' },
+  { value: 'zlicin', label: 'ZLIČÍN' },
 ];
 
 export const months = [

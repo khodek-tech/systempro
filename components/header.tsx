@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 export function Header() {
   const {
+    _hydrated,
     getAvailableRoles,
     getAvailableStores,
     getActiveRole,
@@ -95,7 +96,7 @@ export function Header() {
         </div>
 
         {/* Store Selector (only for Prodavač with multiple stores) */}
-        {showStoreSelector && (
+        {_hydrated && showStoreSelector && (
           <>
             <div className="h-6 w-px bg-slate-200" />
             <div className="relative group">
@@ -120,7 +121,7 @@ export function Header() {
         )}
 
         {/* Settings Icon (only for Administrator) */}
-        {isAdmin && (
+        {_hydrated && isAdmin && (
           <>
             <div className="h-6 w-px bg-slate-200" />
             <button
@@ -135,7 +136,7 @@ export function Header() {
       </div>
 
       {/* Attendance Module (only for roles with attendance) */}
-      {showAttendance && (
+      {_hydrated && showAttendance && (
         <AttendanceModule
           isInWork={isInWork}
           kasaConfirmed={kasaConfirmed}

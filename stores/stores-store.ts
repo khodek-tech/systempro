@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Store } from '@/types';
 import { MOCK_STORES } from '@/lib/mock-data';
 
@@ -17,7 +18,9 @@ interface StoresActions {
   getStoreById: (id: string) => Store | undefined;
 }
 
-export const useStoresStore = create<StoresState & StoresActions>((set, get) => ({
+export const useStoresStore = create<StoresState & StoresActions>()(
+  persist(
+    (set, get) => ({
   // Initial state
   stores: MOCK_STORES,
 
@@ -54,4 +57,7 @@ export const useStoresStore = create<StoresState & StoresActions>((set, get) => 
   getStoreById: (id) => {
     return get().stores.find((s) => s.id === id);
   },
-}));
+    }),
+    { name: 'systempro-stores' }
+  )
+);

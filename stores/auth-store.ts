@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { User, Role, Store, RoleType } from '@/types';
 import { MOCK_USERS, MOCK_ROLES, MOCK_STORES } from '@/lib/mock-data';
 
@@ -6,6 +7,7 @@ interface AuthState {
   currentUser: User | null;
   activeRoleId: string | null;
   activeStoreId: string | null;
+  _hydrated: boolean;
 }
 
 interface AuthActions {
@@ -30,19 +32,26 @@ const ROLES_WITHOUT_ATTENDANCE: RoleType[] = ['administrator', 'majitel'];
 // Roles that cannot report absence
 const ROLES_WITHOUT_ABSENCE: RoleType[] = ['administrator', 'majitel'];
 
-export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
+export const useAuthStore = create<AuthState & AuthActions>()(
+  persist(
+    (set, get) => ({
   // Initial state - default to user-1 (admin) for development
   currentUser: MOCK_USERS[0],
   activeRoleId: MOCK_USERS[0].roleIds[0],
   activeStoreId: null,
+  _hydrated: false,
 
   // Actions
   setCurrentUser: (user) => {
     if (user) {
+      // Use default values if set, otherwise fallback to first item
+      const defaultRoleId = user.defaultRoleId ?? user.roleIds[0] ?? null;
+      const defaultStoreId = user.defaultStoreId ?? user.storeIds[0] ?? null;
+
       set({
         currentUser: user,
-        activeRoleId: user.roleIds[0] || null,
-        activeStoreId: user.storeIds[0] || null,
+        activeRoleId: defaultRoleId,
+        activeStoreId: defaultStoreId,
       });
     } else {
       set({
@@ -143,4 +152,19 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     if (!roleType) return false;
     return !ROLES_WITHOUT_ABSENCE.includes(roleType);
   },
-}));
+    }),
+    {
+      name: 'systempro-auth',
+      partialize: (state) => ({
+        currentUser: state.currentUser,
+        activeRoleId: state.activeRoleId,
+        activeStoreId: state.activeStoreId,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state._hydrated = true;
+        }
+      },
+    }
+  )
+);

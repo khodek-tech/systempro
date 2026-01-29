@@ -1,17 +1,41 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Pencil, ToggleLeft, ToggleRight, ShieldAlert } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Pencil, ToggleLeft, ToggleRight, ShieldAlert, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRolesStore } from '@/stores/roles-store';
 import { RoleFormModal } from './RoleFormModal';
 import { Role } from '@/types';
+
+type SortField = 'name' | 'type' | null;
+type SortDirection = 'asc' | 'desc';
 
 export function RolesSettings() {
   const { roles, toggleRoleActive, canDeactivateRole } = useRolesStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [modalKey, setModalKey] = useState(0);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedRoles = useMemo(() => {
+    if (!sortField) return roles;
+    return [...roles].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      const comparison = aValue.localeCompare(bValue, 'cs');
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [roles, sortField, sortDirection]);
 
   const handleAdd = () => {
     setEditingRole(null);
@@ -57,11 +81,33 @@ export function RolesSettings() {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50">
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Název
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('name')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Název
+                  {sortField === 'name' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Typ
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('type')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Typ
+                  {sortField === 'type' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
               <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Stav
@@ -72,7 +118,7 @@ export function RolesSettings() {
             </tr>
           </thead>
           <tbody>
-            {roles.map((role) => {
+            {sortedRoles.map((role) => {
               const isProtected = !canDeactivateRole(role.id);
               return (
                 <tr key={role.id} className="border-t border-slate-100 hover:bg-slate-50">

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Role, RoleType } from '@/types';
 import { MOCK_ROLES } from '@/lib/mock-data';
 
@@ -22,7 +23,9 @@ interface RolesActions {
 // Administrator role cannot be deactivated
 const PROTECTED_ROLE_TYPES: RoleType[] = ['administrator'];
 
-export const useRolesStore = create<RolesState & RolesActions>((set, get) => ({
+export const useRolesStore = create<RolesState & RolesActions>()(
+  persist(
+    (set, get) => ({
   // Initial state
   roles: MOCK_ROLES,
 
@@ -77,4 +80,7 @@ export const useRolesStore = create<RolesState & RolesActions>((set, get) => ({
   getRoleByType: (type) => {
     return get().roles.find((r) => r.type === type);
   },
-}));
+    }),
+    { name: 'systempro-roles' }
+  )
+);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
 import { useRolesStore } from '@/stores/roles-store';
@@ -27,18 +27,48 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [selectedRoles, setSelectedRoles] = useState<string[]>(user?.roleIds ?? []);
   const [selectedStores, setSelectedStores] = useState<string[]>(user?.storeIds ?? []);
+  const [defaultRoleId, setDefaultRoleId] = useState<string | undefined>(user?.defaultRoleId);
+  const [defaultStoreId, setDefaultStoreId] = useState<string | undefined>(user?.defaultStoreId);
   const [error, setError] = useState<string | null>(null);
 
   const toggleRole = (roleId: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
-    );
+    setSelectedRoles((prev) => {
+      const newRoles = prev.includes(roleId)
+        ? prev.filter((id) => id !== roleId)
+        : [...prev, roleId];
+
+      // If removing the default role, reset to first available or undefined
+      if (!newRoles.includes(defaultRoleId ?? '')) {
+        setDefaultRoleId(newRoles[0]);
+      }
+
+      return newRoles;
+    });
   };
 
   const toggleStore = (storeId: string) => {
-    setSelectedStores((prev) =>
-      prev.includes(storeId) ? prev.filter((id) => id !== storeId) : [...prev, storeId]
-    );
+    setSelectedStores((prev) => {
+      const newStores = prev.includes(storeId)
+        ? prev.filter((id) => id !== storeId)
+        : [...prev, storeId];
+
+      // If removing the default store, reset to first available or undefined
+      if (!newStores.includes(defaultStoreId ?? '')) {
+        setDefaultStoreId(newStores[0]);
+      }
+
+      return newStores;
+    });
+  };
+
+  const handleSetDefaultRole = (roleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDefaultRoleId(roleId);
+  };
+
+  const handleSetDefaultStore = (storeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDefaultStoreId(storeId);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -50,6 +80,8 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
       fullName: fullName.trim(),
       roleIds: selectedRoles,
       storeIds: selectedStores,
+      defaultRoleId: selectedRoles.length > 1 ? defaultRoleId : undefined,
+      defaultStoreId: selectedStores.length > 1 ? defaultStoreId : undefined,
       active: user?.active ?? true,
     };
 
@@ -127,22 +159,45 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
             <div className="flex flex-wrap gap-2">
               {roles
                 .filter((r) => r.active)
-                .map((role) => (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => toggleRole(role.id)}
-                    className={cn(
-                      'flex items-center space-x-2 px-3 py-2 rounded-lg border transition-all',
-                      selectedRoles.includes(role.id)
-                        ? 'bg-blue-50 border-blue-300 text-blue-700'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    {selectedRoles.includes(role.id) && <Check className="w-4 h-4" />}
-                    <span className="text-sm font-medium">{role.name}</span>
-                  </button>
-                ))}
+                .map((role) => {
+                  const isSelected = selectedRoles.includes(role.id);
+                  const isDefault = defaultRoleId === role.id;
+                  const showStar = isSelected && selectedRoles.length > 1;
+
+                  return (
+                    <div
+                      key={role.id}
+                      className={cn(
+                        'flex items-center rounded-lg border transition-all',
+                        isSelected
+                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleRole(role.id)}
+                        className="flex items-center space-x-2 px-3 py-2"
+                      >
+                        {isSelected && <Check className="w-4 h-4" />}
+                        <span className="text-sm font-medium">{role.name}</span>
+                      </button>
+                      {showStar && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSetDefaultRole(role.id, e)}
+                          className={cn(
+                            'pr-3 transition-colors',
+                            isDefault ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'
+                          )}
+                          title={isDefault ? 'Výchozí role' : 'Nastavit jako výchozí'}
+                        >
+                          <Star className={cn('w-4 h-4', isDefault && 'fill-amber-500')} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
 
@@ -152,22 +207,45 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
             <div className="flex flex-wrap gap-2">
               {stores
                 .filter((s) => s.active)
-                .map((store) => (
-                  <button
-                    key={store.id}
-                    type="button"
-                    onClick={() => toggleStore(store.id)}
-                    className={cn(
-                      'flex items-center space-x-2 px-3 py-2 rounded-lg border transition-all',
-                      selectedStores.includes(store.id)
-                        ? 'bg-green-50 border-green-300 text-green-700'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    {selectedStores.includes(store.id) && <Check className="w-4 h-4" />}
-                    <span className="text-sm font-medium">{store.name}</span>
-                  </button>
-                ))}
+                .map((store) => {
+                  const isSelected = selectedStores.includes(store.id);
+                  const isDefault = defaultStoreId === store.id;
+                  const showStar = isSelected && selectedStores.length > 1;
+
+                  return (
+                    <div
+                      key={store.id}
+                      className={cn(
+                        'flex items-center rounded-lg border transition-all',
+                        isSelected
+                          ? 'bg-green-50 border-green-300 text-green-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleStore(store.id)}
+                        className="flex items-center space-x-2 px-3 py-2"
+                      >
+                        {isSelected && <Check className="w-4 h-4" />}
+                        <span className="text-sm font-medium">{store.name}</span>
+                      </button>
+                      {showStar && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSetDefaultStore(store.id, e)}
+                          className={cn(
+                            'pr-3 transition-colors',
+                            isDefault ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'
+                          )}
+                          title={isDefault ? 'Výchozí prodejna' : 'Nastavit jako výchozí'}
+                        >
+                          <Star className={cn('w-4 h-4', isDefault && 'fill-amber-500')} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
 

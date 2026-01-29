@@ -35,6 +35,8 @@ export interface User {
   fullName: string;
   roleIds: string[];
   storeIds: string[];
+  defaultRoleId?: string;
+  defaultStoreId?: string;
   active: boolean;
 }
 

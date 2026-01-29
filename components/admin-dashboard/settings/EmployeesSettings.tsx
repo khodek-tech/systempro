@@ -1,13 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Pencil, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { useStoresStore } from '@/stores/stores-store';
 import { EmployeeFormModal } from './EmployeeFormModal';
 import { User } from '@/types';
+
+type SortField = 'fullName' | 'username' | 'role' | 'store' | null;
+type SortDirection = 'asc' | 'desc';
 
 export function EmployeesSettings() {
   const { users, toggleUserActive } = useUsersStore();
@@ -16,6 +19,8 @@ export function EmployeesSettings() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [modalKey, setModalKey] = useState(0);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const handleAdd = () => {
     setEditingUser(null);
@@ -48,6 +53,44 @@ export function EmployeesSettings() {
       .join(', ');
   };
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedUsers = [...users].sort((a, b) => {
+    if (!sortField) return 0;
+
+    let aValue = '';
+    let bValue = '';
+
+    switch (sortField) {
+      case 'fullName':
+        aValue = a.fullName;
+        bValue = b.fullName;
+        break;
+      case 'username':
+        aValue = a.username;
+        bValue = b.username;
+        break;
+      case 'role':
+        aValue = getRoleNames(a.roleIds);
+        bValue = getRoleNames(b.roleIds);
+        break;
+      case 'store':
+        aValue = getStoreNames(a.storeIds);
+        bValue = getStoreNames(b.storeIds);
+        break;
+    }
+
+    const result = aValue.localeCompare(bValue, 'cs');
+    return sortDirection === 'asc' ? result : -result;
+  });
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -67,17 +110,61 @@ export function EmployeesSettings() {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50">
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Jméno
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('fullName')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Jméno
+                  {sortField === 'fullName' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Uživatel
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('username')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Uživatel
+                  {sortField === 'username' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Role
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('role')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Role
+                  {sortField === 'role' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Prodejny
+              <th className="text-left px-4 py-3">
+                <button
+                  onClick={() => handleSort('store')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all"
+                >
+                  Prodejny
+                  {sortField === 'store' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
               </th>
               <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Stav
@@ -88,7 +175,7 @@ export function EmployeesSettings() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {sortedUsers.map((user) => (
               <tr key={user.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-3 text-sm font-medium text-slate-800">{user.fullName}</td>
                 <td className="px-4 py-3 text-sm text-slate-600">{user.username}</td>
