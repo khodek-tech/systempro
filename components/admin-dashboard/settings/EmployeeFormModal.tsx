@@ -1,25 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { X, Check, Star, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUsersStore } from '@/stores/users-store';
+import { useEmployeeFormStore } from '@/stores/employee-form-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { useStoresStore } from '@/stores/stores-store';
-import { User, StoreOpeningHours, DayOpeningHours } from '@/types';
+import { User, DayOpeningHours } from '@/types';
 import { cn } from '@/lib/utils';
 
 const DAY_NAMES = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
 const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-
-const DEFAULT_HOURS: DayOpeningHours = { open: '08:00', close: '16:30', closed: false };
-
-function createDefaultWorkingHours(): StoreOpeningHours {
-  return {
-    sameAllWeek: true,
-    default: { ...DEFAULT_HOURS },
-  };
-}
 
 interface EmployeeFormModalProps {
   open: boolean;
@@ -28,147 +19,54 @@ interface EmployeeFormModalProps {
 }
 
 export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProps) {
-  const { addUser, updateUser } = useUsersStore();
   const { roles } = useRolesStore();
   const { stores } = useStoresStore();
 
-  const isEditing = !!user;
+  const {
+    username,
+    fullName,
+    selectedRoles,
+    selectedStores,
+    defaultRoleId,
+    defaultStoreId,
+    startsWithShortWeek,
+    workingHours,
+    error,
+    initForm,
+    setUsername,
+    setFullName,
+    toggleRole,
+    setDefaultRole,
+    toggleStore,
+    setDefaultStore,
+    setStartsWithShortWeek,
+    toggleWorkingHours,
+    toggleSameAllWeek,
+    setDayHours,
+    submitForm,
+    isEditing,
+  } = useEmployeeFormStore();
 
-  // Initialize from props - component remounts with new key when user changes
-  const [username, setUsername] = useState(user?.username ?? '');
-  const [fullName, setFullName] = useState(user?.fullName ?? '');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(user?.roleIds ?? []);
-  const [selectedStores, setSelectedStores] = useState<string[]>(user?.storeIds ?? []);
-  const [defaultRoleId, setDefaultRoleId] = useState<string | undefined>(user?.defaultRoleId);
-  const [defaultStoreId, setDefaultStoreId] = useState<string | undefined>(user?.defaultStoreId);
-  const [startsWithShortWeek, setStartsWithShortWeek] = useState<boolean>(user?.startsWithShortWeek ?? false);
-  const [workingHours, setWorkingHours] = useState<StoreOpeningHours | undefined>(user?.workingHours);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleToggleWorkingHours = () => {
-    if (workingHours) {
-      setWorkingHours(undefined);
-    } else {
-      setWorkingHours(createDefaultWorkingHours());
+  // Initialize form when modal opens or user changes
+  useEffect(() => {
+    if (open) {
+      initForm(user);
     }
-  };
+  }, [open, user, initForm]);
 
-  const handleSameAllWeekToggle = () => {
-    if (!workingHours) return;
-
-    if (workingHours.sameAllWeek) {
-      // Switch to per-day mode
-      const defaultHrs = workingHours.default || DEFAULT_HOURS;
-      setWorkingHours({
-        sameAllWeek: false,
-        monday: { ...defaultHrs },
-        tuesday: { ...defaultHrs },
-        wednesday: { ...defaultHrs },
-        thursday: { ...defaultHrs },
-        friday: { ...defaultHrs },
-        saturday: { ...defaultHrs, closed: true },
-        sunday: { ...defaultHrs, closed: true },
-      });
-    } else {
-      // Switch to same all week mode
-      setWorkingHours({
-        sameAllWeek: true,
-        default: workingHours.monday || DEFAULT_HOURS,
-      });
-    }
-  };
-
-  const handleDayHoursChange = (
-    dayKey: typeof DAY_KEYS[number] | 'default',
-    field: 'open' | 'close' | 'closed',
-    value: string | boolean
-  ) => {
-    if (!workingHours) return;
-
-    setWorkingHours((prev) => {
-      if (!prev) return prev;
-      const current = prev[dayKey] || { ...DEFAULT_HOURS };
-      return {
-        ...prev,
-        [dayKey]: {
-          ...current,
-          [field]: value,
-        },
-      };
-    });
-  };
-
-  const toggleRole = (roleId: string) => {
-    setSelectedRoles((prev) => {
-      const newRoles = prev.includes(roleId)
-        ? prev.filter((id) => id !== roleId)
-        : [...prev, roleId];
-
-      // If removing the default role, reset to first available or undefined
-      if (!newRoles.includes(defaultRoleId ?? '')) {
-        setDefaultRoleId(newRoles[0]);
-      }
-
-      return newRoles;
-    });
-  };
-
-  const toggleStore = (storeId: string) => {
-    setSelectedStores((prev) => {
-      const newStores = prev.includes(storeId)
-        ? prev.filter((id) => id !== storeId)
-        : [...prev, storeId];
-
-      // If removing the default store, reset to first available or undefined
-      if (!newStores.includes(defaultStoreId ?? '')) {
-        setDefaultStoreId(newStores[0]);
-      }
-
-      return newStores;
-    });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitForm(onClose);
   };
 
   const handleSetDefaultRole = (roleId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setDefaultRoleId(roleId);
+    setDefaultRole(roleId);
   };
 
   const handleSetDefaultStore = (storeId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setDefaultStoreId(storeId);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const userData = {
-      username: username.trim(),
-      fullName: fullName.trim(),
-      roleIds: selectedRoles,
-      storeIds: selectedStores,
-      defaultRoleId: selectedRoles.length > 1 ? defaultRoleId : undefined,
-      defaultStoreId: selectedStores.length > 1 ? defaultStoreId : undefined,
-      active: user?.active ?? true,
-      startsWithShortWeek: selectedStores.length > 0 ? startsWithShortWeek : undefined,
-      workingHours: workingHours,
-    };
-
-    if (isEditing && user) {
-      const result = updateUser(user.id, userData);
-      if (!result.success) {
-        setError(result.error || 'Nepodařilo se aktualizovat zaměstnance');
-        return;
-      }
-    } else {
-      const result = addUser(userData);
-      if (!result.success) {
-        setError(result.error || 'Nepodařilo se přidat zaměstnance');
-        return;
-      }
-    }
-
-    onClose();
+    setDefaultStore(storeId);
   };
 
   if (!open) return null;
@@ -179,11 +77,12 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-slate-800">
-            {isEditing ? 'Upravit zaměstnance' : 'Nový zaměstnanec'}
+            {isEditing() ? 'Upravit zaměstnance' : 'Nový zaměstnanec'}
           </h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
+            aria-label="Zavřít"
           >
             <X className="w-6 h-6" />
           </button>
@@ -191,7 +90,7 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm" role="alert">
             {error}
           </div>
         )}
@@ -199,10 +98,11 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-2">
+            <label htmlFor="username" className="block text-sm font-medium text-slate-500 mb-2">
               Uživatelské jméno
             </label>
             <input
+              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -212,8 +112,11 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-2">Celé jméno</label>
+            <label htmlFor="fullName" className="block text-sm font-medium text-slate-500 mb-2">
+              Celé jméno
+            </label>
             <input
+              id="fullName"
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -223,9 +126,9 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
           </div>
 
           {/* Roles */}
-          <div>
-            <label className="block text-sm font-medium text-slate-500 mb-2">Role</label>
-            <div className="flex flex-wrap gap-2">
+          <fieldset>
+            <legend className="block text-sm font-medium text-slate-500 mb-2">Role</legend>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Výběr rolí">
               {roles
                 .filter((r) => r.active)
                 .map((role) => {
@@ -247,8 +150,9 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                         type="button"
                         onClick={() => toggleRole(role.id)}
                         className="flex items-center space-x-2 px-3 py-2"
+                        aria-pressed={isSelected}
                       >
-                        {isSelected && <Check className="w-4 h-4" />}
+                        {isSelected && <Check className="w-4 h-4" aria-hidden="true" />}
                         <span className="text-sm font-medium">{role.name}</span>
                       </button>
                       {showStar && (
@@ -260,20 +164,21 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                             isDefault ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'
                           )}
                           title={isDefault ? 'Výchozí role' : 'Nastavit jako výchozí'}
+                          aria-label={isDefault ? `${role.name} je výchozí role` : `Nastavit ${role.name} jako výchozí`}
                         >
-                          <Star className={cn('w-4 h-4', isDefault && 'fill-amber-500')} />
+                          <Star className={cn('w-4 h-4', isDefault && 'fill-amber-500')} aria-hidden="true" />
                         </button>
                       )}
                     </div>
                   );
                 })}
             </div>
-          </div>
+          </fieldset>
 
           {/* Stores */}
-          <div>
-            <label className="block text-sm font-medium text-slate-500 mb-2">Prodejny</label>
-            <div className="flex flex-wrap gap-2">
+          <fieldset>
+            <legend className="block text-sm font-medium text-slate-500 mb-2">Prodejny</legend>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Výběr prodejen">
               {stores
                 .filter((s) => s.active)
                 .map((store) => {
@@ -295,8 +200,9 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                         type="button"
                         onClick={() => toggleStore(store.id)}
                         className="flex items-center space-x-2 px-3 py-2"
+                        aria-pressed={isSelected}
                       >
-                        {isSelected && <Check className="w-4 h-4" />}
+                        {isSelected && <Check className="w-4 h-4" aria-hidden="true" />}
                         <span className="text-sm font-medium">{store.name}</span>
                       </button>
                       {showStar && (
@@ -308,20 +214,21 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                             isDefault ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'
                           )}
                           title={isDefault ? 'Výchozí prodejna' : 'Nastavit jako výchozí'}
+                          aria-label={isDefault ? `${store.name} je výchozí prodejna` : `Nastavit ${store.name} jako výchozí`}
                         >
-                          <Star className={cn('w-4 h-4', isDefault && 'fill-amber-500')} />
+                          <Star className={cn('w-4 h-4', isDefault && 'fill-amber-500')} aria-hidden="true" />
                         </button>
                       )}
                     </div>
                   );
                 })}
             </div>
-          </div>
+          </fieldset>
 
           {/* Shift Settings - only show if stores are selected */}
           {selectedStores.length > 0 && (
             <div className="pt-4 border-t border-slate-200">
-              <label className="block text-sm font-medium text-slate-500 mb-3">Nastavení směn</label>
+              <span className="block text-sm font-medium text-slate-500 mb-3">Nastavení směn</span>
               <div className="bg-slate-50 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -333,6 +240,9 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                   <button
                     type="button"
                     onClick={() => setStartsWithShortWeek(!startsWithShortWeek)}
+                    role="switch"
+                    aria-checked={startsWithShortWeek}
+                    aria-label="Začíná krátkým týdnem"
                     className={cn(
                       'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
                       startsWithShortWeek ? 'bg-orange-500' : 'bg-slate-300'
@@ -353,10 +263,13 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
           {/* Working Hours */}
           <div className="pt-4 border-t border-slate-200">
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-slate-500">Pracovní doba</label>
+              <span className="text-sm font-medium text-slate-500">Pracovní doba</span>
               <button
                 type="button"
-                onClick={handleToggleWorkingHours}
+                onClick={toggleWorkingHours}
+                role="switch"
+                aria-checked={!!workingHours}
+                aria-label="Vlastní pracovní doba"
                 className={cn(
                   'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
                   workingHours ? 'bg-blue-500' : 'bg-slate-300'
@@ -373,7 +286,7 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
 
             {selectedStores.length > 0 && (
               <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 rounded-lg">
-                <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
                 <p className="text-xs text-blue-700">
                   Pokud je zaměstnanec přiřazen k prodejně, platí otvírací doba prodejny.
                 </p>
@@ -387,7 +300,10 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                   <span className="text-sm font-medium text-slate-700">Stejná celý týden</span>
                   <button
                     type="button"
-                    onClick={handleSameAllWeekToggle}
+                    onClick={toggleSameAllWeek}
+                    role="switch"
+                    aria-checked={workingHours.sameAllWeek}
+                    aria-label="Stejná pracovní doba celý týden"
                     className={cn(
                       'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
                       workingHours.sameAllWeek ? 'bg-orange-500' : 'bg-slate-300'
@@ -405,17 +321,21 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                 {/* Working hours inputs */}
                 {workingHours.sameAllWeek ? (
                   <div className="flex items-center gap-3">
+                    <label htmlFor="default-open" className="sr-only">Začátek pracovní doby</label>
                     <input
+                      id="default-open"
                       type="time"
                       value={workingHours.default?.open || '08:00'}
-                      onChange={(e) => handleDayHoursChange('default', 'open', e.target.value)}
+                      onChange={(e) => setDayHours('default', 'open', e.target.value)}
                       className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
                     />
-                    <span className="text-slate-400">–</span>
+                    <span className="text-slate-400" aria-hidden="true">–</span>
+                    <label htmlFor="default-close" className="sr-only">Konec pracovní doby</label>
                     <input
+                      id="default-close"
                       type="time"
                       value={workingHours.default?.close || '16:30'}
-                      onChange={(e) => handleDayHoursChange('default', 'close', e.target.value)}
+                      onChange={(e) => setDayHours('default', 'close', e.target.value)}
                       className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
                     />
                   </div>
@@ -434,24 +354,28 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                             <input
                               type="checkbox"
                               checked={isClosed}
-                              onChange={(e) => handleDayHoursChange(dayKey, 'closed', e.target.checked)}
+                              onChange={(e) => setDayHours(dayKey, 'closed', e.target.checked)}
                               className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
                             />
                             <span className="text-xs text-slate-500">Volno</span>
                           </label>
                           {!isClosed && (
                             <>
+                              <label htmlFor={`${dayKey}-open`} className="sr-only">Začátek - {DAY_NAMES[index]}</label>
                               <input
+                                id={`${dayKey}-open`}
                                 type="time"
                                 value={dayHours?.open || '08:00'}
-                                onChange={(e) => handleDayHoursChange(dayKey, 'open', e.target.value)}
+                                onChange={(e) => setDayHours(dayKey, 'open', e.target.value)}
                                 className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
                               />
-                              <span className="text-slate-400">–</span>
+                              <span className="text-slate-400" aria-hidden="true">–</span>
+                              <label htmlFor={`${dayKey}-close`} className="sr-only">Konec - {DAY_NAMES[index]}</label>
                               <input
+                                id={`${dayKey}-close`}
                                 type="time"
                                 value={dayHours?.close || '16:30'}
-                                onChange={(e) => handleDayHoursChange(dayKey, 'close', e.target.value)}
+                                onChange={(e) => setDayHours(dayKey, 'close', e.target.value)}
                                 className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
                               />
                             </>
@@ -479,7 +403,7 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
               type="submit"
               className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all"
             >
-              {isEditing ? 'Uložit' : 'Přidat'}
+              {isEditing() ? 'Uložit' : 'Přidat'}
             </Button>
           </div>
         </form>

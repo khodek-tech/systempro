@@ -37,6 +37,9 @@ export function AttendanceModule({
       {showKasaConfirmation && (
         <button
           onClick={() => onKasaConfirm(!kasaConfirmed)}
+          role="switch"
+          aria-checked={kasaConfirmed}
+          aria-label={kasaConfirmed ? 'Kasa a odvody potvrzeny' : 'Potvrdit kasu a odvody'}
           className={cn(
             'flex items-center space-x-2.5 px-5 py-2.5 rounded-full border transition-all',
             kasaConfirmed
@@ -45,9 +48,9 @@ export function AttendanceModule({
           )}
         >
           {kasaConfirmed ? (
-            <CircleCheck className="w-5 h-5 text-green-500" />
+            <CircleCheck className="w-5 h-5 text-green-500" aria-hidden="true" />
           ) : (
-            <Circle className="w-5 h-5 text-slate-400" />
+            <Circle className="w-5 h-5 text-slate-400" aria-hidden="true" />
           )}
           <span
             className={cn(
@@ -61,13 +64,14 @@ export function AttendanceModule({
       )}
 
       {/* Status & Workplace display */}
-      <div className="flex flex-col items-end">
+      <div className="flex flex-col items-end" role="status" aria-live="polite">
         <div className="flex items-center space-x-1.5 text-slate-400">
           <div
             className={cn(
               'w-2.5 h-2.5 rounded-full animate-pulse',
               isInWork ? 'bg-green-500' : 'bg-red-500'
             )}
+            aria-hidden="true"
           />
           <span className="text-xs font-bold uppercase tracking-wider">
             {isInWork ? 'V práci' : 'Mimo práci'}
@@ -79,6 +83,7 @@ export function AttendanceModule({
       {/* Attendance button */}
       <button
         onClick={handleAttendanceClick}
+        aria-label={isInWork ? 'Zaznamenat odchod z práce' : 'Zaznamenat příchod do práce'}
         className={cn(
           'flex items-center space-x-2.5 px-7 py-3 rounded-xl font-bold text-base transition-all transform active:scale-95',
           isInWork
@@ -87,9 +92,9 @@ export function AttendanceModule({
         )}
       >
         {isInWork ? (
-          <Square className="w-5 h-5 fill-current" />
+          <Square className="w-5 h-5 fill-current" aria-hidden="true" />
         ) : (
-          <Play className="w-5 h-5 fill-current" />
+          <Play className="w-5 h-5 fill-current" aria-hidden="true" />
         )}
         <span>{isInWork ? 'ODCHOD' : 'PŘÍCHOD'}</span>
       </button>

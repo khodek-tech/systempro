@@ -20,24 +20,19 @@ export function Header() {
     getActiveRole,
     activeRoleId,
     activeStoreId,
-    setActiveRole,
-    setActiveStore,
-    switchToUser,
     getAllActiveUsers,
     needsStoreSelection,
     getActiveRoleType,
+    handleUserChange,
+    handleStoreChange,
+    handleRoleChange,
+    syncWorkplaceWithRole,
   } = useAuthStore();
 
   const { getModulesForRole } = useModulesStore();
 
-  const {
-    isInWork,
-    kasaConfirmed,
-    workplaceName,
-    toggleAttendance,
-    confirmKasa,
-    setWorkplace,
-  } = useAttendanceStore();
+  const { isInWork, kasaConfirmed, workplaceName, toggleAttendance, confirmKasa, setWorkplace } =
+    useAttendanceStore();
 
   const { goToSettings } = useAdminStore();
   const usersHydrated = useUsersStore((state) => state._hydrated);
@@ -58,76 +53,8 @@ export function Header() {
   // Synchronize workplace with auth-store after hydration (fixes reload issue)
   useEffect(() => {
     if (!_hydrated || !activeRoleId) return;
-
-    const role = getActiveRole();
-    if (!role) return;
-
-    if (role.type === 'prodavac') {
-      const stores = getAvailableStores();
-      if (stores.length > 0) {
-        const store = stores.find((s) => s.id === activeStoreId) || stores[0];
-        setWorkplace('store', store.id, store.name, true);
-      } else {
-        setWorkplace('store', '', 'Bez prodejny', false);
-      }
-    } else {
-      setWorkplace('role', role.id, role.name, false);
-    }
-  }, [_hydrated, activeRoleId, activeStoreId, getActiveRole, getAvailableStores, setWorkplace]);
-
-  const handleUserChange = (userId: string) => {
-    switchToUser(userId);
-
-    // Update workplace based on the new user's role
-    const user = allUsers.find((u) => u.id === userId);
-    if (user) {
-      // Get the user's default role
-      const { getActiveRole: getNewRole, getAvailableStores: getNewStores } =
-        useAuthStore.getState();
-      const newRole = getNewRole();
-
-      if (newRole) {
-        if (newRole.type === 'prodavac') {
-          const stores = getNewStores();
-          if (stores.length > 0) {
-            setWorkplace('store', stores[0].id, stores[0].name, true);
-          } else {
-            setWorkplace('store', '', 'Bez prodejny', false);
-          }
-        } else {
-          setWorkplace('role', newRole.id, newRole.name, false);
-        }
-      }
-    }
-  };
-
-  const handleStoreChange = (storeId: string) => {
-    setActiveStore(storeId);
-    const store = availableStores.find((s) => s.id === storeId);
-    if (store) {
-      setWorkplace('store', store.id, store.name, true);
-    }
-  };
-
-  const handleRoleChange = (roleId: string) => {
-    setActiveRole(roleId);
-
-    // Update workplace based on the new role
-    const role = availableRoles.find((r) => r.id === roleId);
-    if (role) {
-      if (role.type === 'prodavac') {
-        const stores = getAvailableStores();
-        if (stores.length > 0) {
-          const store = stores[0];
-          setWorkplace('store', store.id, store.name, true);
-        } else {
-          setWorkplace('store', '', 'Bez prodejny', false);
-        }
-      } else {
-        setWorkplace('role', role.id, role.name, false);
-      }
-    }
-  };
+    syncWorkplaceWithRole(setWorkplace);
+  }, [_hydrated, activeRoleId, activeStoreId, syncWorkplaceWithRole, setWorkplace]);
 
   return (
     <header className="h-20 bg-white/95 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 z-50">
@@ -140,10 +67,12 @@ export function Header() {
         {/* User Selector Dropdown */}
         {isFullyHydrated ? (
           <div className="relative group">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" aria-hidden="true" />
+            <label htmlFor="user-selector" className="sr-only">Vybrat uživatele</label>
             <select
+              id="user-selector"
               value={currentUser?.id || ''}
-              onChange={(e) => handleUserChange(e.target.value)}
+              onChange={(e) => handleUserChange(e.target.value, setWorkplace)}
               className="appearance-none bg-slate-100 pl-9 pr-10 py-2.5 rounded-xl text-base font-semibold text-slate-800 outline-none cursor-pointer hover:bg-slate-200 transition-colors"
             >
               {allUsers.map((user) => (
@@ -152,10 +81,10 @@ export function Header() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" aria-hidden="true" />
           </div>
         ) : (
-          <div className="bg-slate-100 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-400">
+          <div className="bg-slate-100 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-400" aria-live="polite">
             Načítání...
           </div>
         )}
@@ -163,12 +92,15 @@ export function Header() {
         {/* Role Selector (only for users with multiple roles) */}
         {_hydrated && showRoleSelector && (
           <>
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
             <div className="relative group">
+              <label htmlFor="role-selector" className="sr-only">Vybrat roli</label>
               <select
+                id="role-selector"
                 value={activeRoleId || ''}
-                onChange={(e) => handleRoleChange(e.target.value)}
+                onChange={(e) => handleRoleChange(e.target.value, setWorkplace)}
                 disabled={isInWork}
+                aria-disabled={isInWork}
                 className={cn(
                   'appearance-none bg-slate-50 px-4 py-2 pr-8 rounded-lg text-sm font-semibold text-slate-700 outline-none cursor-pointer border border-slate-200',
                   isInWork ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-300'
@@ -180,7 +112,7 @@ export function Header() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
             </div>
           </>
         )}
@@ -188,12 +120,15 @@ export function Header() {
         {/* Store Selector (only for Prodavač with multiple stores) */}
         {_hydrated && showStoreSelector && (
           <>
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
             <div className="relative group">
+              <label htmlFor="store-selector" className="sr-only">Vybrat prodejnu</label>
               <select
+                id="store-selector"
                 value={activeStoreId || ''}
-                onChange={(e) => handleStoreChange(e.target.value)}
+                onChange={(e) => handleStoreChange(e.target.value, setWorkplace)}
                 disabled={isInWork}
+                aria-disabled={isInWork}
                 className={cn(
                   'appearance-none bg-slate-50 px-4 py-2 pr-8 rounded-lg text-sm font-medium text-slate-700 outline-none cursor-pointer border border-slate-200',
                   isInWork ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-300'
@@ -205,7 +140,7 @@ export function Header() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
             </div>
           </>
         )}
@@ -213,13 +148,13 @@ export function Header() {
         {/* Settings Icon (only for Administrator) */}
         {_hydrated && isAdmin && (
           <>
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
             <button
               onClick={goToSettings}
               className="p-2.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
-              title="Nastavení"
+              aria-label="Nastavení"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-5 h-5" aria-hidden="true" />
             </button>
           </>
         )}

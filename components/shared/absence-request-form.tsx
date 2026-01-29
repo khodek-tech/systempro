@@ -48,29 +48,34 @@ export function AbsenceRequestForm() {
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <button
         onClick={handleToggle}
+        aria-expanded={isExpanded}
+        aria-controls="absence-form-content"
         className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="bg-rose-50 w-10 h-10 rounded-lg flex items-center justify-center">
+          <div className="bg-rose-50 w-10 h-10 rounded-lg flex items-center justify-center" aria-hidden="true">
             <Send className="w-5 h-5 text-rose-500" />
           </div>
           <span className="text-lg font-semibold text-slate-800">Nová žádost o absenci</span>
         </div>
         {isExpanded ? (
-          <ChevronUp className="w-5 h-5 text-slate-400" />
+          <ChevronUp className="w-5 h-5 text-slate-400" aria-hidden="true" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-slate-400" />
+          <ChevronDown className="w-5 h-5 text-slate-400" aria-hidden="true" />
         )}
       </button>
 
       <div
+        id="absence-form-content"
         className={cn(
           'overflow-hidden transition-all duration-300',
           isExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
         )}
       >
         <div className="p-5 pt-0 space-y-5 border-t border-slate-100">
+          <label htmlFor="absence-type" className="sr-only">Typ absence</label>
           <select
+            id="absence-type"
             value={formData.type}
             onChange={(e) => setAbsenceType(e.target.value as AbsenceType)}
             className="w-full bg-slate-50 p-4 rounded-xl font-semibold text-base outline-none cursor-pointer border border-slate-200 focus:border-orange-300"

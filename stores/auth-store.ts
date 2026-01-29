@@ -25,6 +25,12 @@ interface AuthActions {
   setActiveStore: (storeId: string) => void;
   switchToUser: (userId: string) => void;
 
+  // Combined actions (for header component)
+  handleUserChange: (userId: string, setWorkplace: (type: 'store' | 'role', id: string, name: string, requiresKasa: boolean) => void) => void;
+  handleStoreChange: (storeId: string, setWorkplace: (type: 'store' | 'role', id: string, name: string, requiresKasa: boolean) => void) => void;
+  handleRoleChange: (roleId: string, setWorkplace: (type: 'store' | 'role', id: string, name: string, requiresKasa: boolean) => void) => void;
+  syncWorkplaceWithRole: (setWorkplace: (type: 'store' | 'role', id: string, name: string, requiresKasa: boolean) => void) => void;
+
   // Computed
   getActiveRole: () => Role | null;
   getAvailableRoles: () => Role[];
@@ -114,6 +120,81 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       activeRoleId: defaultRoleId,
       activeStoreId: storeId,
     });
+  },
+
+  // Combined action for user change (header component)
+  handleUserChange: (userId, setWorkplace) => {
+    get().switchToUser(userId);
+
+    // Update workplace based on the new user's role
+    const { getActiveRole, getAvailableStores } = get();
+    const newRole = getActiveRole();
+
+    if (newRole) {
+      if (newRole.type === 'prodavac') {
+        const stores = getAvailableStores();
+        if (stores.length > 0) {
+          setWorkplace('store', stores[0].id, stores[0].name, true);
+        } else {
+          setWorkplace('store', '', 'Bez prodejny', false);
+        }
+      } else {
+        setWorkplace('role', newRole.id, newRole.name, false);
+      }
+    }
+  },
+
+  // Combined action for store change (header component)
+  handleStoreChange: (storeId, setWorkplace) => {
+    get().setActiveStore(storeId);
+    const stores = get().getAvailableStores();
+    const store = stores.find((s) => s.id === storeId);
+    if (store) {
+      setWorkplace('store', store.id, store.name, true);
+    }
+  },
+
+  // Combined action for role change (header component)
+  handleRoleChange: (roleId, setWorkplace) => {
+    get().setActiveRole(roleId);
+
+    // Update workplace based on the new role
+    const roles = get().getAvailableRoles();
+    const role = roles.find((r) => r.id === roleId);
+    if (role) {
+      if (role.type === 'prodavac') {
+        const stores = get().getAvailableStores();
+        if (stores.length > 0) {
+          const store = stores[0];
+          setWorkplace('store', store.id, store.name, true);
+        } else {
+          setWorkplace('store', '', 'Bez prodejny', false);
+        }
+      } else {
+        setWorkplace('role', role.id, role.name, false);
+      }
+    }
+  },
+
+  // Sync workplace with current role (for hydration)
+  syncWorkplaceWithRole: (setWorkplace) => {
+    const { activeRoleId, activeStoreId } = get();
+    if (!activeRoleId) return;
+
+    const role = get().getActiveRole();
+    if (!role) return;
+
+    if (role.type === 'prodavac') {
+      const stores = get().getAvailableStores();
+      if (stores.length > 0) {
+        const store = stores.find((s) => s.id === activeStoreId) || stores[0];
+        setWorkplace('store', store.id, store.name, true);
+      } else {
+        setWorkplace('store', '', 'Bez prodejny', false);
+      }
+    } else {
+      setWorkplace('role', role.id, role.name, false);
+    }
   },
 
   // Computed
