@@ -1,13 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Check, Star } from 'lucide-react';
+import { X, Check, Star, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { useStoresStore } from '@/stores/stores-store';
-import { User } from '@/types';
+import { User, StoreOpeningHours, DayOpeningHours } from '@/types';
 import { cn } from '@/lib/utils';
+
+const DAY_NAMES = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+
+const DEFAULT_HOURS: DayOpeningHours = { open: '08:00', close: '16:30', closed: false };
+
+function createDefaultWorkingHours(): StoreOpeningHours {
+  return {
+    sameAllWeek: true,
+    default: { ...DEFAULT_HOURS },
+  };
+}
 
 interface EmployeeFormModalProps {
   open: boolean;
@@ -29,7 +41,62 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
   const [selectedStores, setSelectedStores] = useState<string[]>(user?.storeIds ?? []);
   const [defaultRoleId, setDefaultRoleId] = useState<string | undefined>(user?.defaultRoleId);
   const [defaultStoreId, setDefaultStoreId] = useState<string | undefined>(user?.defaultStoreId);
+  const [startsWithShortWeek, setStartsWithShortWeek] = useState<boolean>(user?.startsWithShortWeek ?? false);
+  const [workingHours, setWorkingHours] = useState<StoreOpeningHours | undefined>(user?.workingHours);
   const [error, setError] = useState<string | null>(null);
+
+  const handleToggleWorkingHours = () => {
+    if (workingHours) {
+      setWorkingHours(undefined);
+    } else {
+      setWorkingHours(createDefaultWorkingHours());
+    }
+  };
+
+  const handleSameAllWeekToggle = () => {
+    if (!workingHours) return;
+
+    if (workingHours.sameAllWeek) {
+      // Switch to per-day mode
+      const defaultHrs = workingHours.default || DEFAULT_HOURS;
+      setWorkingHours({
+        sameAllWeek: false,
+        monday: { ...defaultHrs },
+        tuesday: { ...defaultHrs },
+        wednesday: { ...defaultHrs },
+        thursday: { ...defaultHrs },
+        friday: { ...defaultHrs },
+        saturday: { ...defaultHrs, closed: true },
+        sunday: { ...defaultHrs, closed: true },
+      });
+    } else {
+      // Switch to same all week mode
+      setWorkingHours({
+        sameAllWeek: true,
+        default: workingHours.monday || DEFAULT_HOURS,
+      });
+    }
+  };
+
+  const handleDayHoursChange = (
+    dayKey: typeof DAY_KEYS[number] | 'default',
+    field: 'open' | 'close' | 'closed',
+    value: string | boolean
+  ) => {
+    if (!workingHours) return;
+
+    setWorkingHours((prev) => {
+      if (!prev) return prev;
+      const current = prev[dayKey] || { ...DEFAULT_HOURS };
+      return {
+        ...prev,
+        [dayKey]: {
+          ...current,
+          [field]: value,
+        },
+      };
+    });
+  };
 
   const toggleRole = (roleId: string) => {
     setSelectedRoles((prev) => {
@@ -83,6 +150,8 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
       defaultRoleId: selectedRoles.length > 1 ? defaultRoleId : undefined,
       defaultStoreId: selectedStores.length > 1 ? defaultStoreId : undefined,
       active: user?.active ?? true,
+      startsWithShortWeek: selectedStores.length > 0 ? startsWithShortWeek : undefined,
+      workingHours: workingHours,
     };
 
     if (isEditing && user) {
@@ -247,6 +316,153 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
                   );
                 })}
             </div>
+          </div>
+
+          {/* Shift Settings - only show if stores are selected */}
+          {selectedStores.length > 0 && (
+            <div className="pt-4 border-t border-slate-200">
+              <label className="block text-sm font-medium text-slate-500 mb-3">Nastavení směn</label>
+              <div className="bg-slate-50 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-slate-700">Začíná krátkým týdnem</span>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Krátký = St, Čt | Dlouhý = Po, Út, Pá, So, Ne
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStartsWithShortWeek(!startsWithShortWeek)}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                      startsWithShortWeek ? 'bg-orange-500' : 'bg-slate-300'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                        startsWithShortWeek ? 'translate-x-6' : 'translate-x-1'
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Working Hours */}
+          <div className="pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-slate-500">Pracovní doba</label>
+              <button
+                type="button"
+                onClick={handleToggleWorkingHours}
+                className={cn(
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                  workingHours ? 'bg-blue-500' : 'bg-slate-300'
+                )}
+              >
+                <span
+                  className={cn(
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                    workingHours ? 'translate-x-6' : 'translate-x-1'
+                  )}
+                />
+              </button>
+            </div>
+
+            {selectedStores.length > 0 && (
+              <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 rounded-lg">
+                <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-700">
+                  Pokud je zaměstnanec přiřazen k prodejně, platí otvírací doba prodejny.
+                </p>
+              </div>
+            )}
+
+            {workingHours && (
+              <div className="bg-slate-50 rounded-xl p-4 space-y-4">
+                {/* Same all week toggle */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">Stejná celý týden</span>
+                  <button
+                    type="button"
+                    onClick={handleSameAllWeekToggle}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                      workingHours.sameAllWeek ? 'bg-orange-500' : 'bg-slate-300'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                        workingHours.sameAllWeek ? 'translate-x-6' : 'translate-x-1'
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {/* Working hours inputs */}
+                {workingHours.sameAllWeek ? (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="time"
+                      value={workingHours.default?.open || '08:00'}
+                      onChange={(e) => handleDayHoursChange('default', 'open', e.target.value)}
+                      className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
+                    />
+                    <span className="text-slate-400">–</span>
+                    <input
+                      type="time"
+                      value={workingHours.default?.close || '16:30'}
+                      onChange={(e) => handleDayHoursChange('default', 'close', e.target.value)}
+                      className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {DAY_KEYS.map((dayKey, index) => {
+                      const dayHours = workingHours[dayKey] as DayOpeningHours | undefined;
+                      const isClosed = dayHours?.closed ?? false;
+
+                      return (
+                        <div key={dayKey} className="flex items-center gap-3">
+                          <span className="w-20 text-sm font-medium text-slate-600">
+                            {DAY_NAMES[index]}
+                          </span>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isClosed}
+                              onChange={(e) => handleDayHoursChange(dayKey, 'closed', e.target.checked)}
+                              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                            />
+                            <span className="text-xs text-slate-500">Volno</span>
+                          </label>
+                          {!isClosed && (
+                            <>
+                              <input
+                                type="time"
+                                value={dayHours?.open || '08:00'}
+                                onChange={(e) => handleDayHoursChange(dayKey, 'open', e.target.value)}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
+                              />
+                              <span className="text-slate-400">–</span>
+                              <input
+                                type="time"
+                                value={dayHours?.close || '16:30'}
+                                onChange={(e) => handleDayHoursChange(dayKey, 'close', e.target.value)}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
+                              />
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions */}

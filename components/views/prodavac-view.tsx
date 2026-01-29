@@ -13,6 +13,7 @@ export function ProdavacView({ isWarehouse }: ProdavacViewProps) {
     return (
       <RoleView
         showAbsenceFullView
+        showShiftsFullView
         isWarehouse
         customContent={
           <div className="flex-1 flex items-center justify-center">
@@ -26,5 +27,5 @@ export function ProdavacView({ isWarehouse }: ProdavacViewProps) {
     );
   }
 
-  return <RoleView showAbsenceFullView isWarehouse={false} className="" />;
+  return <RoleView showAbsenceFullView showShiftsFullView isWarehouse={false} className="" />;
 }

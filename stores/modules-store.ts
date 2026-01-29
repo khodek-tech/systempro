@@ -19,6 +19,8 @@ interface ModulesActions {
   getModuleConfig: (moduleId: string) => ModuleConfig | undefined;
   toggleSubordinateRole: (moduleId: string, approverRoleId: string, subordinateRoleId: string) => void;
   getSubordinatesForApprover: (moduleId: string, approverRoleId: string) => string[];
+  toggleViewableRole: (moduleId: string, viewerRoleId: string, visibleRoleId: string) => void;
+  getVisibleRolesForViewer: (moduleId: string, viewerRoleId: string) => string[];
 }
 
 export const useModulesStore = create<ModulesState & ModulesActions>()(
@@ -132,6 +134,48 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
         const mapping = config.approvalMappings.find((m) => m.approverRoleId === approverRoleId);
         return mapping?.subordinateRoleIds || [];
       },
+
+      toggleViewableRole: (moduleId, viewerRoleId, visibleRoleId) => {
+        set((state) => ({
+          configs: state.configs.map((c) => {
+            if (c.moduleId !== moduleId) return c;
+
+            const mappings = c.viewMappings || [];
+            const viewerMapping = mappings.find((m) => m.viewerRoleId === viewerRoleId);
+
+            if (!viewerMapping) {
+              return {
+                ...c,
+                viewMappings: [
+                  ...mappings,
+                  { viewerRoleId, visibleRoleIds: [visibleRoleId] },
+                ],
+              };
+            }
+
+            const hasVisible = viewerMapping.visibleRoleIds.includes(visibleRoleId);
+            const updatedMappings = mappings.map((m) => {
+              if (m.viewerRoleId !== viewerRoleId) return m;
+              return {
+                ...m,
+                visibleRoleIds: hasVisible
+                  ? m.visibleRoleIds.filter((id) => id !== visibleRoleId)
+                  : [...m.visibleRoleIds, visibleRoleId],
+              };
+            });
+
+            return { ...c, viewMappings: updatedMappings };
+          }),
+        }));
+      },
+
+      getVisibleRolesForViewer: (moduleId, viewerRoleId) => {
+        const config = get().configs.find((c) => c.moduleId === moduleId);
+        if (!config?.viewMappings) return [];
+
+        const mapping = config.viewMappings.find((m) => m.viewerRoleId === viewerRoleId);
+        return mapping?.visibleRoleIds || [];
+      },
     }),
     {
       name: STORAGE_KEYS.MODULES,
@@ -175,13 +219,20 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
             return cfg;
           });
 
-          // Migrace: přidat role-8 (Majitel) do absence-approval pokud chybí
+          // Migrace: přidat viewMappings do shifts pokud chybí
           state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'absence-approval' && !cfg.roleIds.includes('role-8')) {
-              return { ...cfg, roleIds: [...cfg.roleIds, 'role-8'] };
+            if (cfg.moduleId === 'shifts' && !cfg.viewMappings) {
+              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
+                (c) => c.moduleId === 'shifts'
+              );
+              return {
+                ...cfg,
+                viewMappings: defaultConfig?.viewMappings || [],
+              };
             }
             return cfg;
           });
+
         }
       },
     }

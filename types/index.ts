@@ -18,6 +18,7 @@ export interface Store {
   name: string;
   address: string;
   active: boolean;
+  openingHours?: StoreOpeningHours;
 }
 
 // Role interface
@@ -38,6 +39,8 @@ export interface User {
   defaultRoleId?: string;
   defaultStoreId?: string;
   active: boolean;
+  startsWithShortWeek?: boolean;
+  workingHours?: StoreOpeningHours;  // Vlastní pracovní doba zaměstnance
 }
 
 // Attendance record with new workplace structure
@@ -110,6 +113,25 @@ export interface AbsenceRequest {
   seenByUser?: boolean;
 }
 
+// Opening hours types
+export interface DayOpeningHours {
+  open: string;    // "09:00"
+  close: string;   // "18:00"
+  closed: boolean;
+}
+
+export interface StoreOpeningHours {
+  sameAllWeek: boolean;
+  default?: DayOpeningHours;
+  monday?: DayOpeningHours;
+  tuesday?: DayOpeningHours;
+  wednesday?: DayOpeningHours;
+  thursday?: DayOpeningHours;
+  friday?: DayOpeningHours;
+  saturday?: DayOpeningHours;
+  sunday?: DayOpeningHours;
+}
+
 // Module system types
 export interface ModuleDefinition {
   id: string;
@@ -124,6 +146,11 @@ export interface ApprovalRoleMapping {
   subordinateRoleIds: string[];
 }
 
+export interface ViewRoleMapping {
+  viewerRoleId: string;
+  visibleRoleIds: string[];
+}
+
 export interface ModuleConfig {
   moduleId: string;
   roleIds: string[];
@@ -131,4 +158,5 @@ export interface ModuleConfig {
   column: 'left' | 'right' | 'full' | 'top' | 'header';
   enabled: boolean;
   approvalMappings?: ApprovalRoleMapping[];
+  viewMappings?: ViewRoleMapping[];
 }

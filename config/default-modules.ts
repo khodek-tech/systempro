@@ -65,6 +65,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'HeaderAttendance',
     icon: 'Clock',
   },
+  {
+    id: 'shifts',
+    name: 'Směny',
+    description: 'Plánování a přehled směn',
+    component: 'ShiftsModule',
+    icon: 'Calendar',
+  },
 ];
 
 // Default module configuration
@@ -145,5 +152,16 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     order: 0,
     column: 'header',
     enabled: true,
+  },
+  {
+    moduleId: 'shifts',
+    roleIds: ['role-1', 'role-3', 'role-5', 'role-6'],
+    order: 6,
+    column: 'left',
+    enabled: true,
+    viewMappings: [
+      { viewerRoleId: 'role-7', visibleRoleIds: ['role-1', 'role-6'] },
+      { viewerRoleId: 'role-8', visibleRoleIds: ['role-1', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'] },
+    ],
   },
 ];

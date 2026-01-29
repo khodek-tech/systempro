@@ -4,7 +4,9 @@ import { ReactNode } from 'react';
 import { ModuleRenderer } from '@/components/ModuleRenderer';
 import { AbsenceFullView } from '@/components/views/absence-full-view';
 import { ApprovalFullView } from '@/components/views/approval-full-view';
+import { ShiftsFullView } from '@/components/views/shifts-full-view';
 import { useAbsenceStore } from '@/stores/absence-store';
+import { useShiftsStore } from '@/stores/shifts-store';
 
 interface RoleViewProps {
   /**
@@ -15,6 +17,10 @@ interface RoleViewProps {
    * Whether to show fullscreen approval view when approvalViewMode === 'view'
    */
   showApprovalFullView?: boolean;
+  /**
+   * Whether to show fullscreen shifts view when shiftsViewMode === 'view'
+   */
+  showShiftsFullView?: boolean;
   /**
    * Optional custom content to render instead of ModuleRenderer
    */
@@ -49,11 +55,13 @@ interface RoleViewProps {
 export function RoleView({
   showAbsenceFullView = false,
   showApprovalFullView = false,
+  showShiftsFullView = false,
   customContent,
   isWarehouse = false,
   className = '',
 }: RoleViewProps) {
   const { absenceViewMode, approvalViewMode } = useAbsenceStore();
+  const { shiftsViewMode } = useShiftsStore();
 
   // Fullscreen approval view has priority
   if (showApprovalFullView && approvalViewMode === 'view') {
@@ -63,6 +71,11 @@ export function RoleView({
   // Fullscreen absence view
   if (showAbsenceFullView && absenceViewMode === 'view') {
     return <AbsenceFullView />;
+  }
+
+  // Fullscreen shifts view
+  if (showShiftsFullView && shiftsViewMode === 'view') {
+    return <ShiftsFullView />;
   }
 
   // Custom content or default ModuleRenderer
