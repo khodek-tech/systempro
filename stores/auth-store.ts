@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, Role, Store, RoleType } from '@/types';
-import { MOCK_USERS, MOCK_ROLES, MOCK_STORES } from '@/lib/mock-data';
+import { useUsersStore } from './users-store';
+import { useRolesStore } from './roles-store';
+import { useStoresStore } from './stores-store';
+
+// Helpers to get data from other stores
+const getUsers = () => useUsersStore.getState().users;
+const getRoles = () => useRolesStore.getState().roles;
+const getStores = () => useStoresStore.getState().stores;
 
 interface AuthState {
   currentUser: User | null;
@@ -15,19 +22,17 @@ interface AuthActions {
   setCurrentUser: (user: User | null) => void;
   setActiveRole: (roleId: string) => void;
   setActiveStore: (storeId: string) => void;
+  switchToUser: (userId: string) => void;
 
   // Computed
   getActiveRole: () => Role | null;
   getAvailableRoles: () => Role[];
   getAvailableStores: () => Store[];
+  getAllActiveUsers: () => User[];
   needsStoreSelection: () => boolean;
   getActiveRoleType: () => RoleType | null;
-  hasAttendance: () => boolean;
   canReportAbsence: () => boolean;
 }
-
-// Roles that don't track attendance
-const ROLES_WITHOUT_ATTENDANCE: RoleType[] = ['administrator', 'majitel'];
 
 // Roles that cannot report absence
 const ROLES_WITHOUT_ABSENCE: RoleType[] = ['administrator', 'majitel'];
@@ -36,8 +41,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set, get) => ({
   // Initial state - default to user-1 (admin) for development
-  currentUser: MOCK_USERS[0],
-  activeRoleId: MOCK_USERS[0].roleIds[0],
+  currentUser: getUsers()[0] ?? null,
+  activeRoleId: getUsers()[0]?.roleIds[0] ?? null,
   activeStoreId: null,
   _hydrated: false,
 
@@ -74,7 +79,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       set({ activeRoleId: roleId });
 
       // If switching to a role that needs a store, set first available store
-      const role = MOCK_ROLES.find((r) => r.id === roleId);
+      const role = getRoles().find((r) => r.id === roleId);
       if (role?.type === 'prodavac' && currentUser.storeIds.length > 0) {
         const { activeStoreId } = get();
         if (!activeStoreId || !currentUser.storeIds.includes(activeStoreId)) {
@@ -94,11 +99,30 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
   },
 
+  switchToUser: (userId) => {
+    const user = getUsers().find((u) => u.id === userId);
+    if (!user || !user.active) return;
+
+    const defaultRoleId = user.defaultRoleId || user.roleIds[0];
+    const role = getRoles().find((r) => r.id === defaultRoleId);
+
+    let storeId: string | null = null;
+    if (role?.type === 'prodavac' && user.storeIds.length > 0) {
+      storeId = user.defaultStoreId || user.storeIds[0];
+    }
+
+    set({
+      currentUser: user,
+      activeRoleId: defaultRoleId,
+      activeStoreId: storeId,
+    });
+  },
+
   // Computed
   getActiveRole: () => {
     const { activeRoleId } = get();
     if (!activeRoleId) return null;
-    return MOCK_ROLES.find((r) => r.id === activeRoleId) || null;
+    return getRoles().find((r) => r.id === activeRoleId) || null;
   },
 
   getAvailableRoles: () => {
@@ -108,25 +132,31 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     // Administrator (role-2) can access ALL roles
     const isAdmin = currentUser.roleIds.includes('role-2');
     if (isAdmin) {
-      return MOCK_ROLES.filter((r) => r.active);
+      return getRoles().filter((r) => r.active);
     }
 
     // Other users only get their assigned roles
-    return MOCK_ROLES.filter((r) => r.active && currentUser.roleIds.includes(r.id));
+    return getRoles().filter((r) => r.active && currentUser.roleIds.includes(r.id));
   },
 
   getAvailableStores: () => {
     const { currentUser } = get();
     if (!currentUser) return [];
 
-    return MOCK_STORES.filter((s) => s.active && currentUser.storeIds.includes(s.id));
+    return getStores().filter((s) => s.active && currentUser.storeIds.includes(s.id));
+  },
+
+  getAllActiveUsers: () => {
+    return getUsers().filter((u) => u.active).sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, 'cs')
+    );
   },
 
   needsStoreSelection: () => {
     const { currentUser, activeRoleId } = get();
     if (!currentUser || !activeRoleId) return false;
 
-    const role = MOCK_ROLES.find((r) => r.id === activeRoleId);
+    const role = getRoles().find((r) => r.id === activeRoleId);
     if (!role) return false;
 
     // Only prodavac needs store selection
@@ -139,12 +169,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
   getActiveRoleType: () => {
     const role = get().getActiveRole();
     return role?.type || null;
-  },
-
-  hasAttendance: () => {
-    const roleType = get().getActiveRoleType();
-    if (!roleType) return false;
-    return !ROLES_WITHOUT_ATTENDANCE.includes(roleType);
   },
 
   canReportAbsence: () => {

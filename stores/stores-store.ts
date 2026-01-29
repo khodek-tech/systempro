@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Store } from '@/types';
 import { MOCK_STORES } from '@/lib/mock-data';
+import { useUsersStore } from './users-store';
 
 interface StoresState {
   stores: Store[];
@@ -12,10 +13,12 @@ interface StoresActions {
   addStore: (store: Omit<Store, 'id'>) => void;
   updateStore: (id: string, updates: Partial<Omit<Store, 'id'>>) => void;
   toggleStoreActive: (id: string) => void;
+  deleteStore: (id: string) => { success: boolean; error?: string };
 
   // Computed
   getActiveStores: () => Store[];
   getStoreById: (id: string) => Store | undefined;
+  canDeleteStore: (id: string) => { canDelete: boolean; reason?: string };
 }
 
 export const useStoresStore = create<StoresState & StoresActions>()(
@@ -49,6 +52,17 @@ export const useStoresStore = create<StoresState & StoresActions>()(
     }));
   },
 
+  deleteStore: (id) => {
+    const check = get().canDeleteStore(id);
+    if (!check.canDelete) {
+      return { success: false, error: check.reason };
+    }
+    set((state) => ({
+      stores: state.stores.filter((s) => s.id !== id),
+    }));
+    return { success: true };
+  },
+
   // Computed
   getActiveStores: () => {
     return get().stores.filter((s) => s.active);
@@ -56,6 +70,18 @@ export const useStoresStore = create<StoresState & StoresActions>()(
 
   getStoreById: (id) => {
     return get().stores.find((s) => s.id === id);
+  },
+
+  canDeleteStore: (id) => {
+    const users = useUsersStore.getState().users;
+    const usersWithStore = users.filter((u) => u.storeIds.includes(id));
+    if (usersWithStore.length > 0) {
+      return {
+        canDelete: false,
+        reason: `Prodejnu používá ${usersWithStore.length} zaměstnanec(ů)`,
+      };
+    }
+    return { canDelete: true };
   },
     }),
     { name: 'systempro-stores' }

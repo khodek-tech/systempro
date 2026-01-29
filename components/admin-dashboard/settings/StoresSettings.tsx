@@ -1,22 +1,24 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStoresStore } from '@/stores/stores-store';
 import { StoreFormModal } from './StoreFormModal';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { Store } from '@/types';
 
 type SortField = 'name' | 'address' | null;
 type SortDirection = 'asc' | 'desc';
 
 export function StoresSettings() {
-  const { stores, toggleStoreActive } = useStoresStore();
+  const { stores, toggleStoreActive, deleteStore, canDeleteStore } = useStoresStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [modalKey, setModalKey] = useState(0);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [deleteModalStore, setDeleteModalStore] = useState<Store | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -52,6 +54,25 @@ export function StoresSettings() {
   const handleClose = () => {
     setModalOpen(false);
     setEditingStore(null);
+  };
+
+  const handleDelete = (store: Store) => {
+    const check = canDeleteStore(store.id);
+    if (!check.canDelete) {
+      alert(check.reason);
+      return;
+    }
+    setDeleteModalStore(store);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteModalStore) {
+      const result = deleteStore(deleteModalStore.id);
+      if (!result.success) {
+        alert(result.error);
+      }
+      setDeleteModalStore(null);
+    }
   };
 
   return (
@@ -127,14 +148,22 @@ export function StoresSettings() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Button
-                    onClick={() => handleEdit(store)}
-                    variant="outline"
-                    size="sm"
-                    className="text-slate-600"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      onClick={() => handleEdit(store)}
+                      variant="outline"
+                      size="sm"
+                      className="text-slate-600"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <button
+                      onClick={() => handleDelete(store)}
+                      className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -144,6 +173,16 @@ export function StoresSettings() {
 
       {/* Modal with key to force remount */}
       <StoreFormModal key={modalKey} open={modalOpen} onClose={handleClose} store={editingStore} />
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalStore !== null}
+        onClose={() => setDeleteModalStore(null)}
+        onConfirm={handleConfirmDelete}
+        title="Smazat prodejnu"
+        itemName={deleteModalStore?.name || ''}
+        warningMessage="Všechna data o prodejně budou permanentně smazána."
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Role, RoleType } from '@/types';
 import { MOCK_ROLES } from '@/lib/mock-data';
+import { useUsersStore } from './users-store';
 
 interface RolesState {
   roles: Role[];
@@ -12,9 +13,11 @@ interface RolesActions {
   addRole: (role: Omit<Role, 'id'>) => void;
   updateRole: (id: string, updates: Partial<Omit<Role, 'id'>>) => void;
   toggleRoleActive: (id: string) => boolean;
+  deleteRole: (id: string) => { success: boolean; error?: string };
 
   // Computed
   canDeactivateRole: (id: string) => boolean;
+  canDeleteRole: (id: string) => { canDelete: boolean; reason?: string };
   getActiveRoles: () => Role[];
   getRoleById: (id: string) => Role | undefined;
   getRoleByType: (type: RoleType) => Role | undefined;
@@ -62,11 +65,43 @@ export const useRolesStore = create<RolesState & RolesActions>()(
     return true;
   },
 
+  deleteRole: (id) => {
+    const check = get().canDeleteRole(id);
+    if (!check.canDelete) {
+      return { success: false, error: check.reason };
+    }
+    set((state) => ({
+      roles: state.roles.filter((r) => r.id !== id),
+    }));
+    return { success: true };
+  },
+
   // Computed
   canDeactivateRole: (id) => {
     const role = get().roles.find((r) => r.id === id);
     if (!role) return false;
     return !PROTECTED_ROLE_TYPES.includes(role.type);
+  },
+
+  canDeleteRole: (id) => {
+    const role = get().getRoleById(id);
+    if (!role) return { canDelete: false, reason: 'Role nenalezena' };
+
+    // Administrator nelze smazat
+    if (role.type === 'administrator') {
+      return { canDelete: false, reason: 'Roli Administrátor nelze smazat' };
+    }
+
+    // Zkontrolovat, zda někdo roli používá
+    const users = useUsersStore.getState().users;
+    const usersWithRole = users.filter((u) => u.roleIds.includes(id));
+    if (usersWithRole.length > 0) {
+      return {
+        canDelete: false,
+        reason: `Roli používá ${usersWithRole.length} zaměstnanec(ů)`,
+      };
+    }
+    return { canDelete: true };
   },
 
   getActiveRoles: () => {

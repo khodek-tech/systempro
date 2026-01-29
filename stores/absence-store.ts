@@ -1,8 +1,64 @@
 import { create } from 'zustand';
-import { AbsenceType, AbsenceFormData } from '@/types';
+import { persist } from 'zustand/middleware';
+import { AbsenceType, AbsenceFormData, AbsenceRequest, AbsenceRequestStatus, RoleType } from '@/types';
+import { MOCK_ABSENCE_REQUESTS } from '@/lib/mock-data';
+import { useUsersStore } from './users-store';
+import { useRolesStore } from './roles-store';
+import { useModulesStore } from './modules-store';
+
+// Helpers to get data from other stores
+const getUsers = () => useUsersStore.getState().users;
+const getRoles = () => useRolesStore.getState().roles;
+const getModuleConfig = () => useModulesStore.getState().getModuleConfig('absence-approval');
+
+// Dynamická hierarchie schvalování z konfigurace modulů
+function getApprovalHierarchy(): Record<RoleType, RoleType[]> {
+  const config = getModuleConfig();
+  const roles = getRoles();
+  const hierarchy: Record<RoleType, RoleType[]> = {
+    prodavac: [],
+    skladnik: [],
+    administrator: [],
+    'vedouci-sklad': [],
+    'obsluha-eshop': [],
+    obchodnik: [],
+    'vedouci-velkoobchod': [],
+    majitel: [],
+  };
+
+  if (!config?.approvalMappings) return hierarchy;
+
+  for (const mapping of config.approvalMappings) {
+    const approverRole = roles.find((r) => r.id === mapping.approverRoleId);
+    if (!approverRole) continue;
+
+    const subordinateTypes: RoleType[] = [];
+    for (const subRoleId of mapping.subordinateRoleIds) {
+      const subRole = roles.find((r) => r.id === subRoleId);
+      if (subRole) {
+        subordinateTypes.push(subRole.type);
+      }
+    }
+
+    hierarchy[approverRole.type] = subordinateTypes;
+  }
+
+  return hierarchy;
+}
 
 interface AbsenceState {
   formData: AbsenceFormData;
+  absenceRequests: AbsenceRequest[];
+  // View mode
+  absenceViewMode: 'card' | 'view';
+  approvalViewMode: 'card' | 'view';
+  // Filters
+  myRequestsMonthFilter: string;
+  myRequestsYearFilter: string;
+  myRequestsStatusFilter: AbsenceRequestStatus | 'all';
+  approvalFilter: AbsenceRequestStatus | 'all';
+  approvalMonthFilter: string;
+  approvalYearFilter: string;
 }
 
 interface AbsenceActions {
@@ -20,6 +76,37 @@ interface AbsenceActions {
   // Submit actions
   submitAbsence: () => { success: boolean; error?: string };
   resetForm: () => void;
+
+  // Absence request actions
+  submitAbsenceRequest: (userId: string) => { success: boolean; error?: string };
+  approveAbsence: (requestId: string, approverId: string) => { success: boolean; error?: string };
+  rejectAbsence: (requestId: string, approverId: string) => { success: boolean; error?: string };
+
+  // Getters
+  getMyRequests: (userId: string) => AbsenceRequest[];
+  getFilteredMyRequests: (userId: string) => AbsenceRequest[];
+  getPendingRequestsForApproval: (approverId: string, roleType: RoleType) => AbsenceRequest[];
+  getAllRequestsForApproval: (approverId: string, roleType: RoleType) => AbsenceRequest[];
+  getRequestsByStatus: (approverId: string, roleType: RoleType, status: AbsenceRequestStatus | 'all') => AbsenceRequest[];
+  getFilteredRequestsForApproval: (approverId: string, roleType: RoleType) => AbsenceRequest[];
+
+  // View mode actions
+  openAbsenceView: () => void;
+  closeAbsenceView: () => void;
+  openApprovalView: () => void;
+  closeApprovalView: () => void;
+
+  // Notification methods
+  getUnseenProcessedRequestsCount: (userId: string) => number;
+  markMyRequestsAsSeen: (userId: string) => void;
+
+  // Filter actions
+  setMyRequestsMonthFilter: (month: string) => void;
+  setMyRequestsYearFilter: (year: string) => void;
+  setMyRequestsStatusFilter: (status: AbsenceRequestStatus | 'all') => void;
+  setApprovalFilter: (filter: AbsenceRequestStatus | 'all') => void;
+  setApprovalMonthFilter: (month: string) => void;
+  setApprovalYearFilter: (year: string) => void;
 }
 
 const initialFormData: AbsenceFormData = {
@@ -31,57 +118,305 @@ const initialFormData: AbsenceFormData = {
   note: '',
 };
 
-export const useAbsenceStore = create<AbsenceState & AbsenceActions>((set, get) => ({
-  // Initial state
-  formData: { ...initialFormData },
+// Helper to get user's primary role type
+function getUserPrimaryRoleType(userId: string): RoleType | null {
+  const user = getUsers().find((u) => u.id === userId);
+  if (!user || user.roleIds.length === 0) return null;
 
-  // Form field actions
-  setAbsenceType: (type) =>
-    set((state) => ({
-      formData: { ...state.formData, type },
-    })),
+  const role = getRoles().find((r) => r.id === user.roleIds[0]);
+  return role?.type || null;
+}
 
-  setDateFrom: (dateFrom) =>
-    set((state) => ({
-      formData: { ...state.formData, dateFrom },
-    })),
+// Helper to check if approver can approve for a user
+function canApproveUser(approverRoleType: RoleType, userRoleType: RoleType): boolean {
+  const hierarchy = getApprovalHierarchy();
+  const subordinates = hierarchy[approverRoleType] || [];
+  return subordinates.includes(userRoleType);
+}
 
-  setDateTo: (dateTo) =>
-    set((state) => ({
-      formData: { ...state.formData, dateTo },
-    })),
+export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
+  persist(
+    (set, get) => ({
+      // Initial state
+      formData: { ...initialFormData },
+      absenceRequests: MOCK_ABSENCE_REQUESTS,
+      absenceViewMode: 'card',
+      approvalViewMode: 'card',
+      myRequestsMonthFilter: 'all',
+      myRequestsYearFilter: 'all',
+      myRequestsStatusFilter: 'all',
+      approvalFilter: 'all',
+      approvalMonthFilter: 'all',
+      approvalYearFilter: 'all',
 
-  setTimeFrom: (timeFrom) =>
-    set((state) => ({
-      formData: { ...state.formData, timeFrom },
-    })),
+      // Form field actions
+      setAbsenceType: (type) =>
+        set((state) => ({
+          formData: { ...state.formData, type },
+        })),
 
-  setTimeTo: (timeTo) =>
-    set((state) => ({
-      formData: { ...state.formData, timeTo },
-    })),
+      setDateFrom: (dateFrom) =>
+        set((state) => ({
+          formData: { ...state.formData, dateFrom },
+        })),
 
-  setNote: (note) =>
-    set((state) => ({
-      formData: { ...state.formData, note },
-    })),
+      setDateTo: (dateTo) =>
+        set((state) => ({
+          formData: { ...state.formData, dateTo },
+        })),
 
-  // Computed
-  showTimeSection: () => get().formData.type === 'Lékař',
+      setTimeFrom: (timeFrom) =>
+        set((state) => ({
+          formData: { ...state.formData, timeFrom },
+        })),
 
-  // Submit actions
-  submitAbsence: () => {
-    const { formData } = get();
+      setTimeTo: (timeTo) =>
+        set((state) => ({
+          formData: { ...state.formData, timeTo },
+        })),
 
-    if (!formData.dateFrom || !formData.dateTo) {
-      return { success: false, error: 'Vyplňte data od a do!' };
+      setNote: (note) =>
+        set((state) => ({
+          formData: { ...state.formData, note },
+        })),
+
+      // Computed
+      showTimeSection: () => get().formData.type === 'Lékař',
+
+      // Submit actions
+      submitAbsence: () => {
+        const { formData } = get();
+
+        if (!formData.dateFrom || !formData.dateTo) {
+          return { success: false, error: 'Vyplňte data od a do!' };
+        }
+
+        // Reset form after successful submission
+        set({ formData: { ...initialFormData } });
+
+        return { success: true };
+      },
+
+      resetForm: () => set({ formData: { ...initialFormData } }),
+
+      // Absence request actions
+      submitAbsenceRequest: (userId: string) => {
+        const { formData } = get();
+
+        if (!formData.dateFrom || !formData.dateTo) {
+          return { success: false, error: 'Vyplňte data od a do!' };
+        }
+
+        if (formData.type === 'Lékař' && (!formData.timeFrom || !formData.timeTo)) {
+          return { success: false, error: 'Vyplňte čas od a do!' };
+        }
+
+        const newRequest: AbsenceRequest = {
+          id: `abs-req-${Date.now()}`,
+          userId,
+          type: formData.type,
+          dateFrom: formData.dateFrom,
+          dateTo: formData.dateTo,
+          timeFrom: formData.type === 'Lékař' ? formData.timeFrom : undefined,
+          timeTo: formData.type === 'Lékař' ? formData.timeTo : undefined,
+          note: formData.note,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+
+        set((state) => ({
+          absenceRequests: [...state.absenceRequests, newRequest],
+          formData: { ...initialFormData },
+        }));
+
+        return { success: true };
+      },
+
+      approveAbsence: (requestId: string, approverId: string) => {
+        const { absenceRequests } = get();
+        const request = absenceRequests.find((r) => r.id === requestId);
+
+        if (!request) {
+          return { success: false, error: 'Žádost nenalezena' };
+        }
+
+        if (request.status !== 'pending') {
+          return { success: false, error: 'Žádost již byla vyřízena' };
+        }
+
+        set((state) => ({
+          absenceRequests: state.absenceRequests.map((r) =>
+            r.id === requestId
+              ? {
+                  ...r,
+                  status: 'approved' as AbsenceRequestStatus,
+                  approvedBy: approverId,
+                  approvedAt: new Date().toISOString(),
+                  seenByUser: false,
+                }
+              : r
+          ),
+        }));
+
+        return { success: true };
+      },
+
+      rejectAbsence: (requestId: string, approverId: string) => {
+        const { absenceRequests } = get();
+        const request = absenceRequests.find((r) => r.id === requestId);
+
+        if (!request) {
+          return { success: false, error: 'Žádost nenalezena' };
+        }
+
+        if (request.status !== 'pending') {
+          return { success: false, error: 'Žádost již byla vyřízena' };
+        }
+
+        set((state) => ({
+          absenceRequests: state.absenceRequests.map((r) =>
+            r.id === requestId
+              ? {
+                  ...r,
+                  status: 'rejected' as AbsenceRequestStatus,
+                  approvedBy: approverId,
+                  approvedAt: new Date().toISOString(),
+                  seenByUser: false,
+                }
+              : r
+          ),
+        }));
+
+        return { success: true };
+      },
+
+      // Getters
+      getMyRequests: (userId: string) => {
+        const { absenceRequests } = get();
+        return absenceRequests
+          .filter((r) => r.userId === userId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      },
+
+      getFilteredMyRequests: (userId: string) => {
+        const { absenceRequests, myRequestsMonthFilter, myRequestsYearFilter, myRequestsStatusFilter } = get();
+        return absenceRequests
+          .filter((r) => {
+            if (r.userId !== userId) return false;
+
+            const requestDate = new Date(r.dateFrom);
+            const requestMonth = String(requestDate.getMonth() + 1).padStart(2, '0');
+            const requestYear = String(requestDate.getFullYear());
+
+            if (myRequestsMonthFilter !== 'all' && requestMonth !== myRequestsMonthFilter) return false;
+            if (myRequestsYearFilter !== 'all' && requestYear !== myRequestsYearFilter) return false;
+            if (myRequestsStatusFilter !== 'all' && r.status !== myRequestsStatusFilter) return false;
+
+            return true;
+          })
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      },
+
+      getPendingRequestsForApproval: (approverId: string, roleType: RoleType) => {
+        return get().getRequestsByStatus(approverId, roleType, 'pending');
+      },
+
+      getAllRequestsForApproval: (approverId: string, roleType: RoleType) => {
+        return get().getRequestsByStatus(approverId, roleType, 'all');
+      },
+
+      getRequestsByStatus: (approverId: string, roleType: RoleType, status: AbsenceRequestStatus | 'all') => {
+        const { absenceRequests } = get();
+
+        return absenceRequests
+          .filter((request) => {
+            // Exclude own requests
+            if (request.userId === approverId) return false;
+
+            // Filter by status if specified
+            if (status !== 'all' && request.status !== status) return false;
+
+            // Check if user is a subordinate
+            const userRoleType = getUserPrimaryRoleType(request.userId);
+            if (!userRoleType) return false;
+
+            return canApproveUser(roleType, userRoleType);
+          })
+          .sort((a, b) => {
+            // Pending first, then by date
+            if (a.status === 'pending' && b.status !== 'pending') return -1;
+            if (a.status !== 'pending' && b.status === 'pending') return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+      },
+
+      getFilteredRequestsForApproval: (approverId: string, roleType: RoleType) => {
+        const { absenceRequests, approvalMonthFilter, approvalYearFilter, approvalFilter } = get();
+
+        return absenceRequests
+          .filter((request) => {
+            // Exclude own requests
+            if (request.userId === approverId) return false;
+
+            // Check if user is a subordinate
+            const userRoleType = getUserPrimaryRoleType(request.userId);
+            if (!userRoleType) return false;
+            if (!canApproveUser(roleType, userRoleType)) return false;
+
+            // Filter by month
+            const requestDate = new Date(request.dateFrom);
+            const requestMonth = String(requestDate.getMonth() + 1).padStart(2, '0');
+            const requestYear = String(requestDate.getFullYear());
+
+            if (approvalMonthFilter !== 'all' && requestMonth !== approvalMonthFilter) return false;
+            if (approvalYearFilter !== 'all' && requestYear !== approvalYearFilter) return false;
+            if (approvalFilter !== 'all' && request.status !== approvalFilter) return false;
+
+            return true;
+          })
+          .sort((a, b) => {
+            // Pending first, then by date
+            if (a.status === 'pending' && b.status !== 'pending') return -1;
+            if (a.status !== 'pending' && b.status === 'pending') return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+      },
+
+      // View mode actions
+      openAbsenceView: () => set({ absenceViewMode: 'view' }),
+      closeAbsenceView: () => set({ absenceViewMode: 'card' }),
+      openApprovalView: () => set({ approvalViewMode: 'view' }),
+      closeApprovalView: () => set({ approvalViewMode: 'card' }),
+
+      // Notification methods
+      getUnseenProcessedRequestsCount: (userId: string) => {
+        const { absenceRequests } = get();
+        return absenceRequests.filter(
+          (r) => r.userId === userId && r.status !== 'pending' && r.seenByUser === false
+        ).length;
+      },
+
+      markMyRequestsAsSeen: (userId: string) => {
+        set((state) => ({
+          absenceRequests: state.absenceRequests.map((r) =>
+            r.userId === userId && r.status !== 'pending' ? { ...r, seenByUser: true } : r
+          ),
+        }));
+      },
+
+      // Filter actions
+      setMyRequestsMonthFilter: (month: string) => set({ myRequestsMonthFilter: month }),
+      setMyRequestsYearFilter: (year: string) => set({ myRequestsYearFilter: year }),
+      setMyRequestsStatusFilter: (status: AbsenceRequestStatus | 'all') => set({ myRequestsStatusFilter: status }),
+      setApprovalFilter: (filter: AbsenceRequestStatus | 'all') => set({ approvalFilter: filter }),
+      setApprovalMonthFilter: (month: string) => set({ approvalMonthFilter: month }),
+      setApprovalYearFilter: (year: string) => set({ approvalYearFilter: year }),
+    }),
+    {
+      name: 'systempro-absence',
+      partialize: (state) => ({
+        absenceRequests: state.absenceRequests,
+      }),
     }
-
-    // Reset form after successful submission
-    set({ formData: { ...initialFormData } });
-
-    return { success: true };
-  },
-
-  resetForm: () => set({ formData: { ...initialFormData } }),
-}));
+  )
+);

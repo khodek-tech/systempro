@@ -1,22 +1,33 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, ToggleLeft, ToggleRight, ShieldAlert, ChevronUp, ChevronDown } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  ShieldAlert,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRolesStore } from '@/stores/roles-store';
 import { RoleFormModal } from './RoleFormModal';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { Role } from '@/types';
 
 type SortField = 'name' | 'type' | null;
 type SortDirection = 'asc' | 'desc';
 
 export function RolesSettings() {
-  const { roles, toggleRoleActive, canDeactivateRole } = useRolesStore();
+  const { roles, toggleRoleActive, canDeactivateRole, deleteRole, canDeleteRole } = useRolesStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [modalKey, setModalKey] = useState(0);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [deleteModalRole, setDeleteModalRole] = useState<Role | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -60,6 +71,25 @@ export function RolesSettings() {
       return;
     }
     toggleRoleActive(role.id);
+  };
+
+  const handleDelete = (role: Role) => {
+    const check = canDeleteRole(role.id);
+    if (!check.canDelete) {
+      alert(check.reason);
+      return;
+    }
+    setDeleteModalRole(role);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteModalRole) {
+      const result = deleteRole(deleteModalRole.id);
+      if (!result.success) {
+        alert(result.error);
+      }
+      setDeleteModalRole(null);
+    }
   };
 
   return (
@@ -149,14 +179,23 @@ export function RolesSettings() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      onClick={() => handleEdit(role)}
-                      variant="outline"
-                      size="sm"
-                      className="text-slate-600"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        onClick={() => handleEdit(role)}
+                        variant="outline"
+                        size="sm"
+                        className="text-slate-600"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <button
+                        onClick={() => handleDelete(role)}
+                        disabled={isProtected}
+                        className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -167,6 +206,16 @@ export function RolesSettings() {
 
       {/* Modal with key to force remount */}
       <RoleFormModal key={modalKey} open={modalOpen} onClose={handleClose} role={editingRole} />
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalRole !== null}
+        onClose={() => setDeleteModalRole(null)}
+        onConfirm={handleConfirmDelete}
+        title="Smazat roli"
+        itemName={deleteModalRole?.name || ''}
+        warningMessage="Všechna data o roli budou permanentně smazána."
+      />
     </div>
   );
 }

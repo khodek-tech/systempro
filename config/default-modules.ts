@@ -58,6 +58,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'ReportsModule',
     icon: 'ChartColumnIncreasing',
   },
+  {
+    id: 'attendance',
+    name: 'Docházka',
+    description: 'Evidence příchodů a odchodů zaměstnanců',
+    component: 'HeaderAttendance',
+    icon: 'Clock',
+  },
 ];
 
 // Default module configuration
@@ -100,10 +107,16 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     moduleId: 'absence-approval',
-    roleIds: ['role-2', 'role-4', 'role-7'],
+    roleIds: ['role-2', 'role-4', 'role-7', 'role-8'],
     order: 4,
     column: 'left',
     enabled: true,
+    approvalMappings: [
+      { approverRoleId: 'role-4', subordinateRoleIds: ['role-3', 'role-5'] },
+      { approverRoleId: 'role-7', subordinateRoleIds: ['role-1', 'role-6'] },
+      { approverRoleId: 'role-2', subordinateRoleIds: ['role-4', 'role-7'] },
+      { approverRoleId: 'role-8', subordinateRoleIds: ['role-2', 'role-4', 'role-7', 'role-1', 'role-3', 'role-5', 'role-6'] },
+    ],
   },
   {
     moduleId: 'tasks',
@@ -124,6 +137,13 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     roleIds: ['role-2'],
     order: 1,
     column: 'left',
+    enabled: true,
+  },
+  {
+    moduleId: 'attendance',
+    roleIds: ['role-1', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'],
+    order: 0,
+    column: 'header',
     enabled: true,
   },
 ];

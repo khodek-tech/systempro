@@ -1,4 +1,4 @@
-import { AttendanceRecord, Store, Role, User } from '@/types';
+import { AttendanceRecord, Store, Role, User, AbsenceRequest } from '@/types';
 
 // Mock stores
 export const MOCK_STORES: Store[] = [
@@ -27,33 +27,34 @@ export const MOCK_ROLES: Role[] = [
 ];
 
 // Mock users (27 employees)
+// Synchronized with localStorage settings (systempro-users)
 export const MOCK_USERS: User[] = [
-  { id: 'user-1', username: 'pbures', fullName: 'Bureš Pavel', roleIds: ['role-1', 'role-2'], storeIds: [], active: true },
+  { id: 'user-1', username: 'pbures', fullName: 'Bureš Pavel', roleIds: ['role-3'], storeIds: [], active: true },
   { id: 'user-2', username: 'aburianova', fullName: 'Burianová Aneta', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-3', username: 'mcapek', fullName: 'Čapek Michal', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-4', username: 'lferova', fullName: 'Férová Lucie', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-5', username: 'afratricova', fullName: 'Fratričová Alžbeta', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-6', username: 'khodek', fullName: 'Hodek Karel', roleIds: ['role-1', 'role-2'], storeIds: [], active: true },
-  { id: 'user-7', username: 'dhysek', fullName: 'Hýsek David', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-3', username: 'mcapek', fullName: 'Čapek Michal', roleIds: ['role-3'], storeIds: [], active: true },
+  { id: 'user-4', username: 'lferova', fullName: 'Férová Lucie', roleIds: ['role-5'], storeIds: [], active: true },
+  { id: 'user-5', username: 'afratricova', fullName: 'Fratričová Alžbeta', roleIds: ['role-3'], storeIds: [], active: true },
+  { id: 'user-6', username: 'khodek', fullName: 'Hodek Karel', roleIds: ['role-2'], storeIds: [], active: true },
+  { id: 'user-7', username: 'dhysek', fullName: 'Hýsek David', roleIds: ['role-8'], storeIds: [], active: true },
   { id: 'user-8', username: 'ajindra', fullName: 'Jindra Aleš', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-9', username: 'jkafagi', fullName: 'Kafagi Jakub', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-9', username: 'jkafagi', fullName: 'Kafagi Jakub', roleIds: ['role-5'], storeIds: [], active: true },
   { id: 'user-10', username: 'zkakur', fullName: 'Kakur Zdenko', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-11', username: 'mkunik', fullName: 'Kunik Martin', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-11', username: 'mkunik', fullName: 'Kunik Martin', roleIds: ['role-4'], storeIds: [], active: true },
   { id: 'user-12', username: 'hkuresova', fullName: 'Kurešová Hana', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-13', username: 'jlhotak', fullName: 'Lhoták Jan', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-14', username: 'tlhotak', fullName: 'Lhoták Tomáš', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-13', username: 'jlhotak', fullName: 'Lhoták Jan', roleIds: ['role-7'], storeIds: [], active: true },
+  { id: 'user-14', username: 'tlhotak', fullName: 'Lhoták Tomáš', roleIds: ['role-1', 'role-6'], storeIds: ['store-1', 'store-2', 'store-3', 'store-4', 'store-5', 'store-6', 'store-7', 'store-8', 'store-9', 'store-10'], defaultRoleId: 'role-6', defaultStoreId: 'store-1', active: true },
   { id: 'user-15', username: 'tlink', fullName: 'Link Tomáš', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-16', username: 'kmarkova', fullName: 'Marková Kateřina', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-16', username: 'kmarkova', fullName: 'Marková Kateřina', roleIds: ['role-1'], storeIds: ['store-2'], active: true },
   { id: 'user-17', username: 'mnadionova', fullName: 'Nadionová Markéta', roleIds: ['role-1'], storeIds: [], active: true },
   { id: 'user-18', username: 'krabasova', fullName: 'Rabasová Kateřina', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-19', username: 'vsmizansky', fullName: 'Smižanský Vilém', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-19', username: 'vsmizansky', fullName: 'Smižanský Vilém', roleIds: ['role-5'], storeIds: [], active: true },
   { id: 'user-20', username: 'jsnasel', fullName: 'Snášel Jakub', roleIds: ['role-1'], storeIds: [], active: true },
   { id: 'user-21', username: 'osoucek', fullName: 'Souček Ondřej', roleIds: ['role-1'], storeIds: [], active: true },
   { id: 'user-22', username: 'tstransky', fullName: 'Stránský Tadeáš', roleIds: ['role-1'], storeIds: [], active: true },
   { id: 'user-23', username: 'vszkatul', fullName: 'Szkatuláková Věra', roleIds: ['role-1'], storeIds: [], active: true },
   { id: 'user-24', username: 'zszolga', fullName: 'Szolga Zsolt', roleIds: ['role-1'], storeIds: [], active: true },
   { id: 'user-25', username: 'lstepnickova', fullName: 'Štěpničková Lucie', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-26', username: 'pbartunek', fullName: 'Bartůněk Petr', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-26', username: 'pbartunek', fullName: 'Bartůněk Petr', roleIds: ['role-1'], storeIds: ['store-2'], active: true },
   { id: 'user-27', username: 'pkot', fullName: 'Kot Patrícia', roleIds: ['role-1'], storeIds: [], active: true },
 ];
 
@@ -182,15 +183,303 @@ export const months = [
   { value: '12', label: 'Prosinec' },
 ];
 
-export const years = [
-  { value: 'all', label: 'Rok: Vše' },
-  { value: '2024', label: '2024' },
-  { value: '2025', label: '2025' },
-];
+function generateYears() {
+  const currentYear = new Date().getFullYear();
+  const years = [{ value: 'all', label: 'Rok: Vše' }];
+
+  // Přidat aktuální rok a 2 roky zpět
+  for (let year = currentYear; year >= currentYear - 2; year--) {
+    years.push({ value: String(year), label: String(year) });
+  }
+
+  return years;
+}
+
+export const years = generateYears();
 
 export const absenceTypes = [
   { value: 'Dovolená', label: 'Dovolená' },
   { value: 'Nemoc / Neschopenka', label: 'Nemoc / Neschopenka' },
   { value: 'Lékař', label: 'Lékař (v hodinách)' },
   { value: 'Neplacené volno', label: 'Neplacené volno' },
+];
+
+// Mock absence requests
+// Mix stavů: pending, approved, rejected
+// Mix typů: Dovolená, Nemoc, Lékař (s časy), Neplacené volno
+export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
+  // Skladník (user-7, Hýsek David) - schvaluje vedoucí skladu (user-3)
+  {
+    id: 'abs-req-1',
+    userId: 'user-7',
+    type: 'Dovolená',
+    dateFrom: '2025-02-10',
+    dateTo: '2025-02-14',
+    note: 'Rodinná dovolená',
+    status: 'pending',
+    createdAt: '2025-01-25T10:00:00Z',
+  },
+  {
+    id: 'abs-req-2',
+    userId: 'user-7',
+    type: 'Lékař',
+    dateFrom: '2025-01-30',
+    dateTo: '2025-01-30',
+    timeFrom: '08:00',
+    timeTo: '10:00',
+    note: 'Kontrola u zubaře',
+    status: 'approved',
+    createdAt: '2025-01-20T14:30:00Z',
+    approvedBy: 'user-3',
+    approvedAt: '2025-01-21T09:00:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-3',
+    userId: 'user-7',
+    type: 'Neplacené volno',
+    dateFrom: '2025-01-15',
+    dateTo: '2025-01-15',
+    note: 'Osobní záležitosti',
+    status: 'rejected',
+    createdAt: '2025-01-10T08:00:00Z',
+    approvedBy: 'user-3',
+    approvedAt: '2025-01-11T10:00:00Z',
+    seenByUser: true,
+  },
+
+  // Obsluha e-shopu (user-8, Jindra Aleš) - schvaluje vedoucí skladu (user-3)
+  {
+    id: 'abs-req-4',
+    userId: 'user-8',
+    type: 'Nemoc / Neschopenka',
+    dateFrom: '2025-01-28',
+    dateTo: '2025-01-31',
+    note: 'Chřipka',
+    status: 'pending',
+    createdAt: '2025-01-28T07:00:00Z',
+  },
+  {
+    id: 'abs-req-5',
+    userId: 'user-8',
+    type: 'Dovolená',
+    dateFrom: '2025-03-01',
+    dateTo: '2025-03-07',
+    note: 'Jarní prázdniny s dětmi',
+    status: 'approved',
+    createdAt: '2025-01-15T12:00:00Z',
+    approvedBy: 'user-3',
+    approvedAt: '2025-01-16T08:30:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-6',
+    userId: 'user-8',
+    type: 'Lékař',
+    dateFrom: '2025-02-05',
+    dateTo: '2025-02-05',
+    timeFrom: '14:00',
+    timeTo: '16:00',
+    note: 'Oční vyšetření',
+    status: 'pending',
+    createdAt: '2025-01-27T16:00:00Z',
+  },
+
+  // Obchodník (user-9, Kafagi Jakub) - schvaluje vedoucí velkoobchodu (user-4)
+  {
+    id: 'abs-req-7',
+    userId: 'user-9',
+    type: 'Dovolená',
+    dateFrom: '2025-02-17',
+    dateTo: '2025-02-21',
+    note: 'Lyžování v Alpách',
+    status: 'pending',
+    createdAt: '2025-01-26T11:00:00Z',
+  },
+  {
+    id: 'abs-req-8',
+    userId: 'user-9',
+    type: 'Lékař',
+    dateFrom: '2025-01-29',
+    dateTo: '2025-01-29',
+    timeFrom: '09:00',
+    timeTo: '11:30',
+    note: 'Preventivní prohlídka',
+    status: 'approved',
+    createdAt: '2025-01-22T10:00:00Z',
+    approvedBy: 'user-4',
+    approvedAt: '2025-01-23T09:15:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-9',
+    userId: 'user-9',
+    type: 'Neplacené volno',
+    dateFrom: '2025-01-10',
+    dateTo: '2025-01-10',
+    note: 'Stěhování',
+    status: 'rejected',
+    createdAt: '2025-01-05T14:00:00Z',
+    approvedBy: 'user-4',
+    approvedAt: '2025-01-06T11:00:00Z',
+    seenByUser: true,
+  },
+
+  // Prodavači - schvaluje vedoucí velkoobchodu (user-4)
+  // Prodavač (user-2, Burianová Aneta)
+  {
+    id: 'abs-req-10',
+    userId: 'user-2',
+    type: 'Dovolená',
+    dateFrom: '2025-02-24',
+    dateTo: '2025-02-28',
+    note: 'Dovolená u moře',
+    status: 'pending',
+    createdAt: '2025-01-27T09:00:00Z',
+  },
+  {
+    id: 'abs-req-11',
+    userId: 'user-2',
+    type: 'Nemoc / Neschopenka',
+    dateFrom: '2025-01-20',
+    dateTo: '2025-01-22',
+    note: 'Viróza',
+    status: 'approved',
+    createdAt: '2025-01-20T06:30:00Z',
+    approvedBy: 'user-4',
+    approvedAt: '2025-01-20T08:00:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-12',
+    userId: 'user-2',
+    type: 'Lékař',
+    dateFrom: '2025-02-03',
+    dateTo: '2025-02-03',
+    timeFrom: '10:00',
+    timeTo: '12:00',
+    note: 'Gynekologická prohlídka',
+    status: 'pending',
+    createdAt: '2025-01-28T15:00:00Z',
+  },
+
+  // Prodavač (user-10, Kakur Zdenko)
+  {
+    id: 'abs-req-13',
+    userId: 'user-10',
+    type: 'Neplacené volno',
+    dateFrom: '2025-02-07',
+    dateTo: '2025-02-07',
+    note: 'Vyřizování na úřadech',
+    status: 'pending',
+    createdAt: '2025-01-26T13:00:00Z',
+  },
+  {
+    id: 'abs-req-14',
+    userId: 'user-10',
+    type: 'Dovolená',
+    dateFrom: '2025-04-14',
+    dateTo: '2025-04-18',
+    note: 'Velikonoční dovolená',
+    status: 'approved',
+    createdAt: '2025-01-10T10:00:00Z',
+    approvedBy: 'user-4',
+    approvedAt: '2025-01-12T14:00:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-15',
+    userId: 'user-10',
+    type: 'Lékař',
+    dateFrom: '2025-01-08',
+    dateTo: '2025-01-08',
+    timeFrom: '15:00',
+    timeTo: '16:30',
+    note: 'Ortoped - bolest zad',
+    status: 'rejected',
+    createdAt: '2025-01-03T11:00:00Z',
+    approvedBy: 'user-4',
+    approvedAt: '2025-01-04T09:00:00Z',
+    seenByUser: true,
+  },
+
+  // Vedoucí skladu (user-3, Čapek Michal) - schvaluje administrator (user-1, user-6)
+  {
+    id: 'abs-req-16',
+    userId: 'user-3',
+    type: 'Dovolená',
+    dateFrom: '2025-03-10',
+    dateTo: '2025-03-14',
+    note: 'Rodinná dovolená',
+    status: 'pending',
+    createdAt: '2025-01-28T10:00:00Z',
+  },
+  {
+    id: 'abs-req-17',
+    userId: 'user-3',
+    type: 'Lékař',
+    dateFrom: '2025-02-12',
+    dateTo: '2025-02-12',
+    timeFrom: '08:00',
+    timeTo: '09:30',
+    note: 'Odběr krve',
+    status: 'approved',
+    createdAt: '2025-01-20T09:00:00Z',
+    approvedBy: 'user-1',
+    approvedAt: '2025-01-21T08:00:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-18',
+    userId: 'user-3',
+    type: 'Nemoc / Neschopenka',
+    dateFrom: '2025-01-06',
+    dateTo: '2025-01-08',
+    note: 'Angína',
+    status: 'approved',
+    createdAt: '2025-01-06T07:00:00Z',
+    approvedBy: 'user-1',
+    approvedAt: '2025-01-06T08:30:00Z',
+    seenByUser: true,
+  },
+
+  // Vedoucí velkoobchodu (user-4, Férová Lucie) - schvaluje administrator (user-1, user-6)
+  {
+    id: 'abs-req-19',
+    userId: 'user-4',
+    type: 'Dovolená',
+    dateFrom: '2025-04-07',
+    dateTo: '2025-04-11',
+    note: 'Jarní dovolená',
+    status: 'pending',
+    createdAt: '2025-01-27T14:00:00Z',
+  },
+  {
+    id: 'abs-req-20',
+    userId: 'user-4',
+    type: 'Lékař',
+    dateFrom: '2025-02-06',
+    dateTo: '2025-02-06',
+    timeFrom: '13:00',
+    timeTo: '15:00',
+    note: 'Zubař - plomba',
+    status: 'approved',
+    createdAt: '2025-01-18T11:00:00Z',
+    approvedBy: 'user-6',
+    approvedAt: '2025-01-19T10:00:00Z',
+    seenByUser: true,
+  },
+  {
+    id: 'abs-req-21',
+    userId: 'user-4',
+    type: 'Neplacené volno',
+    dateFrom: '2025-01-03',
+    dateTo: '2025-01-03',
+    note: 'Osobní důvody',
+    status: 'rejected',
+    createdAt: '2024-12-28T10:00:00Z',
+    approvedBy: 'user-1',
+    approvedAt: '2024-12-30T09:00:00Z',
+    seenByUser: true,
+  },
 ];

@@ -1,10 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types';
-import { MOCK_USERS, MOCK_ROLES } from '@/lib/mock-data';
+import { MOCK_USERS } from '@/lib/mock-data';
+import { useRolesStore } from './roles-store';
+
+// Helper to get roles from roles-store
+const getRoles = () => useRolesStore.getState().roles;
 
 interface UsersState {
   users: User[];
+  _hydrated: boolean;
 }
 
 interface UsersActions {
@@ -12,6 +17,7 @@ interface UsersActions {
   addUser: (user: Omit<User, 'id'>) => { success: boolean; error?: string };
   updateUser: (id: string, updates: Partial<Omit<User, 'id'>>) => { success: boolean; error?: string };
   toggleUserActive: (id: string) => void;
+  deleteUser: (id: string) => { success: boolean; error?: string };
 
   // Computed
   getActiveUsers: () => User[];
@@ -25,6 +31,7 @@ export const useUsersStore = create<UsersState & UsersActions>()(
     (set, get) => ({
   // Initial state
   users: MOCK_USERS,
+  _hydrated: false,
 
   // CRUD
   addUser: (userData) => {
@@ -108,6 +115,18 @@ export const useUsersStore = create<UsersState & UsersActions>()(
     }));
   },
 
+  deleteUser: (id) => {
+    const user = get().getUserById(id);
+    if (!user) {
+      return { success: false, error: 'Uživatel nenalezen' };
+    }
+
+    set((state) => ({
+      users: state.users.filter((u) => u.id !== id),
+    }));
+    return { success: true };
+  },
+
   // Computed
   getActiveUsers: () => {
     return get().users.filter((u) => u.active);
@@ -147,7 +166,7 @@ export const useUsersStore = create<UsersState & UsersActions>()(
     }
 
     // Check: if user has Prodavač role, they must have at least one store
-    const prodavacRole = MOCK_ROLES.find((r) => r.type === 'prodavac');
+    const prodavacRole = getRoles().find((r) => r.type === 'prodavac');
     if (prodavacRole && user.roleIds?.includes(prodavacRole.id)) {
       if (!user.storeIds || user.storeIds.length === 0) {
         return { valid: false, error: 'Prodavač musí mít přiřazenou alespoň jednu prodejnu' };
@@ -157,6 +176,16 @@ export const useUsersStore = create<UsersState & UsersActions>()(
     return { valid: true };
   },
     }),
-    { name: 'systempro-users' }
+    {
+      name: 'systempro-users',
+      partialize: (state) => ({
+        users: state.users,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state._hydrated = true;
+        }
+      },
+    }
   )
 );

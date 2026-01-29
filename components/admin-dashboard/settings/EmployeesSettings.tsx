@@ -1,19 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Pencil, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { useStoresStore } from '@/stores/stores-store';
 import { EmployeeFormModal } from './EmployeeFormModal';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { User } from '@/types';
 
 type SortField = 'fullName' | 'username' | 'role' | 'store' | null;
 type SortDirection = 'asc' | 'desc';
 
 export function EmployeesSettings() {
-  const { users, toggleUserActive } = useUsersStore();
+  const { users, toggleUserActive, deleteUser } = useUsersStore();
   const { getRoleById } = useRolesStore();
   const { getStoreById } = useStoresStore();
   const [modalOpen, setModalOpen] = useState(false);
@@ -21,6 +22,7 @@ export function EmployeesSettings() {
   const [modalKey, setModalKey] = useState(0);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [deleteModalUser, setDeleteModalUser] = useState<User | null>(null);
 
   const handleAdd = () => {
     setEditingUser(null);
@@ -37,6 +39,20 @@ export function EmployeesSettings() {
   const handleClose = () => {
     setModalOpen(false);
     setEditingUser(null);
+  };
+
+  const handleDelete = (user: User) => {
+    setDeleteModalUser(user);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteModalUser) {
+      const result = deleteUser(deleteModalUser.id);
+      if (!result.success) {
+        alert(result.error);
+      }
+      setDeleteModalUser(null);
+    }
   };
 
   const getRoleNames = (roleIds: string[]) => {
@@ -198,14 +214,22 @@ export function EmployeesSettings() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Button
-                    onClick={() => handleEdit(user)}
-                    variant="outline"
-                    size="sm"
-                    className="text-slate-600"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      onClick={() => handleEdit(user)}
+                      variant="outline"
+                      size="sm"
+                      className="text-slate-600"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <button
+                      onClick={() => handleDelete(user)}
+                      className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -215,6 +239,16 @@ export function EmployeesSettings() {
 
       {/* Modal with key to force remount */}
       <EmployeeFormModal key={modalKey} open={modalOpen} onClose={handleClose} user={editingUser} />
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalUser !== null}
+        onClose={() => setDeleteModalUser(null)}
+        onConfirm={handleConfirmDelete}
+        title="Smazat zaměstnance"
+        itemName={deleteModalUser?.fullName || ''}
+        warningMessage="Všechna data o zaměstnanci budou permanentně smazána."
+      />
     </div>
   );
 }

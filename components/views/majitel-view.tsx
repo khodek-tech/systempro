@@ -1,14 +1,21 @@
 'use client';
 
-import { Crown } from 'lucide-react';
+import { ModuleRenderer } from '@/components/ModuleRenderer';
+import { ApprovalFullView } from '@/components/views/approval-full-view';
+import { useAbsenceStore } from '@/stores/absence-store';
 
 export function MajitelView() {
+  const { approvalViewMode } = useAbsenceStore();
+
+  // Fullscreen approval view nahrazuje celý obsah
+  if (approvalViewMode === 'view') {
+    return <ApprovalFullView />;
+  }
+
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-y-auto bg-slate-50">
-      <div className="flex flex-col items-center space-y-4 text-slate-400">
-        <Crown className="w-16 h-16" strokeWidth={1.2} />
-        <span className="text-xl font-medium">Majitel</span>
-        <span className="text-base">Tato sekce je ve vývoji.</span>
+    <main className="flex-1 flex flex-col items-center p-8 relative overflow-y-auto bg-slate-50">
+      <div className="w-full mt-6 px-6">
+        <ModuleRenderer />
       </div>
     </main>
   );

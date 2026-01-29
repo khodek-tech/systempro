@@ -1,16 +1,18 @@
 'use client';
 
-import { Store, Users, Shield } from 'lucide-react';
+import { Store, Users, Shield, LayoutGrid } from 'lucide-react';
 import { useAdminStore } from '@/stores/admin-store';
 import { StoresSettings } from './StoresSettings';
 import { RolesSettings } from './RolesSettings';
 import { EmployeesSettings } from './EmployeesSettings';
+import { ModulesSettings } from './ModulesSettings';
 import { cn } from '@/lib/utils';
 
 const tabs = [
   { id: 'stores' as const, label: 'Prodejny', icon: Store },
   { id: 'roles' as const, label: 'Role', icon: Shield },
   { id: 'employees' as const, label: 'Zaměstnanci', icon: Users },
+  { id: 'modules' as const, label: 'Moduly', icon: LayoutGrid },
 ];
 
 export function AdminSettingsView() {
@@ -45,6 +47,7 @@ export function AdminSettingsView() {
         {settingsTab === 'stores' && <StoresSettings />}
         {settingsTab === 'roles' && <RolesSettings />}
         {settingsTab === 'employees' && <EmployeesSettings />}
+        {settingsTab === 'modules' && <ModulesSettings />}
       </div>
     </div>
   );

@@ -18,13 +18,13 @@ interface AttendanceActions {
 }
 
 export const useAttendanceStore = create<AttendanceState & AttendanceActions>((set, get) => ({
-  // Initial state
+  // Initial state - empty values, will be set after auth-store hydration
   isInWork: false,
   kasaConfirmed: false,
-  workplaceType: 'store',
-  workplaceId: 'store-1',
-  workplaceName: 'Praha 1',
-  requiresKasa: true,
+  workplaceType: 'role',
+  workplaceId: '',
+  workplaceName: '',
+  requiresKasa: false,
 
   // Actions
   toggleAttendance: () => {

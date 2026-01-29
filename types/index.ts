@@ -91,3 +91,44 @@ export interface CollectionFormData {
   amount: number;
   period: string;
 }
+
+export type AbsenceRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AbsenceRequest {
+  id: string;
+  userId: string;
+  type: AbsenceType;
+  dateFrom: string;
+  dateTo: string;
+  timeFrom?: string;
+  timeTo?: string;
+  note: string;
+  status: AbsenceRequestStatus;
+  createdAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  seenByUser?: boolean;
+}
+
+// Module system types
+export interface ModuleDefinition {
+  id: string;
+  name: string;
+  description: string;
+  component: string;
+  icon: string;
+}
+
+export interface ApprovalRoleMapping {
+  approverRoleId: string;
+  subordinateRoleIds: string[];
+}
+
+export interface ModuleConfig {
+  moduleId: string;
+  roleIds: string[];
+  order: number;
+  column: 'left' | 'right' | 'full' | 'top' | 'header';
+  enabled: boolean;
+  approvalMappings?: ApprovalRoleMapping[];
+}

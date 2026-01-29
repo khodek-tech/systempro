@@ -13,8 +13,20 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useAttendanceStore } from '@/stores/attendance-store';
 
 export default function Home() {
-  const { getActiveRoleType } = useAuthStore();
+  const { getActiveRoleType, _hydrated } = useAuthStore();
   const { workplaceType } = useAttendanceStore();
+
+  // Loading state během hydratace - zabrání hydratačnímu mismatch
+  if (!_hydrated) {
+    return (
+      <>
+        <Header />
+        <main className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50">
+          <div className="animate-pulse text-slate-400">Načítání...</div>
+        </main>
+      </>
+    );
+  }
 
   const roleType = getActiveRoleType();
 

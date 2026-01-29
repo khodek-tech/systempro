@@ -1,20 +1,27 @@
 'use client';
 
-import { Boxes } from 'lucide-react';
-import { AbsenceCard } from '@/components/shared/absence-card';
+import { ModuleRenderer } from '@/components/ModuleRenderer';
+import { AbsenceFullView } from '@/components/views/absence-full-view';
+import { ApprovalFullView } from '@/components/views/approval-full-view';
+import { useAbsenceStore } from '@/stores/absence-store';
 
 export function VedouciSkladView() {
+  const { absenceViewMode, approvalViewMode } = useAbsenceStore();
+
+  // Fullscreen approval view nahrazuje celý obsah
+  if (approvalViewMode === 'view') {
+    return <ApprovalFullView />;
+  }
+
+  // Fullscreen absence view nahrazuje celý obsah
+  if (absenceViewMode === 'view') {
+    return <AbsenceFullView />;
+  }
+
   return (
     <main className="flex-1 flex flex-col items-center p-8 relative overflow-y-auto bg-slate-50">
-      <div className="w-full max-w-5xl mt-6 px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-        {/* Absence */}
-        <AbsenceCard />
-
-        {/* Placeholder pro budoucí funkce */}
-        <div className="flex flex-col items-center justify-center space-y-4 text-slate-400 bg-white border border-slate-100 rounded-[40px] p-10 w-full aspect-square md:aspect-auto md:min-h-[380px]">
-          <Boxes className="w-16 h-16" strokeWidth={1.2} />
-          <span className="text-base">Další funkce ve vývoji</span>
-        </div>
+      <div className="w-full mt-6 px-6">
+        <ModuleRenderer />
       </div>
     </main>
   );

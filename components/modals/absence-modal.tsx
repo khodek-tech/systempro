@@ -12,6 +12,7 @@ import { AbsenceType } from '@/types';
 import { absenceTypes } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
 import { useAbsenceStore } from '@/stores/absence-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface AbsenceModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface AbsenceModalProps {
 }
 
 export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
+  const { currentUser } = useAuthStore();
   const {
     formData,
     setAbsenceType,
@@ -28,12 +30,14 @@ export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
     setTimeTo,
     setNote,
     showTimeSection,
-    submitAbsence,
+    submitAbsenceRequest,
     resetForm,
   } = useAbsenceStore();
 
   const handleSubmit = () => {
-    const result = submitAbsence();
+    if (!currentUser) return;
+
+    const result = submitAbsenceRequest(currentUser.id);
     if (result.success) {
       alert('Žádost odeslána!');
       onOpenChange(false);

@@ -16,6 +16,8 @@ interface ModulesActions {
   getModulesForRole: (roleId: string) => (ModuleDefinition & ModuleConfig)[];
   getModuleDefinition: (moduleId: string) => ModuleDefinition | undefined;
   getModuleConfig: (moduleId: string) => ModuleConfig | undefined;
+  toggleSubordinateRole: (moduleId: string, approverRoleId: string, subordinateRoleId: string) => void;
+  getSubordinatesForApprover: (moduleId: string, approverRoleId: string) => string[];
 }
 
 export const useModulesStore = create<ModulesState & ModulesActions>()(
@@ -87,6 +89,48 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
       getModuleConfig: (moduleId) => {
         return get().configs.find((c) => c.moduleId === moduleId);
       },
+
+      toggleSubordinateRole: (moduleId, approverRoleId, subordinateRoleId) => {
+        set((state) => ({
+          configs: state.configs.map((c) => {
+            if (c.moduleId !== moduleId) return c;
+
+            const mappings = c.approvalMappings || [];
+            const approverMapping = mappings.find((m) => m.approverRoleId === approverRoleId);
+
+            if (!approverMapping) {
+              return {
+                ...c,
+                approvalMappings: [
+                  ...mappings,
+                  { approverRoleId, subordinateRoleIds: [subordinateRoleId] },
+                ],
+              };
+            }
+
+            const hasSubordinate = approverMapping.subordinateRoleIds.includes(subordinateRoleId);
+            const updatedMappings = mappings.map((m) => {
+              if (m.approverRoleId !== approverRoleId) return m;
+              return {
+                ...m,
+                subordinateRoleIds: hasSubordinate
+                  ? m.subordinateRoleIds.filter((id) => id !== subordinateRoleId)
+                  : [...m.subordinateRoleIds, subordinateRoleId],
+              };
+            });
+
+            return { ...c, approvalMappings: updatedMappings };
+          }),
+        }));
+      },
+
+      getSubordinatesForApprover: (moduleId, approverRoleId) => {
+        const config = get().configs.find((c) => c.moduleId === moduleId);
+        if (!config?.approvalMappings) return [];
+
+        const mapping = config.approvalMappings.find((m) => m.approverRoleId === approverRoleId);
+        return mapping?.subordinateRoleIds || [];
+      },
     }),
     {
       name: 'systempro-modules',
@@ -112,6 +156,28 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
           state.configs = state.configs.map((cfg) => {
             if (cfg.moduleId === 'kpi-dashboard' && cfg.column === 'full') {
               return { ...cfg, column: 'top' as const };
+            }
+            return cfg;
+          });
+
+          // Migrace: přidat approvalMappings do absence-approval pokud chybí
+          state.configs = state.configs.map((cfg) => {
+            if (cfg.moduleId === 'absence-approval' && !cfg.approvalMappings) {
+              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
+                (c) => c.moduleId === 'absence-approval'
+              );
+              return {
+                ...cfg,
+                approvalMappings: defaultConfig?.approvalMappings || [],
+              };
+            }
+            return cfg;
+          });
+
+          // Migrace: přidat role-8 (Majitel) do absence-approval pokud chybí
+          state.configs = state.configs.map((cfg) => {
+            if (cfg.moduleId === 'absence-approval' && !cfg.roleIds.includes('role-8')) {
+              return { ...cfg, roleIds: [...cfg.roleIds, 'role-8'] };
             }
             return cfg;
           });
