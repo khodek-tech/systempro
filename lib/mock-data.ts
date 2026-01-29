@@ -1,17 +1,104 @@
-import { AttendanceRecord, Store, Role, User, AbsenceRequest } from '@/types';
+// Auto-generated - 2026-01-29T21:52:47.144Z
+// DO NOT EDIT MANUALLY - use admin interface to modify data
+
+import { AttendanceRecord, Store, Role, User, AbsenceRequest, StoreOpeningHours } from '@/types';
 
 // Mock stores
 export const MOCK_STORES: Store[] = [
   { id: 'store-1', name: 'Bohnice', address: '', active: true },
-  { id: 'store-2', name: 'Butovice', address: '', active: true },
-  { id: 'store-3', name: 'Brno', address: '', active: true },
+  {
+    id: 'store-2',
+    name: 'Butovice',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: true,
+      default: { open: '09:00', close: '21:00', closed: false },
+    },
+  },
+  {
+    id: 'store-3',
+    name: 'Brno',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: true,
+      default: { open: '10:00', close: '21:00', closed: false },
+    },
+  },
   { id: 'store-4', name: 'Č Most', address: '', active: true },
-  { id: 'store-5', name: 'OC Šestka', address: '', active: true },
-  { id: 'store-6', name: 'Prosek', address: '', active: true },
-  { id: 'store-7', name: 'Ústí', address: '', active: true },
-  { id: 'store-8', name: 'Chodov', address: '', active: true },
-  { id: 'store-9', name: 'Vysočany', address: '', active: true },
-  { id: 'store-10', name: 'Zličín', address: '', active: true },
+  {
+    id: 'store-5',
+    name: 'OC Šestka',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: true,
+      default: { open: '09:00', close: '20:00', closed: false },
+    },
+  },
+  {
+    id: 'store-6',
+    name: 'Prosek',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: false,
+      monday: { open: '07:00', close: '20:00', closed: false },
+      tuesday: { open: '07:00', close: '20:00', closed: false },
+      wednesday: { open: '07:00', close: '20:00', closed: false },
+      thursday: { open: '07:00', close: '20:00', closed: false },
+      friday: { open: '07:00', close: '20:00', closed: false },
+      saturday: { open: '08:30', close: '18:00', closed: false },
+      sunday: { open: '08:30', close: '18:00', closed: false },
+    },
+  },
+  {
+    id: 'store-7',
+    name: 'Ústí',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: true,
+      default: { open: '08:00', close: '20:00', closed: false },
+    },
+  },
+  {
+    id: 'store-8',
+    name: 'Chodov',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: true,
+      default: { open: '09:00', close: '21:00', closed: false },
+    },
+  },
+  {
+    id: 'store-9',
+    name: 'Vysočany',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: false,
+      monday: { open: '09:00', close: '19:00', closed: false },
+      tuesday: { open: '10:00', close: '18:00', closed: false },
+      wednesday: { open: '09:00', close: '19:00', closed: false },
+      thursday: { open: '09:00', close: '18:00', closed: false },
+      friday: { open: '09:00', close: '18:00', closed: false },
+      saturday: { open: '09:00', close: '14:00', closed: true },
+      sunday: { open: '00:00', close: '00:00', closed: true },
+    },
+  },
+  {
+    id: 'store-10',
+    name: 'Zličín',
+    address: '',
+    active: true,
+    openingHours: {
+      sameAllWeek: true,
+      default: { open: '09:00', close: '21:00', closed: false },
+    },
+  },
 ];
 
 // Mock roles (8 roles)
@@ -26,36 +113,45 @@ export const MOCK_ROLES: Role[] = [
   { id: 'role-8', name: 'Majitel', type: 'majitel', active: true },
 ];
 
-// Mock users (27 employees)
-// Synchronized with localStorage settings (systempro-users)
+// Mock users (28 employees)
 export const MOCK_USERS: User[] = [
   { id: 'user-1', username: 'pbures', fullName: 'Bureš Pavel', roleIds: ['role-3'], storeIds: [], active: true },
-  { id: 'user-2', username: 'aburianova', fullName: 'Burianová Aneta', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-2', username: 'aburianova', fullName: 'Burianová Aneta', roleIds: ['role-1'], storeIds: ['store-7'], active: true, startsWithShortWeek: false },
   { id: 'user-3', username: 'mcapek', fullName: 'Čapek Michal', roleIds: ['role-3'], storeIds: [], active: true },
   { id: 'user-4', username: 'lferova', fullName: 'Férová Lucie', roleIds: ['role-5'], storeIds: [], active: true },
   { id: 'user-5', username: 'afratricova', fullName: 'Fratričová Alžbeta', roleIds: ['role-3'], storeIds: [], active: true },
   { id: 'user-6', username: 'khodek', fullName: 'Hodek Karel', roleIds: ['role-2'], storeIds: [], active: true },
   { id: 'user-7', username: 'dhysek', fullName: 'Hýsek David', roleIds: ['role-8'], storeIds: [], active: true },
-  { id: 'user-8', username: 'ajindra', fullName: 'Jindra Aleš', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-8', username: 'ajindra', fullName: 'Jindra Aleš', roleIds: ['role-1'], storeIds: ['store-10'], active: true, startsWithShortWeek: false },
   { id: 'user-9', username: 'jkafagi', fullName: 'Kafagi Jakub', roleIds: ['role-5'], storeIds: [], active: true },
-  { id: 'user-10', username: 'zkakur', fullName: 'Kakur Zdenko', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-10', username: 'zkakur', fullName: 'Kakur Zdenko', roleIds: ['role-1'], storeIds: ['store-3'], active: true, startsWithShortWeek: false },
   { id: 'user-11', username: 'mkunik', fullName: 'Kunik Martin', roleIds: ['role-4'], storeIds: [], active: true },
-  { id: 'user-12', username: 'hkuresova', fullName: 'Kurešová Hana', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-12', username: 'hkuresova', fullName: 'Kurešová Hana', roleIds: ['role-1'], storeIds: ['store-6'], active: true, startsWithShortWeek: false },
   { id: 'user-13', username: 'jlhotak', fullName: 'Lhoták Jan', roleIds: ['role-7'], storeIds: [], active: true },
   { id: 'user-14', username: 'tlhotak', fullName: 'Lhoták Tomáš', roleIds: ['role-1', 'role-6'], storeIds: ['store-1', 'store-2', 'store-3', 'store-4', 'store-5', 'store-6', 'store-7', 'store-8', 'store-9', 'store-10'], defaultRoleId: 'role-6', defaultStoreId: 'store-1', active: true },
-  { id: 'user-15', username: 'tlink', fullName: 'Link Tomáš', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-16', username: 'kmarkova', fullName: 'Marková Kateřina', roleIds: ['role-1'], storeIds: ['store-2'], active: true },
-  { id: 'user-17', username: 'mnadionova', fullName: 'Nadionová Markéta', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-18', username: 'krabasova', fullName: 'Rabasová Kateřina', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-19', username: 'vsmizansky', fullName: 'Smižanský Vilém', roleIds: ['role-5'], storeIds: [], active: true },
-  { id: 'user-20', username: 'jsnasel', fullName: 'Snášel Jakub', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-21', username: 'osoucek', fullName: 'Souček Ondřej', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-22', username: 'tstransky', fullName: 'Stránský Tadeáš', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-23', username: 'vszkatul', fullName: 'Szkatuláková Věra', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-24', username: 'zszolga', fullName: 'Szolga Zsolt', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-25', username: 'lstepnickova', fullName: 'Štěpničková Lucie', roleIds: ['role-1'], storeIds: [], active: true },
-  { id: 'user-26', username: 'pbartunek', fullName: 'Bartůněk Petr', roleIds: ['role-1'], storeIds: ['store-2'], active: true },
-  { id: 'user-27', username: 'pkot', fullName: 'Kot Patrícia', roleIds: ['role-1'], storeIds: [], active: true },
+  { id: 'user-15', username: 'tlink', fullName: 'Link Tomáš', roleIds: ['role-1'], storeIds: ['store-5'], active: true, startsWithShortWeek: false },
+  { id: 'user-16', username: 'kmarkova', fullName: 'Marková Kateřina', roleIds: ['role-1'], storeIds: ['store-2'], active: true, startsWithShortWeek: true },
+  { id: 'user-17', username: 'mnadionova', fullName: 'Nadionová Markéta', roleIds: ['role-1'], storeIds: ['store-5'], active: true, startsWithShortWeek: false },
+  { id: 'user-18', username: 'krabasova', fullName: 'Rabasová Kateřina', roleIds: ['role-1'], storeIds: ['store-7'], active: true, startsWithShortWeek: false },
+  { id: 'user-19', username: 'vsmizansky', fullName: 'Smižanský Vilém', roleIds: ['role-5'], storeIds: [], active: true, workingHours: {
+      sameAllWeek: false,
+      monday: { open: '08:00', close: '16:30', closed: false },
+      tuesday: { open: '08:00', close: '16:30', closed: false },
+      wednesday: { open: '08:00', close: '16:30', closed: false },
+      thursday: { open: '08:00', close: '16:30', closed: false },
+      friday: { open: '08:00', close: '16:30', closed: false },
+      saturday: { open: '08:00', close: '16:30', closed: true },
+      sunday: { open: '08:00', close: '16:30', closed: true },
+    } },
+  { id: 'user-20', username: 'jsnasel', fullName: 'Snášel Jakub', roleIds: ['role-3'], storeIds: [], active: true },
+  { id: 'user-21', username: 'osoucek', fullName: 'Souček Ondřej', roleIds: ['role-1'], storeIds: ['store-8'], active: true, startsWithShortWeek: false },
+  { id: 'user-22', username: 'tstransky', fullName: 'Stránský Tadeáš', roleIds: ['role-1'], storeIds: ['store-3'], active: true, startsWithShortWeek: false },
+  { id: 'user-23', username: 'vszkatul', fullName: 'Szkatuláková Věra', roleIds: ['role-1'], storeIds: ['store-6'], active: true, startsWithShortWeek: false },
+  { id: 'user-24', username: 'zszolga', fullName: 'Szolga Zsolt', roleIds: ['role-1'], storeIds: ['store-9'], active: true, startsWithShortWeek: false },
+  { id: 'user-25', username: 'lstepnickova', fullName: 'Štěpničková Lucie', roleIds: ['role-1'], storeIds: ['store-10'], active: true, startsWithShortWeek: false },
+  { id: 'user-26', username: 'pbartunek', fullName: 'Bartůněk Petr', roleIds: ['role-1'], storeIds: ['store-2'], active: true, startsWithShortWeek: true },
+  { id: 'user-27', username: 'pkot', fullName: 'Kot Patrícia', roleIds: ['role-1'], storeIds: ['store-1'], active: true, startsWithShortWeek: false },
+  { id: 'user-4fcc693f-4f67-4a30-8bd8-9c50d140bd6c', username: 'mzizka', fullName: 'Žižka Michael', roleIds: ['role-1'], storeIds: ['store-8'], active: true, startsWithShortWeek: false },
 ];
 
 // Mock attendance data (updated structure)
@@ -158,13 +254,13 @@ export const adminStores = [
   { value: 'bohnice', label: 'BOHNICE' },
   { value: 'butovice', label: 'BUTOVICE' },
   { value: 'brno', label: 'BRNO' },
-  { value: 'c most', label: 'Č MOST' },
-  { value: 'oc sestka', label: 'OC ŠESTKA' },
+  { value: 'č most', label: 'Č MOST' },
+  { value: 'oc šestka', label: 'OC ŠESTKA' },
   { value: 'prosek', label: 'PROSEK' },
-  { value: 'usti', label: 'ÚSTÍ' },
+  { value: 'ústí', label: 'ÚSTÍ' },
   { value: 'chodov', label: 'CHODOV' },
-  { value: 'vysocany', label: 'VYSOČANY' },
-  { value: 'zlicin', label: 'ZLIČÍN' },
+  { value: 'vysočany', label: 'VYSOČANY' },
+  { value: 'zličín', label: 'ZLIČÍN' },
 ];
 
 export const months = [
@@ -205,10 +301,7 @@ export const absenceTypes = [
 ];
 
 // Mock absence requests
-// Mix stavů: pending, approved, rejected
-// Mix typů: Dovolená, Nemoc, Lékař (s časy), Neplacené volno
 export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
-  // Skladník (user-7, Hýsek David) - schvaluje vedoucí skladu (user-3)
   {
     id: 'abs-req-1',
     userId: 'user-7',
@@ -247,8 +340,6 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     approvedAt: '2025-01-11T10:00:00Z',
     seenByUser: true,
   },
-
-  // Obsluha e-shopu (user-8, Jindra Aleš) - schvaluje vedoucí skladu (user-3)
   {
     id: 'abs-req-4',
     userId: 'user-8',
@@ -284,8 +375,6 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     status: 'pending',
     createdAt: '2025-01-27T16:00:00Z',
   },
-
-  // Obchodník (user-9, Kafagi Jakub) - schvaluje vedoucí velkoobchodu (user-4)
   {
     id: 'abs-req-7',
     userId: 'user-9',
@@ -324,9 +413,6 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     approvedAt: '2025-01-06T11:00:00Z',
     seenByUser: true,
   },
-
-  // Prodavači - schvaluje vedoucí velkoobchodu (user-4)
-  // Prodavač (user-2, Burianová Aneta)
   {
     id: 'abs-req-10',
     userId: 'user-2',
@@ -359,11 +445,12 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     timeFrom: '10:00',
     timeTo: '12:00',
     note: 'Gynekologická prohlídka',
-    status: 'pending',
+    status: 'approved',
     createdAt: '2025-01-28T15:00:00Z',
+    approvedBy: 'user-13',
+    approvedAt: '2026-01-29T18:22:17.408Z',
+    seenByUser: false,
   },
-
-  // Prodavač (user-10, Kakur Zdenko)
   {
     id: 'abs-req-13',
     userId: 'user-10',
@@ -402,8 +489,6 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     approvedAt: '2025-01-04T09:00:00Z',
     seenByUser: true,
   },
-
-  // Vedoucí skladu (user-3, Čapek Michal) - schvaluje administrator (user-1, user-6)
   {
     id: 'abs-req-16',
     userId: 'user-3',
@@ -442,8 +527,6 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     approvedAt: '2025-01-06T08:30:00Z',
     seenByUser: true,
   },
-
-  // Vedoucí velkoobchodu (user-4, Férová Lucie) - schvaluje administrator (user-1, user-6)
   {
     id: 'abs-req-19',
     userId: 'user-4',
