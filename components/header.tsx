@@ -51,6 +51,9 @@ export function Header() {
         const stores = getAvailableStores();
         if (stores.length > 0) {
           setWorkplace('store', stores[0].id, stores[0].name, true);
+        } else {
+          // Prodavač bez prodejny - nastavit výchozí stav
+          setWorkplace('store', '', 'Bez prodejny', false);
         }
       } else {
         // For other roles, set workplace to role name (no kasa required)

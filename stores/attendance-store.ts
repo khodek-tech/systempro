@@ -46,15 +46,11 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
   confirmKasa: (confirmed) => set({ kasaConfirmed: confirmed }),
 
   setWorkplace: (type, id, name, requiresKasa) => {
-    const { isInWork } = get();
-    // Only allow workplace change when not in work
-    if (!isInWork) {
-      set({
-        workplaceType: type,
-        workplaceId: id,
-        workplaceName: name,
-        requiresKasa,
-      });
-    }
+    set({
+      workplaceType: type,
+      workplaceId: id,
+      workplaceName: name,
+      requiresKasa,
+    });
   },
 }));
