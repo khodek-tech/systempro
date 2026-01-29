@@ -12,13 +12,10 @@ const getRoles = () => useRolesStore.getState().roles;
 const getStores = () => useStoresStore.getState().stores;
 
 interface AuthState {
-  // Store only IDs, lookup actual data dynamically
-  currentUserId: string | null;
+  currentUser: User | null;
   activeRoleId: string | null;
   activeStoreId: string | null;
   _hydrated: boolean;
-  // Computed getter for backwards compatibility
-  currentUser: User | null;
 }
 
 interface AuthActions {
@@ -41,18 +38,11 @@ interface AuthActions {
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set, get) => ({
-  // Initial state - store only IDs, default to null
-  currentUserId: null,
+  // Initial state
+  currentUser: null,
   activeRoleId: null,
   activeStoreId: null,
   _hydrated: false,
-
-  // Computed getter - always lookup fresh user data
-  get currentUser() {
-    const { currentUserId } = get();
-    if (!currentUserId) return null;
-    return getUsers().find((u) => u.id === currentUserId) ?? null;
-  },
 
   // Actions
   setCurrentUser: (user) => {
@@ -62,13 +52,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       const defaultStoreId = user.defaultStoreId ?? user.storeIds[0] ?? null;
 
       set({
-        currentUserId: user.id,
+        currentUser: user,
         activeRoleId: defaultRoleId,
         activeStoreId: defaultStoreId,
       });
     } else {
       set({
-        currentUserId: null,
+        currentUser: null,
         activeRoleId: null,
         activeStoreId: null,
       });
@@ -120,7 +110,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
 
     set({
-      currentUserId: user.id,
+      currentUser: user,
       activeRoleId: defaultRoleId,
       activeStoreId: storeId,
     });
@@ -188,7 +178,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     {
       name: STORAGE_KEYS.AUTH,
       partialize: (state) => ({
-        currentUserId: state.currentUserId,
+        currentUser: state.currentUser,
         activeRoleId: state.activeRoleId,
         activeStoreId: state.activeStoreId,
       }),
@@ -197,11 +187,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           state._hydrated = true;
 
           // If no user is set, default to first active user
-          if (!state.currentUserId) {
+          if (!state.currentUser) {
             const users = getUsers();
             const firstActiveUser = users.find((u) => u.active);
             if (firstActiveUser) {
-              state.currentUserId = firstActiveUser.id;
+              state.currentUser = firstActiveUser;
               state.activeRoleId = firstActiveUser.defaultRoleId ?? firstActiveUser.roleIds[0] ?? null;
               state.activeStoreId = firstActiveUser.defaultStoreId ?? firstActiveUser.storeIds[0] ?? null;
             }
