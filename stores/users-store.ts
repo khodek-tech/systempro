@@ -2,10 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { MOCK_USERS } from '@/lib/mock-data';
-import { useRolesStore } from './roles-store';
-
-// Helper to get roles from roles-store
-const getRoles = () => useRolesStore.getState().roles;
+import { getRoles } from './store-helpers';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 interface UsersState {
   users: User[];
@@ -59,7 +57,7 @@ export const useUsersStore = create<UsersState & UsersActions>()(
 
     const newUser: User = {
       ...sanitizedData,
-      id: `user-${Date.now()}`,
+      id: `user-${crypto.randomUUID()}`,
     } as User;
 
     set((state) => ({
@@ -177,7 +175,7 @@ export const useUsersStore = create<UsersState & UsersActions>()(
   },
     }),
     {
-      name: 'systempro-users',
+      name: STORAGE_KEYS.USERS,
       partialize: (state) => ({
         users: state.users,
       }),

@@ -115,7 +115,7 @@ export const mockData: AttendanceRecord[] = [
     partner: 0,
     flows: '0',
     saleNote: 'Běžný provoz',
-    collected: 'Hodek Karel',
+    collected: 'user-6',
   },
   {
     date: '25. 01. 2024',

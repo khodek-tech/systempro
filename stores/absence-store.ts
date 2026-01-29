@@ -2,49 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AbsenceType, AbsenceFormData, AbsenceRequest, AbsenceRequestStatus, RoleType } from '@/types';
 import { MOCK_ABSENCE_REQUESTS } from '@/lib/mock-data';
-import { useUsersStore } from './users-store';
-import { useRolesStore } from './roles-store';
-import { useModulesStore } from './modules-store';
-
-// Helpers to get data from other stores
-const getUsers = () => useUsersStore.getState().users;
-const getRoles = () => useRolesStore.getState().roles;
-const getModuleConfig = () => useModulesStore.getState().getModuleConfig('absence-approval');
-
-// Dynamická hierarchie schvalování z konfigurace modulů
-function getApprovalHierarchy(): Record<RoleType, RoleType[]> {
-  const config = getModuleConfig();
-  const roles = getRoles();
-  const hierarchy: Record<RoleType, RoleType[]> = {
-    prodavac: [],
-    skladnik: [],
-    administrator: [],
-    'vedouci-sklad': [],
-    'obsluha-eshop': [],
-    obchodnik: [],
-    'vedouci-velkoobchod': [],
-    majitel: [],
-  };
-
-  if (!config?.approvalMappings) return hierarchy;
-
-  for (const mapping of config.approvalMappings) {
-    const approverRole = roles.find((r) => r.id === mapping.approverRoleId);
-    if (!approverRole) continue;
-
-    const subordinateTypes: RoleType[] = [];
-    for (const subRoleId of mapping.subordinateRoleIds) {
-      const subRole = roles.find((r) => r.id === subRoleId);
-      if (subRole) {
-        subordinateTypes.push(subRole.type);
-      }
-    }
-
-    hierarchy[approverRole.type] = subordinateTypes;
-  }
-
-  return hierarchy;
-}
+import {
+  getUserPrimaryRoleType,
+  canApproveUser,
+  validateApproverPermission,
+} from '@/lib/absence-helpers';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 interface AbsenceState {
   formData: AbsenceFormData;
@@ -118,22 +81,6 @@ const initialFormData: AbsenceFormData = {
   note: '',
 };
 
-// Helper to get user's primary role type
-function getUserPrimaryRoleType(userId: string): RoleType | null {
-  const user = getUsers().find((u) => u.id === userId);
-  if (!user || user.roleIds.length === 0) return null;
-
-  const role = getRoles().find((r) => r.id === user.roleIds[0]);
-  return role?.type || null;
-}
-
-// Helper to check if approver can approve for a user
-function canApproveUser(approverRoleType: RoleType, userRoleType: RoleType): boolean {
-  const hierarchy = getApprovalHierarchy();
-  const subordinates = hierarchy[approverRoleType] || [];
-  return subordinates.includes(userRoleType);
-}
-
 export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
   persist(
     (set, get) => ({
@@ -191,6 +138,11 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
           return { success: false, error: 'Vyplňte data od a do!' };
         }
 
+        // Validate dateFrom <= dateTo
+        if (new Date(formData.dateFrom) > new Date(formData.dateTo)) {
+          return { success: false, error: 'Datum od nemůže být po datu do!' };
+        }
+
         // Reset form after successful submission
         set({ formData: { ...initialFormData } });
 
@@ -207,12 +159,17 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
           return { success: false, error: 'Vyplňte data od a do!' };
         }
 
+        // Validate dateFrom <= dateTo
+        if (new Date(formData.dateFrom) > new Date(formData.dateTo)) {
+          return { success: false, error: 'Datum od nemůže být po datu do!' };
+        }
+
         if (formData.type === 'Lékař' && (!formData.timeFrom || !formData.timeTo)) {
           return { success: false, error: 'Vyplňte čas od a do!' };
         }
 
         const newRequest: AbsenceRequest = {
-          id: `abs-req-${Date.now()}`,
+          id: `abs-req-${crypto.randomUUID()}`,
           userId,
           type: formData.type,
           dateFrom: formData.dateFrom,
@@ -244,6 +201,12 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
           return { success: false, error: 'Žádost již byla vyřízena' };
         }
 
+        // Validate approver has permission
+        const permissionCheck = validateApproverPermission(approverId, request.userId);
+        if (!permissionCheck.valid) {
+          return { success: false, error: permissionCheck.error || 'Nemáte oprávnění schvalovat tuto žádost' };
+        }
+
         set((state) => ({
           absenceRequests: state.absenceRequests.map((r) =>
             r.id === requestId
@@ -271,6 +234,12 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
 
         if (request.status !== 'pending') {
           return { success: false, error: 'Žádost již byla vyřízena' };
+        }
+
+        // Validate approver has permission
+        const permissionCheck = validateApproverPermission(approverId, request.userId);
+        if (!permissionCheck.valid) {
+          return { success: false, error: permissionCheck.error || 'Nemáte oprávnění zamítnout tuto žádost' };
         }
 
         set((state) => ({
@@ -413,7 +382,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()(
       setApprovalYearFilter: (year: string) => set({ approvalYearFilter: year }),
     }),
     {
-      name: 'systempro-absence',
+      name: STORAGE_KEYS.ABSENCE,
       partialize: (state) => ({
         absenceRequests: state.absenceRequests,
       }),

@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Role, RoleType } from '@/types';
 import { MOCK_ROLES } from '@/lib/mock-data';
-import { useUsersStore } from './users-store';
+import { getUsersWithRole } from './store-helpers';
+import { PROTECTED_ROLE_TYPES, STORAGE_KEYS } from '@/lib/constants';
 
 interface RolesState {
   roles: Role[];
@@ -23,9 +24,6 @@ interface RolesActions {
   getRoleByType: (type: RoleType) => Role | undefined;
 }
 
-// Administrator role cannot be deactivated
-const PROTECTED_ROLE_TYPES: RoleType[] = ['administrator'];
-
 export const useRolesStore = create<RolesState & RolesActions>()(
   persist(
     (set, get) => ({
@@ -36,7 +34,7 @@ export const useRolesStore = create<RolesState & RolesActions>()(
   addRole: (roleData) => {
     const newRole: Role = {
       ...roleData,
-      id: `role-${Date.now()}`,
+      id: `role-${crypto.randomUUID()}`,
     };
     set((state) => ({
       roles: [...state.roles, newRole],
@@ -93,12 +91,11 @@ export const useRolesStore = create<RolesState & RolesActions>()(
     }
 
     // Zkontrolovat, zda někdo roli používá
-    const users = useUsersStore.getState().users;
-    const usersWithRole = users.filter((u) => u.roleIds.includes(id));
-    if (usersWithRole.length > 0) {
+    const usersWithThisRole = getUsersWithRole(id);
+    if (usersWithThisRole.length > 0) {
       return {
         canDelete: false,
-        reason: `Roli používá ${usersWithRole.length} zaměstnanec(ů)`,
+        reason: `Roli používá ${usersWithThisRole.length} zaměstnanec(ů)`,
       };
     }
     return { canDelete: true };
@@ -116,6 +113,6 @@ export const useRolesStore = create<RolesState & RolesActions>()(
     return get().roles.find((r) => r.type === type);
   },
     }),
-    { name: 'systempro-roles' }
+    { name: STORAGE_KEYS.ROLES }
   )
 );

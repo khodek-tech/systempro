@@ -4,6 +4,7 @@ import { User, Role, Store, RoleType } from '@/types';
 import { useUsersStore } from './users-store';
 import { useRolesStore } from './roles-store';
 import { useStoresStore } from './stores-store';
+import { ROLE_IDS, ROLES_WITHOUT_ABSENCE, STORAGE_KEYS } from '@/lib/constants';
 
 // Helpers to get data from other stores
 const getUsers = () => useUsersStore.getState().users;
@@ -11,10 +12,13 @@ const getRoles = () => useRolesStore.getState().roles;
 const getStores = () => useStoresStore.getState().stores;
 
 interface AuthState {
-  currentUser: User | null;
+  // Store only IDs, lookup actual data dynamically
+  currentUserId: string | null;
   activeRoleId: string | null;
   activeStoreId: string | null;
   _hydrated: boolean;
+  // Computed getter for backwards compatibility
+  currentUser: User | null;
 }
 
 interface AuthActions {
@@ -34,17 +38,21 @@ interface AuthActions {
   canReportAbsence: () => boolean;
 }
 
-// Roles that cannot report absence
-const ROLES_WITHOUT_ABSENCE: RoleType[] = ['administrator', 'majitel'];
-
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set, get) => ({
-  // Initial state - default to user-1 (admin) for development
-  currentUser: getUsers()[0] ?? null,
-  activeRoleId: getUsers()[0]?.roleIds[0] ?? null,
+  // Initial state - store only IDs, default to null
+  currentUserId: null,
+  activeRoleId: null,
   activeStoreId: null,
   _hydrated: false,
+
+  // Computed getter - always lookup fresh user data
+  get currentUser() {
+    const { currentUserId } = get();
+    if (!currentUserId) return null;
+    return getUsers().find((u) => u.id === currentUserId) ?? null;
+  },
 
   // Actions
   setCurrentUser: (user) => {
@@ -54,13 +62,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       const defaultStoreId = user.defaultStoreId ?? user.storeIds[0] ?? null;
 
       set({
-        currentUser: user,
+        currentUserId: user.id,
         activeRoleId: defaultRoleId,
         activeStoreId: defaultStoreId,
       });
     } else {
       set({
-        currentUser: null,
+        currentUserId: null,
         activeRoleId: null,
         activeStoreId: null,
       });
@@ -72,7 +80,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     if (!currentUser) return;
 
     // Check if the user has this role OR is administrator (can access all)
-    const isAdmin = currentUser.roleIds.includes('role-2');
+    const isAdmin = currentUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
     const hasRole = currentUser.roleIds.includes(roleId);
 
     if (isAdmin || hasRole) {
@@ -112,7 +120,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }
 
     set({
-      currentUser: user,
+      currentUserId: user.id,
       activeRoleId: defaultRoleId,
       activeStoreId: storeId,
     });
@@ -129,8 +137,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const { currentUser } = get();
     if (!currentUser) return [];
 
-    // Administrator (role-2) can access ALL roles
-    const isAdmin = currentUser.roleIds.includes('role-2');
+    // Administrator can access ALL roles
+    const isAdmin = currentUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
     if (isAdmin) {
       return getRoles().filter((r) => r.active);
     }
@@ -178,15 +186,26 @@ export const useAuthStore = create<AuthState & AuthActions>()(
   },
     }),
     {
-      name: 'systempro-auth',
+      name: STORAGE_KEYS.AUTH,
       partialize: (state) => ({
-        currentUser: state.currentUser,
+        currentUserId: state.currentUserId,
         activeRoleId: state.activeRoleId,
         activeStoreId: state.activeStoreId,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state._hydrated = true;
+
+          // If no user is set, default to first active user
+          if (!state.currentUserId) {
+            const users = getUsers();
+            const firstActiveUser = users.find((u) => u.active);
+            if (firstActiveUser) {
+              state.currentUserId = firstActiveUser.id;
+              state.activeRoleId = firstActiveUser.defaultRoleId ?? firstActiveUser.roleIds[0] ?? null;
+              state.activeStoreId = firstActiveUser.defaultStoreId ?? firstActiveUser.storeIds[0] ?? null;
+            }
+          }
         }
       },
     }

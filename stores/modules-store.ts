@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ModuleDefinition, ModuleConfig } from '@/types';
 import { DEFAULT_MODULE_DEFINITIONS, DEFAULT_MODULE_CONFIGS } from '@/config/default-modules';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 interface ModulesState {
   definitions: ModuleDefinition[];
@@ -133,7 +134,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
       },
     }),
     {
-      name: 'systempro-modules',
+      name: STORAGE_KEYS.MODULES,
       onRehydrateStorage: () => (state) => {
         if (state) {
           // Synchronizace nových definic modulů

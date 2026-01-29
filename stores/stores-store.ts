@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Store } from '@/types';
 import { MOCK_STORES } from '@/lib/mock-data';
 import { useUsersStore } from './users-store';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 interface StoresState {
   stores: Store[];
@@ -31,7 +32,7 @@ export const useStoresStore = create<StoresState & StoresActions>()(
   addStore: (storeData) => {
     const newStore: Store = {
       ...storeData,
-      id: `store-${Date.now()}`,
+      id: `store-${crypto.randomUUID()}`,
     };
     set((state) => ({
       stores: [...state.stores, newStore],
@@ -84,6 +85,6 @@ export const useStoresStore = create<StoresState & StoresActions>()(
     return { canDelete: true };
   },
     }),
-    { name: 'systempro-stores' }
+    { name: STORAGE_KEYS.STORES }
   )
 );

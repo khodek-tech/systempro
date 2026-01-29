@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/stores/auth-store';
 import { useModulesStore } from '@/stores/modules-store';
 import { getModuleComponent } from '@/modules/registry';
+import { ModuleErrorBoundary } from './ModuleErrorBoundary';
 
 interface ModuleRendererProps {
   isWarehouse?: boolean;
@@ -43,9 +44,9 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
         const Component = getModuleComponent(module.component);
         if (!Component) return null;
         return (
-          <div key={module.id}>
+          <ModuleErrorBoundary key={module.id} moduleName={module.name}>
             <Component />
-          </div>
+          </ModuleErrorBoundary>
         );
       })}
 
@@ -54,9 +55,9 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
         const Component = getModuleComponent(module.component);
         if (!Component) return null;
         return (
-          <div key={module.id}>
+          <ModuleErrorBoundary key={module.id} moduleName={module.name}>
             <Component />
-          </div>
+          </ModuleErrorBoundary>
         );
       })}
 
@@ -75,9 +76,9 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
               const Component = getModuleComponent(module.component);
               if (!Component) return null;
               return (
-                <div key={module.id}>
+                <ModuleErrorBoundary key={module.id} moduleName={module.name}>
                   <Component />
-                </div>
+                </ModuleErrorBoundary>
               );
             })
           ) : (
@@ -86,9 +87,9 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
                 const Component = getModuleComponent(module.component);
                 if (!Component) return null;
                 return (
-                  <div key={module.id}>
+                  <ModuleErrorBoundary key={module.id} moduleName={module.name}>
                     <Component />
-                  </div>
+                  </ModuleErrorBoundary>
                 );
               })}
             </div>
@@ -101,9 +102,9 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
                 const Component = getModuleComponent(module.component);
                 if (!Component) return null;
                 return (
-                  <div key={module.id}>
+                  <ModuleErrorBoundary key={module.id} moduleName={module.name}>
                     <Component />
-                  </div>
+                  </ModuleErrorBoundary>
                 );
               })}
             </div>
