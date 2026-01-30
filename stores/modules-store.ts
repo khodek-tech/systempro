@@ -255,6 +255,20 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
             return cfg;
           });
 
+          // Migrace: přidat viewMappings do tasks pokud chybí
+          state.configs = state.configs.map((cfg) => {
+            if (cfg.moduleId === 'tasks' && !cfg.viewMappings) {
+              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
+                (c) => c.moduleId === 'tasks'
+              );
+              return {
+                ...cfg,
+                viewMappings: defaultConfig?.viewMappings || [],
+              };
+            }
+            return cfg;
+          });
+
         }
       },
     }

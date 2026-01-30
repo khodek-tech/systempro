@@ -33,7 +33,7 @@ export function ModulesSettings() {
   const activeRoles = roles.filter((r) => r.active);
 
   const isApprovalModule = (moduleId: string) => moduleId === 'absence-approval';
-  const isViewModule = (moduleId: string) => moduleId === 'shifts' || moduleId === 'presence';
+  const isViewModule = (moduleId: string) => moduleId === 'shifts' || moduleId === 'presence' || moduleId === 'tasks';
 
   const handleRoleClick = (moduleId: string, roleId: string) => {
     // Vždy toggleovat přístup k modulu
@@ -275,7 +275,7 @@ export function ModulesSettings() {
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-semibold text-slate-700">
-                              {expandedViewRole.name} vidí směny od:
+                              {expandedViewRole.name} vidí {module.id === 'tasks' ? 'úkoly' : module.id === 'presence' ? 'přítomnost' : 'směny'} od:
                             </span>
                             <button
                               onClick={() => setExpandedViewer(null)}

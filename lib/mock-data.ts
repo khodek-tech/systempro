@@ -1,7 +1,7 @@
 // Auto-generated - 2026-01-29T21:52:47.144Z
 // DO NOT EDIT MANUALLY - use admin interface to modify data
 
-import { AttendanceRecord, Store, Role, User, AbsenceRequest } from '@/types';
+import { AttendanceRecord, Store, Role, User, AbsenceRequest, Task } from '@/types';
 
 // Mock stores
 export const MOCK_STORES: Store[] = [
@@ -564,5 +564,190 @@ export const MOCK_ABSENCE_REQUESTS: AbsenceRequest[] = [
     approvedBy: 'user-1',
     approvedAt: '2024-12-30T09:00:00Z',
     seenByUser: true,
+  },
+];
+
+// Mock tasks
+export const MOCK_TASKS: Task[] = [
+  {
+    id: 'task-1',
+    title: 'Inventura skladu',
+    description: 'Provést kompletní inventuru skladu a zaznamenat všechny nesrovnalosti. Zkontrolovat stav zásob a porovnat s evidencí.',
+    priority: 'high',
+    status: 'new',
+    createdBy: 'user-11', // Kunik Martin (Vedoucí skladu)
+    createdAt: '2026-01-28T08:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-1', // Bureš Pavel (Skladník)
+    deadline: '2026-01-31T18:00:00Z',
+    repeat: 'none',
+    seenByAssignee: false,
+    seenByCreator: true,
+    comments: [],
+  },
+  {
+    id: 'task-2',
+    title: 'Doplnit zboží na prodejnu',
+    description: 'Doplnit zboží z centrálního skladu na prodejnu Bohnice. Seznam položek je v příloze.',
+    priority: 'medium',
+    status: 'in-progress',
+    createdBy: 'user-13', // Lhoták Jan (Vedoucí velkoobchodu)
+    createdAt: '2026-01-27T10:00:00Z',
+    assigneeType: 'store',
+    assigneeId: 'store-1', // Bohnice
+    deadline: '2026-01-30T12:00:00Z',
+    repeat: 'none',
+    seenByAssignee: true,
+    seenByCreator: true,
+    comments: [
+      {
+        id: 'comment-1',
+        taskId: 'task-2',
+        userId: 'user-27', // Kot Patrícia
+        text: 'Začínám s doplňováním, některé položky chybí ve skladu.',
+        attachments: [],
+        createdAt: '2026-01-28T09:00:00Z',
+      },
+    ],
+  },
+  {
+    id: 'task-3',
+    title: 'Aktualizace cenovek',
+    description: 'Aktualizovat cenovky u všech produktů podle nového ceníku platného od 1.2.2026.',
+    priority: 'high',
+    status: 'pending-approval',
+    createdBy: 'user-13', // Lhoták Jan (Vedoucí velkoobchodu)
+    createdAt: '2026-01-25T14:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-14', // Lhoták Tomáš (Obchodník)
+    deadline: '2026-01-31T23:59:00Z',
+    repeat: 'none',
+    completedBy: 'user-14',
+    completedAt: '2026-01-29T16:00:00Z',
+    seenByAssignee: true,
+    seenByCreator: false,
+    comments: [
+      {
+        id: 'comment-2',
+        taskId: 'task-3',
+        userId: 'user-14',
+        text: 'Všechny cenovky aktualizovány, odesílám ke schválení.',
+        attachments: [],
+        createdAt: '2026-01-29T16:00:00Z',
+      },
+    ],
+  },
+  {
+    id: 'task-4',
+    title: 'Kontrola expirace zboží',
+    description: 'Provést kontrolu data expirace u všech potravinových produktů a odstranit prošlé zboží.',
+    priority: 'medium',
+    status: 'returned',
+    createdBy: 'user-11', // Kunik Martin (Vedoucí skladu)
+    createdAt: '2026-01-20T09:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-3', // Čapek Michal (Skladník)
+    deadline: '2026-01-29T17:00:00Z',
+    repeat: 'weekly',
+    returnedAt: '2026-01-28T11:00:00Z',
+    returnReason: 'Chybí seznam odstraněných položek a jejich hodnota.',
+    seenByAssignee: false,
+    seenByCreator: true,
+    comments: [
+      {
+        id: 'comment-3',
+        taskId: 'task-4',
+        userId: 'user-3',
+        text: 'Kontrola dokončena, prošlé zboží odstraněno.',
+        attachments: [],
+        createdAt: '2026-01-27T15:00:00Z',
+      },
+      {
+        id: 'comment-4',
+        taskId: 'task-4',
+        userId: 'user-11',
+        text: 'Prosím doplňte seznam odstraněných položek s jejich hodnotou pro účetnictví.',
+        attachments: [],
+        createdAt: '2026-01-28T11:00:00Z',
+      },
+    ],
+  },
+  {
+    id: 'task-5',
+    title: 'Školení nového zaměstnance',
+    description: 'Zaškolit nového zaměstnance na pokladní systém a základní procesy prodejny.',
+    priority: 'low',
+    status: 'approved',
+    createdBy: 'user-13', // Lhoták Jan (Vedoucí velkoobchodu)
+    createdAt: '2026-01-15T08:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-16', // Marková Kateřina (Prodavač)
+    deadline: '2026-01-20T18:00:00Z',
+    repeat: 'none',
+    completedBy: 'user-16',
+    completedAt: '2026-01-19T17:00:00Z',
+    approvedAt: '2026-01-20T09:00:00Z',
+    seenByAssignee: true,
+    seenByCreator: true,
+    comments: [],
+  },
+  {
+    id: 'task-6',
+    title: 'Úklid skladu',
+    description: 'Provést důkladný úklid skladových prostor včetně reorganizace regálů.',
+    priority: 'low',
+    status: 'new',
+    createdBy: 'user-11', // Kunik Martin (Vedoucí skladu)
+    createdAt: '2026-01-29T07:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-5', // Fratričová Alžbeta (Skladník)
+    deadline: '2026-02-05T18:00:00Z',
+    repeat: 'monthly',
+    seenByAssignee: false,
+    seenByCreator: true,
+    comments: [],
+  },
+  {
+    id: 'task-7',
+    title: 'Příprava podkladů pro audit',
+    description: 'Připravit veškeré podklady pro plánovaný interní audit - faktury, dodací listy, inventurní seznamy.',
+    priority: 'high',
+    status: 'in-progress',
+    createdBy: 'user-6', // Hodek Karel (Administrátor)
+    createdAt: '2026-01-26T10:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-4', // Férová Lucie (Obsluha e-shopu)
+    deadline: '2026-02-03T12:00:00Z',
+    repeat: 'none',
+    seenByAssignee: true,
+    seenByCreator: true,
+    comments: [
+      {
+        id: 'comment-5',
+        taskId: 'task-7',
+        userId: 'user-4',
+        text: 'Faktury za leden připraveny, pracuji na dodacích listech.',
+        attachments: [],
+        createdAt: '2026-01-29T14:00:00Z',
+      },
+    ],
+  },
+  {
+    id: 'task-8',
+    title: 'Aktualizace kontaktů dodavatelů',
+    description: 'Ověřit a aktualizovat kontaktní údaje všech dodavatelů v systému.',
+    priority: 'medium',
+    status: 'pending-approval',
+    createdBy: 'user-11', // Kunik Martin (Vedoucí skladu)
+    createdAt: '2026-01-22T11:00:00Z',
+    assigneeType: 'employee',
+    assigneeId: 'user-9', // Kafagi Jakub (Obsluha e-shopu)
+    deadline: '2026-01-30T17:00:00Z',
+    repeat: 'none',
+    completedBy: 'user-9',
+    completedAt: '2026-01-29T10:00:00Z',
+    seenByAssignee: true,
+    seenByCreator: false,
+    comments: [],
   },
 ];

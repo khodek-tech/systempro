@@ -90,4 +90,5 @@ export const STORAGE_KEYS = {
   MODULES: 'systempro-modules',
   ABSENCE: 'systempro-absence',
   SHIFTS: 'systempro-shifts',
+  TASKS: 'systempro-tasks',
 } as const;

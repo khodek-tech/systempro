@@ -10,9 +10,11 @@ import { AbsenceRequests } from '@/components/admin-dashboard/absence-requests';
 import { AdminSettingsView } from '@/components/admin-dashboard/settings/AdminSettingsView';
 import { ModuleRenderer } from '@/components/ModuleRenderer';
 import { ApprovalFullView } from '@/components/views/approval-full-view';
+import { TasksFullView } from '@/components/views/tasks-full-view';
 import { adminStores, months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
 import { useAbsenceStore } from '@/stores/absence-store';
+import { useTasksStore } from '@/stores/tasks-store';
 
 export function AdminView() {
   const {
@@ -29,10 +31,16 @@ export function AdminView() {
     getVisibleStores,
   } = useAdminStore();
   const { approvalViewMode } = useAbsenceStore();
+  const { tasksViewMode } = useTasksStore();
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
   const visibleStores = getVisibleStores();
+
+  // Fullscreen tasks view nahrazuje celý obsah
+  if (tasksViewMode === 'view') {
+    return <TasksFullView />;
+  }
 
   // Fullscreen approval view nahrazuje celý obsah
   if (approvalViewMode === 'view') {

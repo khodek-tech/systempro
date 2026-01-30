@@ -134,10 +134,16 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
   },
   {
     moduleId: 'tasks',
-    roleIds: ['role-1', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'],
+    roleIds: ['role-1', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7', 'role-2', 'role-8'],
     order: 5,
     column: 'left',
     enabled: true,
+    viewMappings: [
+      { viewerRoleId: 'role-4', visibleRoleIds: ['role-3', 'role-5'] },
+      { viewerRoleId: 'role-7', visibleRoleIds: ['role-1', 'role-6'] },
+      { viewerRoleId: 'role-2', visibleRoleIds: ['role-1', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'] },
+      { viewerRoleId: 'role-8', visibleRoleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'] },
+    ],
   },
   {
     moduleId: 'kpi-dashboard',

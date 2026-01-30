@@ -3,5 +3,5 @@
 import { RoleView } from './RoleView';
 
 export function VedouciVelkoobchodView() {
-  return <RoleView showAbsenceFullView showApprovalFullView />;
+  return <RoleView showAbsenceFullView showApprovalFullView showTasksFullView />;
 }

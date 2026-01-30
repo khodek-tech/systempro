@@ -3,5 +3,5 @@
 import { RoleView } from './RoleView';
 
 export function SkladnikView() {
-  return <RoleView showAbsenceFullView />;
+  return <RoleView showAbsenceFullView showTasksFullView />;
 }

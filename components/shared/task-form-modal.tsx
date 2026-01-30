@@ -1,0 +1,307 @@
+'use client';
+
+import { useState } from 'react';
+import { X, User, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useTasksStore } from '@/stores/tasks-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { useUsersStore } from '@/stores/users-store';
+import { useStoresStore } from '@/stores/stores-store';
+import { TaskPriority, TaskRepeat, TaskAssigneeType } from '@/types';
+import { cn } from '@/lib/utils';
+
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+  { value: 'high', label: 'Vysoká' },
+  { value: 'medium', label: 'Střední' },
+  { value: 'low', label: 'Nízká' },
+];
+
+const REPEAT_OPTIONS: { value: TaskRepeat; label: string }[] = [
+  { value: 'none', label: 'Neopakovat' },
+  { value: 'daily', label: 'Denně' },
+  { value: 'weekly', label: 'Týdně' },
+  { value: 'monthly', label: 'Měsíčně' },
+];
+
+export function TaskFormModal() {
+  const { closeFormModal, createTask, editingTaskId, getTaskById, updateTask } = useTasksStore();
+  const { currentUser } = useAuthStore();
+  const { users } = useUsersStore();
+  const { stores } = useStoresStore();
+
+  const existingTask = editingTaskId ? getTaskById(editingTaskId) : null;
+
+  const [title, setTitle] = useState(existingTask?.title || '');
+  const [description, setDescription] = useState(existingTask?.description || '');
+  const [priority, setPriority] = useState<TaskPriority>(existingTask?.priority || 'medium');
+  const [repeat, setRepeat] = useState<TaskRepeat>(existingTask?.repeat || 'none');
+  const [assigneeType, setAssigneeType] = useState<TaskAssigneeType>(existingTask?.assigneeType || 'employee');
+  const [assigneeId, setAssigneeId] = useState(existingTask?.assigneeId || '');
+  const [deadline, setDeadline] = useState(
+    existingTask ? new Date(existingTask.deadline).toISOString().slice(0, 16) : ''
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const activeUsers = users
+    .filter((u) => u.active)
+    .sort((a, b) => a.fullName.localeCompare(b.fullName, 'cs'));
+  const activeStores = stores
+    .filter((s) => s.active)
+    .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+
+  if (!currentUser) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    // Validation
+    if (!title.trim()) {
+      setError('Vyplňte název úkolu');
+      return;
+    }
+    if (!assigneeId) {
+      setError('Vyberte příjemce');
+      return;
+    }
+    if (!deadline) {
+      setError('Zadejte termín splnění');
+      return;
+    }
+
+    if (editingTaskId && existingTask) {
+      // Update existing task
+      updateTask(editingTaskId, {
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        repeat,
+        assigneeType,
+        assigneeId,
+        deadline: new Date(deadline).toISOString(),
+      });
+    } else {
+      // Create new task
+      createTask({
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        repeat,
+        assigneeType,
+        assigneeId,
+        deadline: new Date(deadline).toISOString(),
+        createdBy: currentUser.id,
+      });
+    }
+
+    closeFormModal();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={closeFormModal} />
+
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+          <h2 className="text-xl font-bold text-slate-800">
+            {editingTaskId ? 'Upravit úkol' : 'Nový úkol'}
+          </h2>
+          <button
+            onClick={closeFormModal}
+            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Left column */}
+            <div className="space-y-5">
+              {/* Title */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  Název úkolu <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Zadejte název úkolu"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-violet-300"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Popis</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Popište úkol podrobněji..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none resize-none focus:border-violet-300 h-32"
+                />
+              </div>
+
+              {/* Priority and Repeat */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Priorita</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-violet-300"
+                  >
+                    {PRIORITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Opakování</label>
+                  <select
+                    value={repeat}
+                    onChange={(e) => setRepeat(e.target.value as TaskRepeat)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-violet-300"
+                  >
+                    {REPEAT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Right column */}
+            <div className="space-y-5">
+              {/* Assignee type toggle */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Přiřazení</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssigneeType('employee');
+                      setAssigneeId('');
+                    }}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all',
+                      assigneeType === 'employee'
+                        ? 'bg-violet-100 text-violet-700 border-2 border-violet-300'
+                        : 'bg-slate-50 text-slate-500 border-2 border-transparent hover:bg-slate-100'
+                    )}
+                  >
+                    <User className="w-4 h-4" />
+                    Zaměstnanec
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssigneeType('store');
+                      setAssigneeId('');
+                    }}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all',
+                      assigneeType === 'store'
+                        ? 'bg-violet-100 text-violet-700 border-2 border-violet-300'
+                        : 'bg-slate-50 text-slate-500 border-2 border-transparent hover:bg-slate-100'
+                    )}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    Prodejna
+                  </button>
+                </div>
+              </div>
+
+              {/* Assignee select */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  {assigneeType === 'employee' ? 'Vyberte zaměstnance' : 'Vyberte prodejnu'}{' '}
+                  <span className="text-red-500">*</span>
+                </label>
+                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                  <SelectTrigger className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 h-auto text-base font-semibold outline-none cursor-pointer focus:border-violet-300">
+                    <SelectValue
+                      placeholder={
+                        assigneeType === 'employee' ? '-- Vyberte zaměstnance --' : '-- Vyberte prodejnu --'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-[100]">
+                    {assigneeType === 'employee'
+                      ? activeUsers.map((user) => (
+                          <SelectItem
+                            key={user.id}
+                            value={user.id}
+                            className="cursor-pointer hover:bg-slate-100 p-3 text-base"
+                          >
+                            {user.fullName}
+                          </SelectItem>
+                        ))
+                      : activeStores.map((store) => (
+                          <SelectItem
+                            key={store.id}
+                            value={store.id}
+                            className="cursor-pointer hover:bg-slate-100 p-3 text-base"
+                          >
+                            {store.name}
+                          </SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Deadline */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  Termín splnění <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-violet-300"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-5">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-6 mt-5 border-t border-slate-200">
+            <Button type="button" onClick={closeFormModal} variant="outline" className="px-6 py-2.5 rounded-lg">
+              Zrušit
+            </Button>
+            <Button
+              type="submit"
+              className="bg-violet-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-violet-700"
+            >
+              {editingTaskId ? 'Uložit změny' : 'Vytvořit úkol'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
