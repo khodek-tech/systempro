@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SystemPro - Prezentace</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            background: white;
+            padding: 15mm;
+            page-break-after: always;
+            page-break-inside: avoid;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page:last-child {
+            page-break-after: avoid;
+        }
+
+        /* Page 1 - Cover */
+        .cover {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            height: 267mm;
+        }
+
+        .logo {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .logo-system {
+            color: #1e293b;
+        }
+
+        .logo-pro {
+            color: #3b82f6;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: #64748b;
+            margin-bottom: 60px;
+            font-weight: 500;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 500px;
+        }
+
+        .feature {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .feature-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: #3b82f6;
+        }
+
+        .feature-label {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .version {
+            position: absolute;
+            bottom: 15mm;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        /* Page 2, 3, 4 - Content pages */
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #3b82f6;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 24px;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .module-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 16px;
+            border-left: 4px solid;
+        }
+
+        .module-card.green { border-left-color: #10b981; }
+        .module-card.blue { border-left-color: #3b82f6; }
+        .module-card.orange { border-left-color: #f97316; }
+        .module-card.purple { border-left-color: #8b5cf6; }
+        .module-card.cyan { border-left-color: #06b6d4; }
+        .module-card.pink { border-left-color: #ec4899; }
+        .module-card.yellow { border-left-color: #eab308; }
+
+        .module-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .module-desc {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .screenshot {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-top: 16px;
+        }
+
+        .screenshot-small {
+            width: 48%;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .screenshots-row {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        /* Page 4 - Roles */
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .role-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .role-icon {
+            width: 40px;
+            height: 40px;
+            background: #3b82f6;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .role-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .hierarchy-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .hierarchy-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+        }
+
+        .hierarchy-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .hierarchy-item {
+            background: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .hierarchy-arrow {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 15mm;
+            left: 15mm;
+            right: 15mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 11px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+
+        .page-number {
+            background: #3b82f6;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .info-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #1e40af;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .page {
+                margin: 0;
+                box-shadow: none;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Page 1: Cover -->
+<div class="page">
+    <div class="cover">
+        <div class="logo">
+            <span class="logo-system">SYSTEM</span><span class="logo-pro">.PRO</span>
+        </div>
+        <div class="subtitle">Komplexni system pro rizeni prodejen</div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-number">8</div>
+                <div class="feature-label">Uzivatelskych roli</div>
+            </div>
+            <div class="feature">
+                <div class="feature-number">11</div>
+                <div class="feature-label">Modulu</div>
+            </div>
+            <div class="feature">
+                <div class="feature-number">27</div>
+                <div class="feature-label">Zamestnancu</div>
+            </div>
+            <div class="feature">
+                <div class="feature-number">9</div>
+                <div class="feature-label">Prodejen</div>
+            </div>
+        </div>
+    </div>
+    <div class="version">SystemPro Enterprise v5.2 | 2026</div>
+</div>
+
+<!-- Page 2: Employee Modules -->
+<div class="page">
+    <h1 class="page-title">Moduly pro zamestnance</h1>
+    <p class="page-subtitle">Zakladni nastroje pro kazdodenni praci</p>
+
+    <div class="modules-grid">
+        <div class="module-card green">
+            <div class="module-name">Trzby</div>
+            <div class="module-desc">Evidence dennich trzeb - hotovost, platebni karty, partnerske trzby</div>
+        </div>
+        <div class="module-card blue">
+            <div class="module-name">Odvody</div>
+            <div class="module-desc">Evidence odevzdane hotovosti do trezoru</div>
+        </div>
+        <div class="module-card orange">
+            <div class="module-name">Stav pokladny</div>
+            <div class="module-desc">Prehled penez k odevzdani a provozni zakladna</div>
+        </div>
+        <div class="module-card purple">
+            <div class="module-name">Ukoly</div>
+            <div class="module-desc">Sprava ukolu s prioritami, terminy a delegovanim</div>
+        </div>
+        <div class="module-card pink">
+            <div class="module-name">Absence</div>
+            <div class="module-desc">Hlaseni nepritomnosti - dovolena, nemoc, lekar</div>
+        </div>
+        <div class="module-card cyan">
+            <div class="module-name">Smeny</div>
+            <div class="module-desc">Kalendarni prehled pracovnich smen</div>
+        </div>
+        <div class="module-card yellow">
+            <div class="module-name">Dochazka</div>
+            <div class="module-desc">Evidence prichodu a odchodu z prace</div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <div class="info-title">Jak to funguje?</div>
+        <div class="info-text">
+            Kazdy zamestnanec ma pristup k modulum podle sve role. Dashboard zobrazuje aktualni stav pokladny
+            a umoznuje rychly pristup ke vsem potrebnym funkcim. Vsechna data jsou automaticky synchronizovana.
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>SystemPro - Moduly pro zamestnance</span>
+        <div class="page-number">2</div>
+    </div>
+</div>
+
+<!-- Page 3: Manager/Admin Modules -->
+<div class="page">
+    <h1 class="page-title">Moduly pro vedouci a administratory</h1>
+    <p class="page-subtitle">Nastroje pro rizeni a reportovani</p>
+
+    <div class="modules-grid">
+        <div class="module-card orange">
+            <div class="module-name">Schvalovani absenci</div>
+            <div class="module-desc">Hierarchicke schvalovani zadosti o absenci podle struktury firmy</div>
+        </div>
+        <div class="module-card blue">
+            <div class="module-name">KPI Dashboard</div>
+            <div class="module-desc">Klicove ukazatele vykonu - trzby, odvody, aktivni zamestnanci</div>
+        </div>
+        <div class="module-card green">
+            <div class="module-name">Pritomnost</div>
+            <div class="module-desc">Real-time prehled zamestnancu v praci podle prodejen</div>
+        </div>
+        <div class="module-card purple">
+            <div class="module-name">Trzba a Dochazka</div>
+            <div class="module-desc">Souhrnne reporty trzebnich a dochazkoveych dat</div>
+        </div>
+    </div>
+
+    <h2 style="font-size: 18px; font-weight: 700; margin: 24px 0 12px; color: #1e293b;">Administrátorské nastavení</h2>
+
+    <div class="modules-grid">
+        <div class="module-card cyan">
+            <div class="module-name">Sprava prodejen</div>
+            <div class="module-desc">Pridavani a editace prodejen, nastaveni stavu</div>
+        </div>
+        <div class="module-card pink">
+            <div class="module-name">Sprava roli</div>
+            <div class="module-desc">Definice roli a jejich opravneni v systemu</div>
+        </div>
+        <div class="module-card yellow">
+            <div class="module-name">Sprava zamestnancu</div>
+            <div class="module-desc">Evidence zamestnancu, prirazeni roli a prodejen</div>
+        </div>
+        <div class="module-card green">
+            <div class="module-name">Konfigurace modulu</div>
+            <div class="module-desc">Nastaveni viditelnosti modulu pro jednotlive role</div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <div class="info-title">Ulozeni dat</div>
+        <div class="info-text">
+            Vsechny zmeny je mozne ulozit do souboru pro zalohovani. System podporuje export dat
+            a umoznuje snadnou spravu cele organizace z jednoho mista.
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>SystemPro - Moduly pro vedouci</span>
+        <div class="page-number">3</div>
+    </div>
+</div>
+
+<!-- Page 4: Roles -->
+<div class="page">
+    <h1 class="page-title">Role a opravneni</h1>
+    <p class="page-subtitle">Prehled 8 uzivatelskych roli v systemu</p>
+
+    <div class="roles-grid">
+        <div class="role-card">
+            <div class="role-icon" style="background: #10b981;">P</div>
+            <div class="role-name">Prodavac</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #3b82f6;">S</div>
+            <div class="role-name">Skladnik</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #8b5cf6;">E</div>
+            <div class="role-name">Obsluha e-shopu</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #f97316;">O</div>
+            <div class="role-name">Obchodnik</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #06b6d4;">VS</div>
+            <div class="role-name">Vedouci skladu</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #ec4899;">VV</div>
+            <div class="role-name">Vedouci velkoobchodu</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #ef4444;">A</div>
+            <div class="role-name">Administrator</div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon" style="background: #eab308;">M</div>
+            <div class="role-name">Majitel</div>
+        </div>
+    </div>
+
+    <div class="hierarchy-section">
+        <div class="hierarchy-title">Hierarchie schvalovani absenci</div>
+        <div class="hierarchy-flow">
+            <span class="hierarchy-item">Zamestnanec</span>
+            <span class="hierarchy-arrow">→</span>
+            <span class="hierarchy-item">Vedouci skladu / Vedouci velkoobchodu</span>
+            <span class="hierarchy-arrow">→</span>
+            <span class="hierarchy-item">Administrator / Majitel</span>
+        </div>
+    </div>
+
+    <div class="info-box" style="margin-top: 20px;">
+        <div class="info-title">Flexibilni system opravneni</div>
+        <div class="info-text">
+            Kazda role ma preddefinovana opravneni k jednotlivym modulum. Administrator muze
+            menit prirazeni modulu k rolim v nastaveni systemu. Moduly lze aktivovat/deaktivovat
+            a nastavit jejich pozici na dashboardu.
+        </div>
+    </div>
+
+    <div style="margin-top: 24px; padding: 20px; background: #f8fafc; border-radius: 12px; text-align: center;">
+        <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;">Kontakt a podpora</div>
+        <div style="font-size: 18px; font-weight: 700; color: #1e293b;">SystemPro Enterprise v5.2</div>
+        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Komplexni reseni pro moderni retail</div>
+    </div>
+
+    <div class="footer">
+        <span>SystemPro - Role a opravneni</span>
+        <div class="page-number">4</div>
+    </div>
+</div>
+
+</body>
+</html>
