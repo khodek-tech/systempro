@@ -8,6 +8,8 @@ interface AttendanceState {
   workplaceId: string;
   workplaceName: string;
   requiresKasa: boolean;
+  // Track all checked-in users globally (user IDs)
+  checkedInUsers: Set<string>;
 }
 
 interface AttendanceActions {
@@ -15,6 +17,11 @@ interface AttendanceActions {
   toggleAttendance: () => { success: boolean; error?: string };
   confirmKasa: (confirmed: boolean) => void;
   setWorkplace: (type: WorkplaceType, id: string, name: string, requiresKasa: boolean) => void;
+  // Global check-in tracking
+  checkInUser: (userId: string) => void;
+  checkOutUser: (userId: string) => void;
+  isUserCheckedIn: (userId: string) => boolean;
+  getAllCheckedInUsers: () => string[];
 }
 
 export const useAttendanceStore = create<AttendanceState & AttendanceActions>((set, get) => ({
@@ -25,6 +32,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
   workplaceId: '',
   workplaceName: '',
   requiresKasa: false,
+  checkedInUsers: new Set<string>(),
 
   // Actions
   toggleAttendance: () => {
@@ -52,5 +60,30 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
       workplaceName: name,
       requiresKasa,
     });
+  },
+
+  // Global check-in tracking actions
+  checkInUser: (userId) => {
+    set((state) => {
+      const newSet = new Set(state.checkedInUsers);
+      newSet.add(userId);
+      return { checkedInUsers: newSet };
+    });
+  },
+
+  checkOutUser: (userId) => {
+    set((state) => {
+      const newSet = new Set(state.checkedInUsers);
+      newSet.delete(userId);
+      return { checkedInUsers: newSet };
+    });
+  },
+
+  isUserCheckedIn: (userId) => {
+    return get().checkedInUsers.has(userId);
+  },
+
+  getAllCheckedInUsers: () => {
+    return Array.from(get().checkedInUsers);
   },
 }));

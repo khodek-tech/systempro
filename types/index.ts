@@ -155,8 +155,19 @@ export interface ModuleConfig {
   moduleId: string;
   roleIds: string[];
   order: number;
-  column: 'left' | 'right' | 'full' | 'top' | 'header';
+  column: 'left' | 'right' | 'full' | 'top' | 'header' | 'sidebar';
   enabled: boolean;
   approvalMappings?: ApprovalRoleMapping[];
   viewMappings?: ViewRoleMapping[];
+}
+
+// Presence module types
+export type PresenceStatus = 'present' | 'absent' | 'excused';
+
+export interface PresenceRecord {
+  userId: string;
+  userName: string;
+  status: PresenceStatus;
+  absenceType?: AbsenceType;
+  storeName?: string;
 }

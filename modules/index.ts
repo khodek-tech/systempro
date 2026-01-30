@@ -7,4 +7,5 @@ export { KpiDashboardModule } from './KpiDashboardModule';
 export { ReportsModule } from './ReportsModule';
 export { PlaceholderModule } from './PlaceholderModule';
 export { ShiftsModule } from './ShiftsModule';
+export { PresenceModule } from './PresenceModule';
 export { MODULE_REGISTRY, getModuleComponent } from './registry';

@@ -1,7 +1,7 @@
 // Auto-generated - 2026-01-29T21:52:47.144Z
 // DO NOT EDIT MANUALLY - use admin interface to modify data
 
-import { AttendanceRecord, Store, Role, User, AbsenceRequest, StoreOpeningHours } from '@/types';
+import { AttendanceRecord, Store, Role, User, AbsenceRequest } from '@/types';
 
 // Mock stores
 export const MOCK_STORES: Store[] = [

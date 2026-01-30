@@ -12,7 +12,7 @@ interface ModulesState {
 interface ModulesActions {
   updateModuleConfig: (moduleId: string, config: Partial<ModuleConfig>) => void;
   toggleRoleAccess: (moduleId: string, roleId: string) => void;
-  setModuleColumn: (moduleId: string, column: 'left' | 'right' | 'full' | 'top') => void;
+  setModuleColumn: (moduleId: string, column: 'left' | 'right' | 'full' | 'top' | 'sidebar') => void;
   toggleModuleEnabled: (moduleId: string) => void;
   getModulesForRole: (roleId: string) => (ModuleDefinition & ModuleConfig)[];
   getModuleDefinition: (moduleId: string) => ModuleDefinition | undefined;
@@ -229,6 +229,28 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
                 ...cfg,
                 viewMappings: defaultConfig?.viewMappings || [],
               };
+            }
+            return cfg;
+          });
+
+          // Migrace: přidat viewMappings do presence pokud chybí
+          state.configs = state.configs.map((cfg) => {
+            if (cfg.moduleId === 'presence' && !cfg.viewMappings) {
+              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
+                (c) => c.moduleId === 'presence'
+              );
+              return {
+                ...cfg,
+                viewMappings: defaultConfig?.viewMappings || [],
+              };
+            }
+            return cfg;
+          });
+
+          // Migrace: změnit presence z 'left' na 'sidebar'
+          state.configs = state.configs.map((cfg) => {
+            if (cfg.moduleId === 'presence' && cfg.column === 'left') {
+              return { ...cfg, column: 'sidebar' as const };
             }
             return cfg;
           });

@@ -1,6 +1,7 @@
 'use client';
 
 import { Header } from '@/components/header';
+import { PresenceSidebar } from '@/components/PresenceSidebar';
 import { ProdavacView } from '@/components/views/prodavac-view';
 import { AdminView } from '@/components/views/admin-view';
 import { SkladnikView } from '@/components/views/skladnik-view';
@@ -65,9 +66,12 @@ export default function Home() {
   };
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Header />
-      {renderView()}
-    </>
+      <div className="flex-1 flex overflow-hidden">
+        <PresenceSidebar />
+        {renderView()}
+      </div>
+    </div>
   );
 }

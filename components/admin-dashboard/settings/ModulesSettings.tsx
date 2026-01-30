@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, X, Eye } from 'lucide-react';
+import { Settings, X } from 'lucide-react';
 import { useModulesStore } from '@/stores/modules-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,7 @@ export function ModulesSettings() {
   const activeRoles = roles.filter((r) => r.active);
 
   const isApprovalModule = (moduleId: string) => moduleId === 'absence-approval';
-  const isViewModule = (moduleId: string) => moduleId === 'shifts';
+  const isViewModule = (moduleId: string) => moduleId === 'shifts' || moduleId === 'presence';
 
   const handleRoleClick = (moduleId: string, roleId: string) => {
     // Vždy toggleovat přístup k modulu
@@ -213,7 +213,7 @@ export function ModulesSettings() {
                                   )}
                                   title="Nastavit viditelnost směn"
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Settings className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </div>

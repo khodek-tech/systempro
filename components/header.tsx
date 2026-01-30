@@ -31,8 +31,16 @@ export function Header() {
 
   const { getModulesForRole } = useModulesStore();
 
-  const { isInWork, kasaConfirmed, workplaceName, toggleAttendance, confirmKasa, setWorkplace } =
-    useAttendanceStore();
+  const {
+    isInWork,
+    kasaConfirmed,
+    workplaceName,
+    toggleAttendance,
+    confirmKasa,
+    setWorkplace,
+    checkInUser,
+    checkOutUser,
+  } = useAttendanceStore();
 
   const { goToSettings } = useAdminStore();
   const usersHydrated = useUsersStore((state) => state._hydrated);
@@ -55,6 +63,21 @@ export function Header() {
     if (!_hydrated || !activeRoleId) return;
     syncWorkplaceWithRole(setWorkplace);
   }, [_hydrated, activeRoleId, activeStoreId, syncWorkplaceWithRole, setWorkplace]);
+
+  // Wrapped toggle that also tracks global check-in state
+  const handleToggleAttendance = () => {
+    const result = toggleAttendance();
+    if (result.success && currentUser) {
+      if (isInWork) {
+        // Was in work, now checking out
+        checkOutUser(currentUser.id);
+      } else {
+        // Was not in work, now checking in
+        checkInUser(currentUser.id);
+      }
+    }
+    return result;
+  };
 
   return (
     <header className="h-20 bg-white/95 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 z-50">
@@ -167,7 +190,7 @@ export function Header() {
           kasaConfirmed={kasaConfirmed}
           workplaceName={workplaceName}
           activeRole={activeRole}
-          onToggleAttendance={toggleAttendance}
+          onToggleAttendance={handleToggleAttendance}
           onKasaConfirm={confirmKasa}
         />
       )}

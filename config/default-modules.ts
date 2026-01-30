@@ -72,6 +72,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'ShiftsModule',
     icon: 'Calendar',
   },
+  {
+    id: 'presence',
+    name: 'Přítomnost',
+    description: 'Přehled přítomnosti zaměstnanců na směně',
+    component: 'PresenceModule',
+    icon: 'Users',
+  },
 ];
 
 // Default module configuration
@@ -162,6 +169,19 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     viewMappings: [
       { viewerRoleId: 'role-7', visibleRoleIds: ['role-1', 'role-6'] },
       { viewerRoleId: 'role-8', visibleRoleIds: ['role-1', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'] },
+    ],
+  },
+  {
+    moduleId: 'presence',
+    roleIds: ['role-4', 'role-7', 'role-2', 'role-8'],
+    order: 3,
+    column: 'sidebar',
+    enabled: true,
+    viewMappings: [
+      { viewerRoleId: 'role-4', visibleRoleIds: ['role-3', 'role-5'] },
+      { viewerRoleId: 'role-7', visibleRoleIds: ['role-1', 'role-6'] },
+      { viewerRoleId: 'role-2', visibleRoleIds: ['role-4', 'role-7'] },
+      { viewerRoleId: 'role-8', visibleRoleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'] },
     ],
   },
 ];
