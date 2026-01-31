@@ -1,0 +1,212 @@
+# SYSTEM.PRO - Role Definitions
+# Definice všech rolí a jejich hierarchie
+
+roles:
+  - id: role-1
+    name: Prodavač
+    type: prodavac
+    description: Základní role pro obsluhu prodejen
+    capabilities:
+      - evidence_trzeb
+      - evidence_dochazky
+      - hlaseni_absence
+      - prace_s_ukoly
+      - chat
+    restrictions:
+      - bez_schvalovani
+      - bez_reportu
+
+  - id: role-2
+    name: Administrátor
+    type: administrator
+    description: Správa systému, reporty, schvalování
+    capabilities:
+      - vse_v_systemu
+      - schvalovani_absenci
+      - sprava_ukolu
+      - pristup_reporty
+      - kpi_dashboard
+      - sprava_skupin_chatu
+    restrictions: []
+
+  - id: role-3
+    name: Skladník
+    type: skladnik
+    description: Práce ve skladu
+    capabilities:
+      - evidence_dochazky
+      - hlaseni_absence
+      - prace_s_ukoly
+      - chat
+    restrictions:
+      - bez_schvalovani
+      - bez_reportu
+      - bez_trzeb
+
+  - id: role-4
+    name: Vedoucí skladu
+    type: vedouci-sklad
+    description: Řízení skladu, schvalování pro podřízené
+    capabilities:
+      - evidence_dochazky
+      - hlaseni_absence
+      - schvalovani_absenci
+      - prace_s_ukoly
+      - delegace_ukolu
+      - prehled_pritomnosti
+      - chat
+    restrictions:
+      - bez_reportu
+      - bez_trzeb
+
+  - id: role-5
+    name: Obsluha e-shopu
+    type: obsluha-eshop
+    description: Správa online objednávek
+    capabilities:
+      - evidence_dochazky
+      - hlaseni_absence
+      - prace_s_ukoly
+      - chat
+    restrictions:
+      - bez_schvalovani
+      - bez_reportu
+      - bez_trzeb
+
+  - id: role-6
+    name: Obchodník
+    type: obchodnik
+    description: Obchodní činnost, práce na více prodejnách
+    capabilities:
+      - evidence_dochazky
+      - hlaseni_absence
+      - prace_s_ukoly
+      - chat
+    restrictions:
+      - bez_schvalovani
+      - bez_reportu
+
+  - id: role-7
+    name: Vedoucí velkoobchodu
+    type: vedouci-velkoobchod
+    description: Řízení velkoobchodu, schvalování pro podřízené
+    capabilities:
+      - evidence_dochazky
+      - hlaseni_absence
+      - schvalovani_absenci
+      - prace_s_ukoly
+      - delegace_ukolu
+      - prehled_pritomnosti
+      - prehled_smen_podrizeni
+      - chat
+    restrictions:
+      - bez_reportu
+      - bez_trzeb
+
+  - id: role-8
+    name: Majitel
+    type: majitel
+    description: Plný přístup ke všem funkcím
+    capabilities:
+      - vse_v_systemu
+    restrictions: []
+
+# Hierarchie schvalování absencí
+approval_hierarchy:
+  - approver: role-4  # Vedoucí skladu
+    subordinates:
+      - role-3  # Skladník
+      - role-5  # Obsluha e-shopu
+
+  - approver: role-7  # Vedoucí velkoobchodu
+    subordinates:
+      - role-1  # Prodavač
+      - role-6  # Obchodník
+
+  - approver: role-2  # Administrátor
+    subordinates:
+      - role-4  # Vedoucí skladu
+      - role-7  # Vedoucí velkoobchodu
+
+  - approver: role-8  # Majitel
+    subordinates:
+      - role-1  # Prodavač
+      - role-2  # Administrátor
+      - role-3  # Skladník
+      - role-4  # Vedoucí skladu
+      - role-5  # Obsluha e-shopu
+      - role-6  # Obchodník
+      - role-7  # Vedoucí velkoobchodu
+
+# ViewMappings pro moduly (kdo vidí koho)
+view_mappings:
+  tasks:
+    - viewer: role-4  # Vedoucí skladu
+      visible:
+        - role-3  # Skladník
+        - role-5  # Obsluha e-shopu
+
+    - viewer: role-7  # Vedoucí velkoobchodu
+      visible:
+        - role-1  # Prodavač
+        - role-6  # Obchodník
+
+    - viewer: role-2  # Administrátor
+      visible:
+        - role-1
+        - role-3
+        - role-4
+        - role-5
+        - role-6
+        - role-7
+
+    - viewer: role-8  # Majitel
+      visible:
+        - role-1
+        - role-2
+        - role-3
+        - role-4
+        - role-5
+        - role-6
+        - role-7
+
+  presence:
+    - viewer: role-4  # Vedoucí skladu
+      visible:
+        - role-3  # Skladník
+        - role-5  # Obsluha e-shopu
+
+    - viewer: role-7  # Vedoucí velkoobchodu
+      visible:
+        - role-1  # Prodavač
+        - role-6  # Obchodník
+
+    - viewer: role-2  # Administrátor
+      visible:
+        - role-4  # Vedoucí skladu
+        - role-7  # Vedoucí velkoobchodu
+
+    - viewer: role-8  # Majitel
+      visible:
+        - role-1
+        - role-2
+        - role-3
+        - role-4
+        - role-5
+        - role-6
+        - role-7
+
+  shifts:
+    - viewer: role-7  # Vedoucí velkoobchodu
+      visible:
+        - role-1  # Prodavač
+        - role-6  # Obchodník
+
+    - viewer: role-8  # Majitel
+      visible:
+        - role-1
+        - role-3
+        - role-4
+        - role-5
+        - role-6
+        - role-7

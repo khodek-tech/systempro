@@ -1,0 +1,185 @@
+# SYSTEM.PRO - Presence Module Specification
+# Modul pro přehled přítomnosti zaměstnanců
+
+module:
+  id: presence
+  name: Přítomnost
+  description: Přehled přítomnosti zaměstnanců na směně
+  component: PresenceModule
+  store: usePresenceStore
+  icon: Users
+  column: sidebar  # zobrazuje se v bočním panelu
+
+access:
+  roles:
+    - role-2  # Administrátor
+    - role-4  # Vedoucí skladu
+    - role-7  # Vedoucí velkoobchodu
+    - role-8  # Majitel
+
+  viewMappings:
+    - viewerRoleId: role-4  # Vedoucí skladu
+      visibleRoleIds: [role-3, role-5]  # Skladníci, Obsluha e-shopu
+    - viewerRoleId: role-7  # Vedoucí velkoobchodu
+      visibleRoleIds: [role-1, role-6]  # Prodavači, Obchodníci
+    - viewerRoleId: role-2  # Administrátor
+      visibleRoleIds: [role-4, role-7]  # Vedoucí (ne řadoví)
+    - viewerRoleId: role-8  # Majitel
+      visibleRoleIds: [role-1, role-2, role-3, role-4, role-5, role-6, role-7]
+
+data_model:
+  presenceRecord:
+    userId: string
+    userName: string
+    status: PresenceStatus
+    absenceType?: AbsenceType  # pokud status=excused
+    storeName?: string  # název přiřazené prodejny
+
+  presenceStatus: present | absent | excused
+
+features:
+  - id: today_presence
+    name: Dnešní přítomnost
+    description: Přehled kdo je dnes v práci
+    acceptance_criteria:
+      - Zobrazuje pouze zaměstnance s dnešní směnou
+      - Tři stavy: přítomen, nepřítomen, omluven
+      - Filtrováno podle viewMappings
+      - Řazení: přítomní první
+
+  - id: status_calculation
+    name: Výpočet stavu
+    description: Automatické určení stavu přítomnosti
+    acceptance_criteria:
+      - present: isUserCheckedIn = true
+      - excused: schválená absence na dnešek
+      - absent: má směnu ale není checkedIn ani omluven
+
+  - id: shift_filter
+    name: Filtr podle směn
+    description: Zobrazení pouze zaměstnanců s dnešní směnou
+    acceptance_criteria:
+      - Kontrola přes isWorkDayForUser
+      - Zaměstnanec bez dnešní směny se nezobrazuje
+      - Zahrnuje i zaměstnance s workingHours (bez prodejny)
+
+  - id: absence_display
+    name: Zobrazení typu absence
+    description: Pro omluvené zaměstnance typ absence
+    acceptance_criteria:
+      - Dovolená, Nemoc, Lékař, Neplacené volno
+      - Barevné rozlišení typů
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: PRES-001
+    name: Vedoucí skladu vidí podřízené
+    preconditions:
+      - Uživatel je Vedoucí skladu (role-4)
+      - Existují Skladníci a Obsluha e-shopu s dnešní směnou
+    steps:
+      - Vidím modul Přítomnost v sidebar
+      - Zobrazují se zaměstnanci s role-3 a role-5
+      - Jeden je přítomen (zelený)
+      - Jeden je nepřítomen (červený)
+      - Jeden je omluven - dovolená (oranžový)
+    expected:
+      - Správné filtrování podle viewMappings
+      - Barevné rozlišení stavů
+
+  - id: PRES-002
+    name: Majitel vidí všechny
+    preconditions:
+      - Uživatel je Majitel (role-8)
+      - Různí zaměstnanci s různými stavy
+    steps:
+      - Otevřu modul Přítomnost
+      - Vidím zaměstnance všech rolí
+      - Vidím kompletní přehled přítomnosti
+    expected:
+      - Majitel vidí role-1 až role-7
+      - Všechny stavy jsou zobrazeny
+
+  - id: PRES-003
+    name: Aktualizace při příchodu zaměstnance
+    preconditions:
+      - Zaměstnanec je nepřítomen
+      - Vedoucí má otevřený modul Přítomnost
+    steps:
+      - Zaměstnanec provede check-in
+      - Modul Přítomnost se aktualizuje
+      - Zaměstnanec se přesune z "nepřítomen" na "přítomen"
+    expected:
+      - Real-time aktualizace stavu
+      - Řazení se upraví
+
+  - id: PRES-004
+    name: Omluvená absence
+    preconditions:
+      - Zaměstnanec má schválenou dovolenou na dnešek
+      - Má dnešní směnu podle rozvrhu
+    steps:
+      - Otevřu modul Přítomnost
+      - Zaměstnanec je označen jako "omluven"
+      - Vidím typ absence: Dovolená
+    expected:
+      - Status = excused
+      - absenceType = Dovolená
+
+  - id: PRES-005
+    name: Zaměstnanec bez dnešní směny
+    preconditions:
+      - Zaměstnanec má krátký týden (St, Čt)
+      - Dnes je pondělí
+    steps:
+      - Otevřu modul Přítomnost
+      - Zaměstnanec se nezobrazuje
+    expected:
+      - Filtr směn funguje správně
+      - Zaměstnanec bez směny není vidět
+
+  - id: PRES-006
+    name: Administrátor vidí pouze vedoucí
+    preconditions:
+      - Uživatel je Administrátor (role-2)
+      - viewMappings: [role-4, role-7]
+    steps:
+      - Otevřu modul Přítomnost
+      - Vidím pouze Vedoucí skladu a Vedoucí velkoobchodu
+      - Nevidím řadové zaměstnance
+    expected:
+      - Správná hierarchie viewMappings
+      - Admin nevidí Prodavače přímo
+
+edge_cases:
+  - id: PRES-E001
+    name: Žádný podřízený s dnešní směnou
+    description: Všichni podřízení mají volno
+    expected: >
+      Modul zobrazuje prázdný stav.
+      Informativní text "Dnes nikdo nemá směnu".
+
+  - id: PRES-E002
+    name: Zaměstnanec na více prodejnách
+    description: Obchodník přiřazený k více prodejnám
+    expected: >
+      Zobrazuje se storeName první prodejny.
+      Status se určuje globálně (checkedInUsers).
+
+  - id: PRES-E003
+    name: Absence pouze na část dne (Lékař)
+    description: Zaměstnanec má absenci typu Lékař 09:00-11:00
+    expected: >
+      Aktuálně se bere jako celodenní omluvená absence.
+      (Potenciální vylepšení: časová kontrola)
+
+  - id: PRES-E004
+    name: Vedoucí bez přiřazené prodejny
+    description: Vedoucí má workingHours ale ne storeIds
+    expected: >
+      Zobrazuje se s prázdným storeName.
+      Status se určuje podle checkedIn a absence.

@@ -1,0 +1,261 @@
+# SYSTEM.PRO - Tasks Module Specification
+# Modul pro správu úkolů s workflow a delegací
+
+module:
+  id: tasks
+  name: Úkoly
+  description: Seznam úkolů s workflow schvalování a možností delegace
+  component: TasksModule
+  store: useTasksStore
+  icon: CheckSquare
+
+access:
+  roles:
+    - role-1  # Prodavač
+    - role-2  # Administrátor
+    - role-3  # Skladník
+    - role-4  # Vedoucí skladu
+    - role-5  # Obsluha e-shopu
+    - role-6  # Obchodník
+    - role-7  # Vedoucí velkoobchodu
+    - role-8  # Majitel
+
+  viewMappings:
+    - viewerRoleId: role-4
+      visibleRoleIds: [role-3, role-5]
+    - viewerRoleId: role-7
+      visibleRoleIds: [role-1, role-6]
+    - viewerRoleId: role-2
+      visibleRoleIds: [role-1, role-3, role-4, role-5, role-6, role-7]
+    - viewerRoleId: role-8
+      visibleRoleIds: [role-1, role-2, role-3, role-4, role-5, role-6, role-7]
+
+data_model:
+  task:
+    id: string
+    title: string
+    description: string
+    priority: high | medium | low
+    status: new | in-progress | pending-approval | approved | returned | delegated | pending-review
+    createdBy: string  # userId
+    createdAt: ISO8601
+    assigneeType: employee | store
+    assigneeId: string  # userId nebo storeId
+    deadline: ISO8601
+    repeat: none | daily | weekly | monthly
+    repeatSourceId?: string  # ID původního úkolu pro opakované
+    completedBy?: string
+    completedAt?: ISO8601
+    approvedAt?: ISO8601
+    returnedAt?: ISO8601
+    returnReason?: string
+    delegatedTo?: string
+    delegatedBy?: string
+    delegatedAt?: ISO8601
+    seenByAssignee: boolean
+    seenByCreator: boolean
+    seenByDelegatee?: boolean
+    comments: TaskComment[]
+
+  taskComment:
+    id: string
+    taskId: string
+    userId: string
+    text: string
+    attachments: TaskAttachment[]
+    createdAt: ISO8601
+
+features:
+  - id: create_task
+    name: Vytvoření úkolu
+    description: Vytvoření nového úkolu s přiřazením zaměstnanci nebo prodejně
+    acceptance_criteria:
+      - Povinná pole: název, popis, priorita, termín, příjemce
+      - Příjemce může být zaměstnanec nebo prodejna
+      - Úkol se vytvoří ve stavu "new"
+      - Autor má automaticky seenByCreator=true
+
+  - id: task_workflow
+    name: Workflow úkolu
+    description: Životní cyklus úkolu od vytvoření po schválení
+    acceptance_criteria:
+      - new -> in-progress (assignee klikne Začít)
+      - in-progress -> pending-approval (assignee klikne Odeslat ke schválení)
+      - pending-approval -> approved (creator schválí)
+      - pending-approval -> returned (creator vrátí s důvodem)
+      - returned -> in-progress (assignee pokračuje)
+      - Přímé odeslání: new -> pending-approval (bez Začít)
+
+  - id: task_delegation
+    name: Delegace úkolu
+    description: Možnost delegovat úkol na jinou osobu
+    acceptance_criteria:
+      - Delegovat lze ze stavu new, in-progress, returned
+      - Nelze delegovat již delegovaný úkol
+      - Delegovaný vidí úkol v "Moje úkoly"
+      - Delegatee může vrátit delegujícímu (pending-review)
+      - Delegator schválí nebo vrátí delegatee
+      - Po schválení delegatorem -> pending-approval pro creatora
+
+  - id: task_comments
+    name: Komentáře
+    description: Diskuze u úkolu
+    acceptance_criteria:
+      - Kdokoli přiřazený může přidat komentář
+      - Komentář označí úkol jako nepřečtený pro druhou stranu
+      - Podporuje přílohy (attachments)
+
+  - id: task_repeat
+    name: Opakující se úkoly
+    description: Automatické vytváření nových instancí
+    acceptance_criteria:
+      - Po schválení opakujícího úkolu se vytvoří nová instance
+      - Nový úkol má posunutý deadline
+      - repeatSourceId odkazuje na původní úkol
+
+  - id: task_tabs
+    name: Záložky
+    description: Filtrování úkolů podle vztahu k uživateli
+    acceptance_criteria:
+      - "Moje úkoly" - přiřazené, delegované na mě, pending-review mnou delegované
+      - "Vytvořené mnou" - úkoly které jsem vytvořil
+      - "Všechny" - viditelné podle viewMappings
+      - Schválené úkoly jen v "Všechny"
+
+notifications:
+  badge:
+    type: count
+    source: getUnresolvedTasksCount(userId)
+    description: >
+      Počet nevyřešených úkolů =
+      úkoly v "Moje úkoly" (bez approved) +
+      úkoly v "Vytvořené mnou" (bez approved, bez duplicit)
+
+  seen_tracking:
+    - seenByAssignee: false při vytvoření, při vrácení, při schválení
+    - seenByCreator: false při změně stavu assigneem
+    - seenByDelegatee: false při delegaci, při vrácení od delegatora
+
+scenarios:
+  - id: TASK-001
+    name: Vytvoření a dokončení jednoduchého úkolu
+    preconditions:
+      - Uživatel je přihlášen jako Vedoucí skladu (role-4)
+      - Existuje zaměstnanec Skladník (role-3)
+    steps:
+      - Kliknu na modul Úkoly
+      - Kliknu na "Nový úkol"
+      - Vyplním: Název "Test úkol", Popis "Popis", Priorita "Vysoká", Termín zítra
+      - Vyberu příjemce: Skladník
+      - Kliknu Vytvořit
+      - Přepnu se na účet Skladníka
+      - Vidím badge na modulu Úkoly
+      - Otevřu modul Úkoly
+      - Vidím nový úkol v "Moje úkoly"
+      - Kliknu na úkol, pak "Začít práci"
+      - Stav se změní na "Rozpracovaný"
+      - Kliknu "Odeslat ke schválení"
+      - Stav se změní na "Čeká na schválení"
+      - Přepnu se zpět na Vedoucího skladu
+      - Vidím badge a úkol ke schválení
+      - Kliknu "Schválit"
+      - Stav se změní na "Schváleno"
+    expected:
+      - Úkol prošel celým workflow
+      - Badge se aktualizuje při každé změně
+
+  - id: TASK-002
+    name: Delegace úkolu
+    preconditions:
+      - Existuje úkol přiřazený Prodavači (role-1)
+      - Existuje jiný Prodavač na stejné prodejně
+    steps:
+      - Přihlásím se jako Prodavač s úkolem
+      - Otevřu detail úkolu
+      - Kliknu "Delegovat"
+      - Vyberu druhého Prodavače
+      - Potvrdím delegaci
+      - Přepnu se na druhého Prodavače
+      - Vidím delegovaný úkol v "Moje úkoly"
+      - Zpracuji úkol a kliknu "Odeslat delegujícímu"
+      - Přepnu se zpět na prvního Prodavače
+      - Vidím úkol ve stavu "Čeká na kontrolu"
+      - Schválím práci delegovaného
+      - Úkol se posune ke schválení autorovi
+    expected:
+      - Delegace funguje korektně
+      - Oba prodavači vidí úkol ve správných stavech
+
+  - id: TASK-003
+    name: Vrácení úkolu s důvodem
+    preconditions:
+      - Existuje úkol ve stavu pending-approval
+      - Uživatel je autor úkolu
+    steps:
+      - Otevřu detail úkolu
+      - Kliknu "Vrátit"
+      - Zadám důvod: "Chybí příloha"
+      - Potvrdím vrácení
+      - Přepnu se na assignee
+      - Vidím úkol ve stavu "Vráceno"
+      - Vidím důvod vrácení v komentářích
+    expected:
+      - Úkol je ve stavu returned
+      - Důvod je zobrazen
+      - Assignee může pokračovat v práci
+
+  - id: TASK-004
+    name: Úkol přiřazený prodejně
+    preconditions:
+      - Existuje prodejna Bohnice s přiřazeným Prodavačem
+      - Uživatel je Vedoucí velkoobchodu
+    steps:
+      - Vytvořím úkol s příjemcem "Prodejna Bohnice"
+      - Přihlásím se jako Prodavač na Bohnicích
+      - Vidím úkol v "Moje úkoly"
+      - Zpracuji a odešlu ke schválení
+    expected:
+      - Úkol se zobrazí všem zaměstnancům dané prodejny
+      - Workflow funguje stejně jako u osobního úkolu
+
+  - id: TASK-005
+    name: Opakující se úkol
+    preconditions:
+      - Existuje týdenní opakující se úkol
+      - Úkol je schválen
+    steps:
+      - Systém detekuje schválený opakující se úkol
+      - Po uplynutí intervalu se vytvoří nová instance
+      - Nová instance má posunutý deadline o 7 dní
+      - Nová instance je ve stavu "new"
+    expected:
+      - Automaticky se vytváří nové instance
+      - repeatSourceId odkazuje na původní úkol
+
+edge_cases:
+  - id: TASK-E001
+    name: Samopřiřazení úkolu
+    description: Uživatel vytvoří úkol sám sobě
+    expected: >
+      Úkol se zobrazí v "Moje úkoly" i "Vytvořené mnou".
+      Badge počítá úkol pouze jednou.
+
+  - id: TASK-E002
+    name: Delegace na sebe sama
+    description: Pokus o delegaci úkolu na sebe
+    expected: >
+      Systém by měl zakázat delegaci na sebe sama
+      (aktuálně není v kódu explicitně ošetřeno).
+
+  - id: TASK-E003
+    name: Úkol bez assignee
+    description: Prodejna nemá žádné přiřazené zaměstnance
+    expected: >
+      Úkol existuje, ale nikdo ho nevidí v "Moje úkoly".
+      Zobrazí se ve "Všechny" pro uživatele s viewMappings.
+
+  - id: TASK-E004
+    name: Dvojí delegace
+    description: Pokus o delegaci již delegovaného úkolu
+    expected: >
+      Systém vrátí chybu "Úkol je již delegován".

@@ -1,0 +1,226 @@
+# SYSTEM.PRO - UI Patterns Specification
+# Sdílené UI vzory napříč moduly
+
+card_patterns:
+  module_card:
+    description: Základní karta modulu v dashboardu
+    layout: |
+      - Ikona modulu (levý horní roh)
+      - Název modulu
+      - Badge počítadlo (pravý horní roh, pokud > 0)
+      - Kompaktní obsah nebo preview
+    interactions:
+      - Klik: otevře detail/rozbalení
+      - Hover: subtle shadow efekt
+    styling: |
+      bg-white
+      border border-slate-100
+      rounded-[40px]
+      p-10
+      hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)]
+      hover:-translate-y-2
+      transition-all duration-500
+
+  detail_card:
+    description: Rozbalený detail modulu
+    layout: |
+      - Header s názvem a zavíracím tlačítkem
+      - Obsah specifický pro modul
+      - Footer s akcemi (pokud relevantní)
+    styling: |
+      bg-white
+      rounded-2xl
+      shadow-lg
+      p-8
+
+view_modes:
+  card:
+    description: Kompaktní zobrazení (dashboard)
+    usage: Výchozí stav modulu
+
+  view:
+    description: Rozbalené detailní zobrazení
+    usage: Po kliknutí na kartu
+
+  modal:
+    description: Modální okno
+    usage: Formuláře, detail položky
+
+form_patterns:
+  input:
+    styling: |
+      bg-slate-50
+      border border-slate-200
+      rounded-xl
+      p-4
+      text-base font-medium
+      outline-none
+      focus:border-orange-300
+    validation:
+      - Chybové hlášky pod inputem
+      - Červený border při chybě
+      - Inline validace kde možné
+
+  select:
+    styling: |
+      bg-slate-50
+      border border-slate-200
+      rounded-xl
+      p-4
+      text-base font-semibold
+      cursor-pointer
+      focus:border-orange-300
+
+  button_primary:
+    styling: |
+      bg-blue-600
+      text-white
+      px-4 py-2
+      rounded-lg
+      font-semibold
+      hover:bg-blue-700
+      active:scale-[0.98]
+      transition-all
+
+  button_success:
+    styling: |
+      bg-green-600
+      text-white
+      px-4 py-2
+      rounded-lg
+      font-semibold
+      hover:bg-green-700
+
+  button_warning:
+    styling: |
+      bg-orange-500
+      text-white
+      px-4 py-2
+      rounded-lg
+      font-semibold
+      hover:bg-orange-600
+
+  button_destructive:
+    styling: |
+      bg-red-600
+      text-white
+      px-4 py-2
+      rounded-lg
+      font-semibold
+      hover:bg-red-700
+
+table_patterns:
+  default:
+    container: |
+      shadow-sm
+      border border-slate-200
+      bg-white
+      rounded-xl
+      overflow-hidden
+    header: |
+      bg-slate-50
+      text-xs font-semibold uppercase tracking-wide text-slate-500
+    cell: |
+      text-sm font-medium text-slate-600
+      border-b border-slate-100
+    row_hover: hover:bg-slate-50
+
+status_indicators:
+  colors:
+    pending: bg-yellow-100 text-yellow-800
+    approved: bg-green-100 text-green-800
+    rejected: bg-red-100 text-red-800
+    in-progress: bg-blue-100 text-blue-800
+    new: bg-slate-100 text-slate-800
+    delegated: bg-purple-100 text-purple-800
+
+  presence:
+    present: text-green-600 (zelená)
+    absent: text-red-600 (červená)
+    excused: text-orange-600 (oranžová)
+
+  priority:
+    high: bg-red-100 text-red-700
+    medium: bg-yellow-100 text-yellow-700
+    low: bg-slate-100 text-slate-600
+
+modal_patterns:
+  sizes:
+    small: max-w-md (formuláře)
+    medium: max-w-lg (detail)
+    large: max-w-[900px] (komplexní)
+
+  layout: |
+    - Overlay (bg-black/50)
+    - Centrované okno
+    - Zavírací X v pravém horním rohu
+    - Titulek nahoře
+    - Obsah uprostřed
+    - Akce dole
+
+  animation: |
+    animate-in fade-in duration-300
+    slide-in-from-top-1
+
+list_patterns:
+  item:
+    layout: |
+      - Hlavní obsah vlevo
+      - Akce/status vpravo
+      - Hover efekt
+    styling: |
+      flex justify-between items-center
+      p-4
+      hover:bg-slate-50
+      transition-colors
+
+  empty_state:
+    description: Zobrazení když není žádná položka
+    content: |
+      - Ikona nebo ilustrace
+      - Text "Žádné položky"
+      - Volitelně CTA tlačítko
+    styling: |
+      text-center
+      py-12
+      text-slate-500
+
+badge_pattern:
+  notification_badge:
+    description: Počítadlo na kartě modulu
+    styling: |
+      absolute top-4 right-4
+      bg-orange-500 text-white
+      text-xs font-bold
+      min-w-[20px] h-[20px]
+      rounded-full
+      flex items-center justify-center
+
+responsive_patterns:
+  mobile:
+    - Karty na celou šířku
+    - Modály full-screen
+    - Zjednodušená navigace
+
+  tablet:
+    - 2 sloupce karet
+    - Modály centered
+
+  desktop:
+    - 3+ sloupce karet
+    - Sidebar + main content
+
+animation_patterns:
+  transitions:
+    default: transition-all duration-300
+    fast: transition-all duration-200
+    slow: transition-all duration-500
+
+  hover:
+    lift: hover:-translate-y-2
+    scale: group-hover:scale-110
+    opacity: opacity-60 hover:opacity-100
+
+  click:
+    press: active:scale-95
+    subtle: active:scale-[0.98]

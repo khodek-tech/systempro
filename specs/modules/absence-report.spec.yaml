@@ -1,0 +1,202 @@
+# SYSTEM.PRO - Absence Report Module Specification
+# Modul pro hlášení nepřítomnosti
+
+module:
+  id: absence-report
+  name: Absence
+  description: Hlášení nepřítomnosti - dovolená, nemoc, lékař, neplacené volno
+  component: AbsenceReportModule
+  store: useAbsenceStore
+  icon: Umbrella
+
+access:
+  roles:
+    - role-1  # Prodavač
+    - role-3  # Skladník
+    - role-4  # Vedoucí skladu
+    - role-5  # Obsluha e-shopu
+    - role-6  # Obchodník
+    - role-7  # Vedoucí velkoobchodu
+
+  note: >
+    Administrátor (role-2) a Majitel (role-8) nemají přístup k tomuto modulu,
+    protože nežádají o absenci - mají modul absence-approval pro schvalování.
+
+data_model:
+  absenceRequest:
+    id: string
+    userId: string  # žadatel
+    type: Dovolená | Nemoc / Neschopenka | Lékař | Neplacené volno
+    dateFrom: string  # YYYY-MM-DD
+    dateTo: string  # YYYY-MM-DD
+    timeFrom?: string  # HH:MM (pouze pro Lékař)
+    timeTo?: string  # HH:MM (pouze pro Lékař)
+    note: string
+    status: pending | approved | rejected
+    createdAt: ISO8601
+    approvedBy?: string  # userId schvalovatele
+    approvedAt?: ISO8601
+    seenByUser?: boolean  # zda žadatel viděl zpracovanou žádost
+
+  absenceFormData:
+    type: AbsenceType
+    dateFrom: string
+    dateTo: string
+    timeFrom: string
+    timeTo: string
+    note: string
+
+features:
+  - id: create_request
+    name: Vytvoření žádosti
+    description: Podání žádosti o absenci
+    acceptance_criteria:
+      - Výběr typu absence (4 typy)
+      - Datum od a datum do (povinné)
+      - Pro typ "Lékař" povinný čas od-do
+      - Poznámka (volitelná)
+      - Validace: datum od <= datum do
+      - Po odeslání reset formuláře
+
+  - id: view_my_requests
+    name: Přehled mých žádostí
+    description: Zobrazení historie vlastních žádostí
+    acceptance_criteria:
+      - Seznam všech vlastních žádostí
+      - Filtry: měsíc, rok, stav
+      - Řazení: nejnovější první
+      - Barevné rozlišení stavů
+
+  - id: absence_types
+    name: Typy absencí
+    description: Různé typy nepřítomnosti
+    acceptance_criteria:
+      - Dovolená - celodenní
+      - Nemoc / Neschopenka - celodenní
+      - Lékař - v hodinách (čas od-do)
+      - Neplacené volno - celodenní
+
+notifications:
+  badge:
+    type: count
+    source: getUnseenProcessedRequestsCount(userId)
+    description: >
+      Počet vlastních žádostí které byly zpracovány (approved/rejected)
+      ale žadatel je ještě neviděl (seenByUser === false).
+
+  seen_tracking:
+    - seenByUser: false se nastaví při schválení/zamítnutí
+    - seenByUser: true se nastaví při otevření přehledu žádostí
+    - Metoda: markMyRequestsAsSeen(userId)
+
+scenarios:
+  - id: ABS-R-001
+    name: Podání žádosti o dovolenou
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+    steps:
+      - Otevřu modul Absence
+      - Vyberu typ "Dovolená"
+      - Zadám datum od: 2026-02-10
+      - Zadám datum do: 2026-02-14
+      - Zadám poznámku: "Rodinná dovolená"
+      - Kliknu "Odeslat žádost"
+      - Zobrazí se potvrzení
+      - Formulář se vyčistí
+      - V přehledu vidím novou žádost se stavem "Čeká na schválení"
+    expected:
+      - Žádost je vytvořena ve stavu pending
+      - Zobrazuje se v přehledu
+
+  - id: ABS-R-002
+    name: Podání žádosti k lékaři
+    preconditions:
+      - Uživatel je přihlášen jako Skladník
+    steps:
+      - Otevřu modul Absence
+      - Vyberu typ "Lékař"
+      - Objeví se pole pro čas
+      - Zadám datum: 2026-02-05
+      - Zadám čas od: 09:00
+      - Zadám čas do: 11:30
+      - Zadám poznámku: "Kontrola u zubaře"
+      - Kliknu "Odeslat žádost"
+    expected:
+      - Žádost obsahuje čas od-do
+      - Typ je "Lékař"
+
+  - id: ABS-R-003
+    name: Notifikace o zpracované žádosti
+    preconditions:
+      - Existuje pending žádost od uživatele
+      - Nadřízený schválil žádost
+    steps:
+      - Přihlásím se jako žadatel
+      - Vidím badge na modulu Absence
+      - Otevřu modul Absence
+      - Vidím schválenou žádost
+      - Badge zmizí (markMyRequestsAsSeen)
+    expected:
+      - Badge ukazuje nepřečtené zpracované žádosti
+      - Po zobrazení se badge vynuluje
+
+  - id: ABS-R-004
+    name: Filtrování žádostí
+    preconditions:
+      - Existuje více žádostí v různých měsících a stavech
+    steps:
+      - Otevřu přehled žádostí
+      - Vyberu filtr měsíc: Únor
+      - Zobrazí se pouze žádosti s dateFrom v únoru
+      - Vyberu filtr stav: Schváleno
+      - Zobrazí se pouze schválené žádosti z února
+    expected:
+      - Filtry fungují kombinovaně
+      - Prázdný výsledek zobrazí "Žádné žádosti"
+
+  - id: ABS-R-005
+    name: Validace neplatných dat
+    preconditions:
+      - Uživatel je na formuláři žádosti
+    steps:
+      - Zadám datum od: 2026-02-14
+      - Zadám datum do: 2026-02-10 (dříve než od)
+      - Kliknu "Odeslat žádost"
+      - Zobrazí se chyba "Datum od nemůže být po datu do!"
+      - Vyberu typ "Lékař"
+      - Nezadám čas
+      - Kliknu "Odeslat žádost"
+      - Zobrazí se chyba "Vyplňte čas od a do!"
+    expected:
+      - Validace zabrání odeslání neplatných dat
+      - Chybové hlášky jsou česky
+
+edge_cases:
+  - id: ABS-R-E001
+    name: Jednodenní absence
+    description: Datum od a datum do je stejné
+    expected: >
+      Žádost se vytvoří korektně.
+      Datum se zobrazuje jako jeden den.
+
+  - id: ABS-R-E002
+    name: Prázdná poznámka
+    description: Odeslání žádosti bez poznámky
+    expected: >
+      Poznámka není povinná.
+      Žádost se vytvoří s prázdnou poznámkou.
+
+  - id: ABS-R-E003
+    name: Překrývající se žádosti
+    description: Odeslání žádosti na termín kde již existuje jiná
+    expected: >
+      Systém aktuálně nekontroluje překryvy.
+      Obě žádosti existují paralelně.
+      (Potenciální vylepšení: varování/blokování)
+
+  - id: ABS-R-E004
+    name: Žádost do minulosti
+    description: Zadání data v minulosti
+    expected: >
+      Systém aktuálně povoluje.
+      (Potenciální vylepšení: varování nebo blokování)

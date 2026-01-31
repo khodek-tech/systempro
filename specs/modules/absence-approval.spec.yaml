@@ -1,0 +1,205 @@
+# SYSTEM.PRO - Absence Approval Module Specification
+# Modul pro schvalování žádostí o absenci
+
+module:
+  id: absence-approval
+  name: Schvalování
+  description: Schvalování žádostí o absenci podřízených
+  component: AbsenceApprovalModule
+  store: useAbsenceStore
+  icon: ClipboardCheck
+
+access:
+  roles:
+    - role-2  # Administrátor
+    - role-4  # Vedoucí skladu
+    - role-7  # Vedoucí velkoobchodu
+    - role-8  # Majitel
+
+  approvalMappings:
+    - approverRoleId: role-4  # Vedoucí skladu
+      subordinateRoleIds:
+        - role-3  # Skladník
+        - role-5  # Obsluha e-shopu
+
+    - approverRoleId: role-7  # Vedoucí velkoobchodu
+      subordinateRoleIds:
+        - role-1  # Prodavač
+        - role-6  # Obchodník
+
+    - approverRoleId: role-2  # Administrátor
+      subordinateRoleIds:
+        - role-4  # Vedoucí skladu
+        - role-7  # Vedoucí velkoobchodu
+
+    - approverRoleId: role-8  # Majitel
+      subordinateRoleIds:
+        - role-1  # Prodavač
+        - role-2  # Administrátor
+        - role-3  # Skladník
+        - role-4  # Vedoucí skladu
+        - role-5  # Obsluha e-shopu
+        - role-6  # Obchodník
+        - role-7  # Vedoucí velkoobchodu
+
+features:
+  - id: view_pending
+    name: Zobrazení pending žádostí
+    description: Přehled žádostí čekajících na schválení
+    acceptance_criteria:
+      - Zobrazují se pouze žádosti od podřízených (dle approvalMappings)
+      - Vlastní žádosti se nezobrazují
+      - Pending žádosti jsou na vrchu seznamu
+      - Filtry: měsíc, rok, stav
+
+  - id: approve_request
+    name: Schválení žádosti
+    description: Schválení žádosti o absenci
+    acceptance_criteria:
+      - Pouze pro pending žádosti
+      - Validace oprávnění přes approvalMappings
+      - Nastaví status=approved, approvedBy, approvedAt
+      - Nastaví seenByUser=false pro notifikaci žadateli
+
+  - id: reject_request
+    name: Zamítnutí žádosti
+    description: Zamítnutí žádosti o absenci
+    acceptance_criteria:
+      - Pouze pro pending žádosti
+      - Validace oprávnění přes approvalMappings
+      - Nastaví status=rejected, approvedBy, approvedAt
+      - Nastaví seenByUser=false pro notifikaci žadateli
+
+  - id: view_history
+    name: Historie rozhodnutí
+    description: Přehled již zpracovaných žádostí
+    acceptance_criteria:
+      - Zobrazení schválených a zamítnutých žádostí
+      - Filtrování podle měsíce, roku, stavu
+      - Řazení: pending první, pak dle data
+
+notifications:
+  badge:
+    type: count
+    source: getPendingRequestsForApproval(approverId, roleType).length
+    description: >
+      Počet pending žádostí které čekají na mé schválení.
+      Filtrováno přes approvalMappings.
+
+scenarios:
+  - id: ABS-A-001
+    name: Schválení žádosti o dovolenou
+    preconditions:
+      - Existuje pending žádost od Prodavače
+      - Uživatel je přihlášen jako Vedoucí velkoobchodu
+    steps:
+      - Vidím badge na modulu Schvalování
+      - Otevřu modul Schvalování
+      - Vidím pending žádost od Prodavače
+      - Kliknu "Schválit"
+      - Zobrazí se potvrzení
+      - Žádost změní stav na "Schváleno"
+      - Badge se sníží o 1
+    expected:
+      - Žádost je schválena
+      - Žadatel dostane notifikaci (badge na absence-report)
+
+  - id: ABS-A-002
+    name: Zamítnutí žádosti
+    preconditions:
+      - Existuje pending žádost od Skladníka
+      - Uživatel je přihlášen jako Vedoucí skladu
+    steps:
+      - Otevřu modul Schvalování
+      - Vidím pending žádost
+      - Kliknu "Zamítnout"
+      - Zobrazí se potvrzení
+      - Žádost změní stav na "Zamítnuto"
+    expected:
+      - Žádost je zamítnuta
+      - Žadatel dostane notifikaci
+
+  - id: ABS-A-003
+    name: Hierarchie schvalování
+    preconditions:
+      - Existuje pending žádost od Vedoucího skladu
+      - Uživatel je přihlášen jako Prodavač
+    steps:
+      - Otevřu modul Schvalování (pokud má přístup)
+      - Nevidím žádost od Vedoucího skladu
+      - Přihlásím se jako Administrátor
+      - Vidím žádost od Vedoucího skladu
+    expected:
+      - Každá role vidí pouze žádosti svých podřízených
+      - Prodavač nemá přístup k modulu schvalování
+
+  - id: ABS-A-004
+    name: Majitel vidí všechny žádosti
+    preconditions:
+      - Existují pending žádosti od různých rolí
+      - Uživatel je přihlášen jako Majitel
+    steps:
+      - Otevřu modul Schvalování
+      - Vidím žádosti od všech rolí
+      - Mohu schválit libovolnou žádost
+    expected:
+      - Majitel má přístup ke všem žádostem
+      - Může schvalovat kohokoliv
+
+  - id: ABS-A-005
+    name: Filtrování žádostí
+    preconditions:
+      - Existuje mix pending a schválených žádostí v různých měsících
+    steps:
+      - Otevřu modul Schvalování
+      - Vyberu filtr: Stav = Schváleno
+      - Zobrazí se pouze schválené žádosti
+      - Vyberu filtr: Měsíc = Únor
+      - Zobrazí se pouze schválené žádosti z února
+    expected:
+      - Filtry fungují kombinovaně
+      - Pending jsou vždy na vrchu (pokud nejsou odfiltrovány)
+
+  - id: ABS-A-006
+    name: Vlastní žádosti se nezobrazují
+    preconditions:
+      - Vedoucí skladu má vlastní pending žádost
+      - Vedoucí skladu má přístup k modulu schvalování
+    steps:
+      - Přihlásím se jako Vedoucí skladu
+      - Otevřu modul Schvalování
+      - Moje vlastní žádost se nezobrazuje
+    expected:
+      - Nelze schvalovat vlastní žádosti
+      - Vlastní žádosti jsou vyloučeny z výpisu
+
+edge_cases:
+  - id: ABS-A-E001
+    name: Dvojité schválení
+    description: Pokus o schválení již schválené žádosti
+    expected: >
+      Systém vrátí chybu "Žádost již byla vyřízena".
+      Stav se nezmění.
+
+  - id: ABS-A-E002
+    name: Schválení bez oprávnění
+    description: Pokus o schválení žádosti od osoby mimo subordinateRoleIds
+    expected: >
+      Systém vrátí chybu "Nemáte oprávnění schvalovat tuto žádost".
+      Operace se neprovede.
+
+  - id: ABS-A-E003
+    name: Žádná pending žádost
+    description: Všechny žádosti jsou již zpracovány
+    expected: >
+      Badge je 0.
+      V seznamu se zobrazují pouze zpracované žádosti.
+      Zobrazí se informativní text.
+
+  - id: ABS-A-E004
+    name: Konkurenční schválení
+    description: Dva schvalovatelé schvalují stejnou žádost současně
+    expected: >
+      První schválení projde.
+      Druhé selže s chybou "Žádost již byla vyřízena".
+      (Zustand state je synchronní, tak by nemělo nastat)

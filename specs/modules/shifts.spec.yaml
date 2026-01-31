@@ -1,0 +1,197 @@
+# SYSTEM.PRO - Shifts Module Specification
+# Modul pro plánování a přehled směn
+
+module:
+  id: shifts
+  name: Směny
+  description: Plánování a přehled směn zaměstnanců
+  component: ShiftsModule
+  store: useShiftsStore
+  icon: Calendar
+
+access:
+  roles:
+    - role-1  # Prodavač (vlastní směny)
+    - role-3  # Skladník (vlastní směny)
+    - role-5  # Obsluha e-shopu (vlastní směny)
+    - role-6  # Obchodník (vlastní směny)
+
+  viewMappings:
+    - viewerRoleId: role-7  # Vedoucí velkoobchodu
+      visibleRoleIds: [role-1, role-6]  # Prodavači a Obchodníci
+    - viewerRoleId: role-8  # Majitel
+      visibleRoleIds: [role-1, role-3, role-4, role-5, role-6, role-7]
+
+  note: >
+    Základní role vidí pouze vlastní směny.
+    Vedoucí a Majitel mohou přepínat mezi zaměstnanci/prodejnami.
+
+data_model:
+  shiftsState:
+    shiftsViewMode: card | view
+    selectedStoreId: string | null
+    selectedMonth: number  # 0-11
+    selectedYear: number
+
+  shiftDay:
+    date: Date
+    dayOfWeek: number  # 0=Ne, 1=Po, ..., 6=So
+    isWorkDay: boolean  # pracuje uživatel tento den
+    isShortWeek: boolean  # je to krátký týden
+    openingHours?: DayOpeningHours  # pracovní doba
+
+  dayOpeningHours:
+    open: string  # HH:MM
+    close: string  # HH:MM
+    closed: boolean
+
+features:
+  - id: calendar_view
+    name: Kalendářní zobrazení
+    description: Měsíční přehled směn
+    acceptance_criteria:
+      - Zobrazení celého měsíce
+      - Barevné rozlišení pracovních dnů
+      - Možnost navigace mezi měsíci
+      - Zobrazení otevírací doby pro pracovní dny
+
+  - id: short_long_weeks
+    name: Krátké/dlouhé týdny
+    description: Střídání krátkých a dlouhých týdnů
+    acceptance_criteria:
+      - Krátký týden: St, Čt (2 dny)
+      - Dlouhý týden: Po, Út, Pá, So, Ne (5 dní)
+      - Střídání podle ISO týdne a startsWithShortWeek
+      - Vizuální rozlišení krátkého/dlouhého týdne
+
+  - id: store_selection
+    name: Výběr prodejny
+    description: Filtrování směn podle prodejny
+    acceptance_criteria:
+      - Pouze pro uživatele s viewMappings
+      - Výběr prodejny zobrazí zaměstnance dané prodejny
+      - Pokud jen vlastní směny, výběr není dostupný
+
+  - id: opening_hours
+    name: Otevírací doba
+    description: Zobrazení pracovní doby pro směnu
+    acceptance_criteria:
+      - Priorita: otevírací doba prodejny > pracovní doba uživatele
+      - Zobrazení času od-do pro pracovní dny
+      - Zavřené dny mají speciální označení
+
+  - id: user_working_hours
+    name: Pracovní doba uživatele
+    description: Individuální pracovní doba pro role bez prodejny
+    acceptance_criteria:
+      - Používá se když uživatel nemá přiřazenou prodejnu
+      - Definováno v user.workingHours
+      - Může být sameAllWeek nebo per den
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: SHIFT-001
+    name: Zobrazení vlastních směn Prodavače
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+      - Má přiřazenou prodejnu
+    steps:
+      - Otevřu modul Směny
+      - Vidím kalendář aktuálního měsíce
+      - Pracovní dny jsou zvýrazněny
+      - Vidím rozlišení krátký/dlouhý týden
+      - Kliknu na pracovní den
+      - Vidím otevírací dobu prodejny
+    expected:
+      - Zobrazují se pouze moje směny
+      - Správné střídání týdnů
+
+  - id: SHIFT-002
+    name: Navigace mezi měsíci
+    preconditions:
+      - Modul Směny je otevřen
+    steps:
+      - Vidím aktuální měsíc (např. Leden 2026)
+      - Kliknu šipku doprava
+      - Zobrazí se Únor 2026
+      - Kliknu šipku doleva dvakrát
+      - Zobrazí se Prosinec 2025
+    expected:
+      - Plynulá navigace mezi měsíci
+      - Přechod přes roky funguje
+
+  - id: SHIFT-003
+    name: Krátký vs dlouhý týden
+    preconditions:
+      - Uživatel s startsWithShortWeek=true
+      - Týden č.1 (lichý)
+    steps:
+      - Otevřu směny pro týden č.1
+      - Vidím pracovní dny: St, Čt (krátký týden)
+      - Přejdu na týden č.2 (sudý)
+      - Vidím pracovní dny: Po, Út, Pá, So, Ne (dlouhý týden)
+    expected:
+      - Liché týdny = krátký (pro startsWithShortWeek=true)
+      - Sudé týdny = dlouhý
+
+  - id: SHIFT-004
+    name: Vedoucí vidí směny podřízených
+    preconditions:
+      - Uživatel je Vedoucí velkoobchodu (role-7)
+      - Existují Prodavači na různých prodejnách
+    steps:
+      - Otevřu modul Směny
+      - Vidím výběr prodejny
+      - Vyberu prodejnu "Bohnice"
+      - Zobrazí se směny zaměstnanců na Bohnicích
+      - Vidím seznam zaměstnanců a jejich směny
+    expected:
+      - Vedoucí vidí všechny podřízené
+      - Filtrování podle prodejny funguje
+
+  - id: SHIFT-005
+    name: Zaměstnanec bez prodejny (Skladník)
+    preconditions:
+      - Uživatel je Skladník s definovanou pracovní dobou
+      - Nemá přiřazenou prodejnu
+    steps:
+      - Otevřu modul Směny
+      - Vidím své směny podle workingHours
+      - Po-Pá: 08:00-16:30
+      - So, Ne: zavřeno
+    expected:
+      - Směny podle user.workingHours
+      - Bez střídání krátkých/dlouhých týdnů
+
+edge_cases:
+  - id: SHIFT-E001
+    name: Prodejna bez otevírací doby
+    description: Prodejna nemá definované openingHours
+    expected: >
+      Použijí se user.workingHours pokud existují.
+      Jinak se směny nezobrazují nebo defaultní hodnoty.
+
+  - id: SHIFT-E002
+    name: Jediný zaměstnanec na prodejně
+    description: Prodejna má pouze jednoho přiřazeného zaměstnance
+    expected: >
+      Zaměstnanec pracuje všechny dny kdy je prodejna otevřená.
+      Žádné střídání krátkých/dlouhých týdnů.
+
+  - id: SHIFT-E003
+    name: Více prodejen přiřazených uživateli
+    description: Uživatel má více prodejen v storeIds
+    expected: >
+      Směny se počítají pro první prodejnu (storeIds[0]).
+      (Potenciální vylepšení: výběr prodejny)
+
+  - id: SHIFT-E004
+    name: Přechod roku (prosinec/leden)
+    description: Navigace z prosince do ledna dalšího roku
+    expected: >
+      Rok se automaticky aktualizuje.
+      ISO týdny pokračují korektně přes hranici roku.

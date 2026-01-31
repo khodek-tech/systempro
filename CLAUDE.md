@@ -241,3 +241,36 @@ Pulse: animate-pulse (pro status indikátory)
 | `shadow-md` | Modály |
 | `shadow-lg` | Dialogy, overlay |
 | Custom hover: `shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)]` |
+
+---
+
+## Specifikace
+
+Projekt používá "Living Specification" systém - živou dokumentaci všech modulů s testovacími scénáři.
+
+### Struktura specifikací
+```
+/specs/
+  MASTER-SPEC.md           # Přehled systému
+  TEST-RUNNER.md           # Instrukce pro testování
+  CHANGELOG.md             # Historie změn
+  modules/                 # Spec soubor pro každý modul
+    {module-id}.spec.yaml
+  shared/
+    roles.yaml             # Definice rolí
+    notifications.yaml     # Badge logika
+    ui-patterns.yaml       # UI vzory
+/testy.md                  # Čitelný přehled testů
+```
+
+### Pravidla aktualizace
+Při změně modulu **VŽDY** aktualizovat:
+1. `/specs/modules/{module-id}.spec.yaml` - specifikaci modulu
+2. `/testy.md` - příslušnou sekci testů
+3. `/specs/CHANGELOG.md` - záznam o změně
+
+### Co aktualizovat
+- **Nová funkce**: přidat do `features:` a nový `scenario:`
+- **Změna chování**: upravit existující `scenario:` a `expected:`
+- **Nový edge case**: přidat do `edge_cases:`
+- **Změna přístupu**: upravit `access:` sekci

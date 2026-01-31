@@ -1,0 +1,179 @@
+# SYSTEM.PRO - Reports Module Specification
+# Modul pro reporty tržeb a docházky
+
+module:
+  id: reports
+  name: Tržba a Docházka
+  description: Reporty tržeb a docházky zaměstnanců
+  component: ReportsModule
+  store: null  # agreguje data z více stores
+  icon: ChartColumnIncreasing
+
+access:
+  roles:
+    - role-2  # Administrátor
+
+  note: >
+    Pouze Administrátor má přístup k reportům.
+    Reporty kombinují data z tržeb a docházky.
+
+data_model:
+  # Reports nemá vlastní store
+  # Agreguje data z:
+  # - useSalesStore (tržby)
+  # - useAttendanceStore (docházka)
+  # - MOCK_STORES (prodejny)
+  # - MOCK_USERS (zaměstnanci)
+
+  reportRecord:
+    date: string
+    store: string
+    user: string
+    in: string  # čas příchodu
+    out: string  # čas odchodu
+    hrs: string  # odpracované hodiny
+    abs: string  # typ absence
+    absNote: string
+    cash: number
+    card: number
+    partner: number
+    flows: string  # příjmy/výdaje
+    saleNote: string
+    collected: boolean | string  # kdo odvezl
+
+features:
+  - id: attendance_report
+    name: Report docházky
+    description: Přehled docházky zaměstnanců
+    acceptance_criteria:
+      - Filtry: prodejna, měsíc, rok
+      - Zobrazení: datum, zaměstnanec, čas od-do, hodiny
+      - Absence s poznámkou
+      - Export možnost
+
+  - id: sales_report
+    name: Report tržeb
+    description: Přehled tržeb za období
+    acceptance_criteria:
+      - Filtry: prodejna, měsíc, rok
+      - Zobrazení: datum, hotovost, karta, partner
+      - Mimořádné pohyby (flows)
+      - Stav odvodu
+
+  - id: combined_report
+    name: Kombinovaný report
+    description: Spojení docházky a tržeb
+    acceptance_criteria:
+      - Jeden řádek = jeden den/zaměstnanec
+      - Docházka + tržby pohromadě
+      - Přehledná tabulka
+
+  - id: filters
+    name: Filtry reportů
+    description: Možnosti filtrování dat
+    acceptance_criteria:
+      - Prodejna: všechny nebo konkrétní
+      - Měsíc: výběr měsíce
+      - Rok: aktuální ± 2 roky
+      - Kombinace filtrů
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: REP-001
+    name: Zobrazení reportu docházky
+    preconditions:
+      - Uživatel je Administrátor
+      - Existují záznamy docházky
+    steps:
+      - Otevřu modul Tržba a Docházka
+      - Vidím tabulku s daty
+      - Vyberu filtr: Prodejna = Bohnice
+      - Zobrazí se pouze záznamy z Bohnic
+      - Vyberu měsíc: Leden
+      - Zobrazí se pouze záznamy z ledna
+    expected:
+      - Filtrování funguje
+      - Data jsou správně zobrazena
+
+  - id: REP-002
+    name: Přehled tržeb za období
+    preconditions:
+      - Existují záznamy tržeb
+    steps:
+      - Otevřu report
+      - Vidím sloupce: cash, card, partner
+      - Vidím flows (příjmy/výdaje)
+      - Vidím stav odvodu (collected)
+    expected:
+      - Všechny finanční údaje viditelné
+      - Srozumitelné formátování
+
+  - id: REP-003
+    name: Report s absencemi
+    preconditions:
+      - Existují záznamy s absencemi
+    steps:
+      - Otevřu report
+      - Řádky s absencí mají vyplněný sloupec "abs"
+      - Vidím typ absence (Lékař, Dovolená, ...)
+      - Vidím poznámku k absenci
+    expected:
+      - Absence jsou zvýrazněny
+      - Poznámky jsou čitelné
+
+  - id: REP-004
+    name: Filtr všech prodejen
+    preconditions:
+      - Existují záznamy z více prodejen
+    steps:
+      - Nastavím filtr: Prodejna = Všechny
+      - Zobrazí se záznamy ze všech prodejen
+      - Vidím sloupec "store" s názvem prodejny
+    expected:
+      - Agregace napříč prodejnami
+      - Jasná identifikace prodejny
+
+  - id: REP-005
+    name: Prázdný report
+    preconditions:
+      - Neexistují záznamy pro vybraný filtr
+    steps:
+      - Vyberu kombinaci filtrů bez dat
+      - Zobrazí se prázdná tabulka
+      - Informativní text "Žádná data"
+    expected:
+      - Prázdný stav je ošetřen
+      - UX je přívětivé
+
+edge_cases:
+  - id: REP-E001
+    name: Velmi dlouhý report
+    description: Stovky záznamů za měsíc
+    expected: >
+      Stránkování nebo virtualizace.
+      Performance zůstává přijatelná.
+
+  - id: REP-E002
+    name: Nekonzistentní data
+    description: Některé záznamy mají chybějící pole
+    expected: >
+      Prázdné buňky nebo placeholder "-".
+      Report se zobrazí bez chyby.
+
+  - id: REP-E003
+    name: Export dat
+    description: Uživatel chce exportovat report
+    expected: >
+      (Potenciální funkce: export do CSV/Excel)
+      Aktuálně neimplementováno.
+
+  - id: REP-E004
+    name: Více filtrů najednou
+    description: Kombinace všech filtrů
+    expected: >
+      Filtry se aplikují kumulativně (AND).
+      Prázdný výsledek je možný.

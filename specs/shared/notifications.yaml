@@ -1,0 +1,109 @@
+# SYSTEM.PRO - Notification System Specification
+# Badge a notifikační logika pro všechny moduly
+
+overview:
+  description: >
+    Systém notifikací používá badge počítadla na modulech.
+    Badge ukazuje počet položek vyžadujících pozornost.
+    Každý modul má vlastní logiku počítání.
+
+modules_with_badges:
+  - module: tasks
+    badge_type: count
+    source: getUnresolvedTasksCount(userId)
+    description: Počet nevyřešených úkolů
+    calculation: |
+      myTasksCount (úkoly v "Moje úkoly", bez approved)
+      + createdByMeCount (úkoly v "Vytvořené mnou", bez approved, bez duplicit)
+
+  - module: chat
+    badge_type: count
+    source: getUnreadCountForUser(userId)
+    description: Počet nepřečtených zpráv
+    calculation: |
+      Pro každou skupinu kde je uživatel členem:
+        - Najdi zprávy po lastReadAt (nebo všechny pokud nemá readStatus)
+        - Vynechej vlastní zprávy (userId === currentUserId)
+        - Sečti celkem
+
+  - module: absence-report
+    badge_type: count
+    source: getUnseenProcessedRequestsCount(userId)
+    description: Počet nepřečtených zpracovaných žádostí
+    calculation: |
+      Počet vlastních žádostí kde:
+        - status !== 'pending'
+        - seenByUser === false
+
+  - module: absence-approval
+    badge_type: count
+    source: getPendingRequestsForApproval(approverId, roleType).length
+    description: Počet čekajících žádostí ke schválení
+    calculation: |
+      Počet žádostí kde:
+        - status === 'pending'
+        - userId !== approverId (ne vlastní)
+        - canApproveUser(roleType, userRoleType) === true
+
+modules_without_badges:
+  - cash-info
+  - sales
+  - collect
+  - kpi-dashboard
+  - reports
+  - attendance
+  - shifts
+  - presence
+
+seen_tracking:
+  tasks:
+    fields:
+      - seenByAssignee: "false při vytvoření, vrácení, schválení"
+      - seenByCreator: "false při změně stavu assigneem"
+      - seenByDelegatee: "false při delegaci, vrácení od delegatora"
+    mark_as_seen: markTaskAsSeen(taskId, userId)
+
+  chat:
+    fields:
+      - lastReadMessageId: "ID poslední přečtené zprávy"
+      - lastReadAt: "Timestamp posledního přečtení"
+    mark_as_seen: markGroupAsRead(groupId, userId)
+
+  absence:
+    fields:
+      - seenByUser: "false při schválení/zamítnutí"
+    mark_as_seen: markMyRequestsAsSeen(userId)
+
+badge_display:
+  component: ModuleCard
+  conditions:
+    - count > 0: zobrazuje badge s číslem
+    - count === 0: badge se nezobrazuje
+  styling:
+    position: top-right corner
+    color: orange (bg-orange-500)
+    shape: rounded-full
+    min-width: 20px
+
+update_triggers:
+  tasks:
+    - Vytvoření nového úkolu
+    - Změna stavu úkolu
+    - Delegace úkolu
+    - Přidání komentáře
+    - Otevření detailu úkolu
+
+  chat:
+    - Odeslání nové zprávy
+    - Otevření skupiny
+
+  absence:
+    - Schválení žádosti
+    - Zamítnutí žádosti
+    - Otevření přehledu žádostí
+
+performance_considerations:
+  - Badge se počítá při každém renderování ModuleCard
+  - Pro velké datasety může být potřeba memoizace
+  - Zustand selektory pomáhají omezit re-rendery
+  - localStorage persist zajišťuje persistenci stavů

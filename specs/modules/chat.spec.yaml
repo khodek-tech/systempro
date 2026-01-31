@@ -1,0 +1,239 @@
+# SYSTEM.PRO - Chat Module Specification
+# Modul pro skupinové konverzace
+
+module:
+  id: chat
+  name: Chat
+  description: Skupinové konverzace pro komunikaci mezi zaměstnanci
+  component: ChatModule
+  store: useChatStore
+  icon: MessagesSquare
+
+access:
+  roles:
+    - role-1  # Prodavač
+    - role-2  # Administrátor
+    - role-3  # Skladník
+    - role-4  # Vedoucí skladu
+    - role-5  # Obsluha e-shopu
+    - role-6  # Obchodník
+    - role-7  # Vedoucí velkoobchodu
+    - role-8  # Majitel
+
+  admin_features:
+    # Pouze Administrátor může spravovat skupiny
+    group_management: [role-2]
+
+data_model:
+  chatGroup:
+    id: string
+    name: string
+    memberIds: string[]  # userIds
+    createdAt: ISO8601
+    createdBy: string  # userId
+
+  chatMessage:
+    id: string
+    groupId: string
+    userId: string  # autor
+    text: string
+    attachments: ChatAttachment[]
+    reactions: ChatReaction[]
+    createdAt: ISO8601
+
+  chatReaction:
+    type: thumbsUp | heart | laugh | wow | sad | angry
+    userId: string
+    createdAt: ISO8601
+
+  chatReadStatus:
+    groupId: string
+    userId: string
+    lastReadMessageId: string
+    lastReadAt: ISO8601
+
+  chatAttachment:
+    id: string
+    type: image | file
+    url: string
+    name: string
+    size: number
+
+features:
+  - id: view_groups
+    name: Zobrazení skupin
+    description: Uživatel vidí pouze skupiny, kde je členem
+    acceptance_criteria:
+      - Skupiny seřazeny podle času poslední zprávy
+      - Zobrazuje se počet nepřečtených zpráv
+      - Skupiny bez zpráv jsou na konci
+
+  - id: send_message
+    name: Odeslání zprávy
+    description: Odeslání textové zprávy do skupiny
+    acceptance_criteria:
+      - Zpráva se okamžitě zobrazí v konverzaci
+      - Automaticky se označí jako přečtená pro odesílatele
+      - Ostatní členové vidí jako nepřečtenou
+
+  - id: reactions
+    name: Reakce na zprávy
+    description: Přidání/odebrání reakce na zprávu
+    acceptance_criteria:
+      - 6 typů reakcí: thumbsUp, heart, laugh, wow, sad, angry
+      - Jedna reakce typu na uživatele na zprávu
+      - Klik na existující reakci ji odebere
+
+  - id: read_status
+    name: Stav přečtení
+    description: Sledování přečtených zpráv
+    acceptance_criteria:
+      - Otevření skupiny označí všechny zprávy jako přečtené
+      - Nepřečtené se počítají od lastReadAt
+      - Vlastní zprávy se nepočítají do nepřečtených
+
+  - id: search
+    name: Vyhledávání
+    description: Vyhledávání v zprávách aktuální skupiny
+    acceptance_criteria:
+      - Filtruje zprávy obsahující hledaný text
+      - Case-insensitive vyhledávání
+      - Vyhledává pouze v aktuálně otevřené skupině
+
+  - id: group_management
+    name: Správa skupin (admin)
+    description: Vytváření, editace a mazání skupin
+    acceptance_criteria:
+      - Pouze Administrátor (role-2) má přístup
+      - Vytvoření nové skupiny s názvem a členy
+      - Editace existující skupiny (název, členové)
+      - Smazání skupiny (včetně všech zpráv)
+      - Konfigurace v nastavení modulu (Module Settings)
+
+notifications:
+  badge:
+    type: count
+    source: getUnreadCountForUser(userId)
+    description: >
+      Celkový počet nepřečtených zpráv ze všech skupin.
+      Zprávy od sebe sama se nepočítají.
+
+  calculation:
+    - Pro každou skupinu kde je uživatel členem
+    - Počet zpráv po lastReadAt (nebo všechny pokud nemá readStatus)
+    - Vynechání zpráv kde userId === currentUserId
+
+scenarios:
+  - id: CHAT-001
+    name: Základní konverzace
+    preconditions:
+      - Existuje skupina "Všichni" s více členy
+      - Uživatel je členem skupiny
+    steps:
+      - Otevřu modul Chat
+      - Vidím seznam skupin
+      - Kliknu na skupinu "Všichni"
+      - Vidím historii zpráv
+      - Napíšu zprávu "Ahoj všem"
+      - Kliknu Odeslat
+      - Zpráva se zobrazí v konverzaci
+      - Přepnu se na jiného uživatele
+      - Vidím badge na modulu Chat
+      - Otevřu skupinu, vidím nepřečtenou zprávu
+    expected:
+      - Zpráva se doručí všem členům
+      - Badge se správně aktualizuje
+
+  - id: CHAT-002
+    name: Reakce na zprávu
+    preconditions:
+      - Existuje zpráva od jiného uživatele
+    steps:
+      - Otevřu skupinu s existující zprávou
+      - Najedu na zprávu, objeví se menu reakcí
+      - Kliknu na "thumbsUp"
+      - Reakce se zobrazí pod zprávou
+      - Kliknu znovu na "thumbsUp"
+      - Reakce se odebere
+    expected:
+      - Reakce se přidává/odebírá toggle akcí
+      - Zobrazuje se počet reakcí každého typu
+
+  - id: CHAT-003
+    name: Správa skupin (admin)
+    preconditions:
+      - Uživatel je přihlášen jako Administrátor
+    steps:
+      - Otevřu nastavení modulu Chat (Module Settings)
+      - Kliknu na "Nová skupina"
+      - Zadám název "Test skupina"
+      - Vyberu členy
+      - Kliknu Uložit
+      - Skupina se vytvoří
+      - Kliknu na editaci existující skupiny
+      - Změním název a členy
+      - Uložím změny
+      - Kliknu na smazání skupiny
+      - Potvrdím smazání
+    expected:
+      - Administrátor může plně spravovat skupiny
+      - Změny se projeví okamžitě pro všechny členy
+
+  - id: CHAT-004
+    name: Vyhledávání v konverzaci
+    preconditions:
+      - Skupina obsahuje několik zpráv s různým textem
+    steps:
+      - Otevřu skupinu
+      - Do vyhledávacího pole zadám text
+      - Zobrazí se pouze zprávy obsahující text
+      - Vymažu vyhledávání
+      - Zobrazí se všechny zprávy
+    expected:
+      - Filtrování funguje okamžitě
+      - Case-insensitive
+
+  - id: CHAT-005
+    name: Přístup do skupin podle členství
+    preconditions:
+      - Existuje skupina "Vedení" s omezeným počtem členů
+      - Uživatel není členem této skupiny
+    steps:
+      - Přihlásím se jako uživatel mimo skupinu
+      - Otevřu modul Chat
+      - Skupina "Vedení" se nezobrazuje v seznamu
+      - Přihlásím se jako člen skupiny
+      - Skupina "Vedení" se zobrazuje
+    expected:
+      - Uživatel vidí pouze skupiny kde je členem
+
+edge_cases:
+  - id: CHAT-E001
+    name: Prázdná skupina
+    description: Skupina bez zpráv
+    expected: >
+      Zobrazí se prázdný stav s textem "Zatím žádné zprávy".
+      Badge je 0.
+
+  - id: CHAT-E002
+    name: Odebrání ze skupiny
+    description: Admin odebere uživatele ze skupiny
+    expected: >
+      Uživatel již nevidí skupinu v seznamu.
+      Zprávy zůstávají pro ostatní členy.
+      Badge se přepočítá bez této skupiny.
+
+  - id: CHAT-E003
+    name: Smazání skupiny s nepřečtenými
+    description: Admin smaže skupinu která má nepřečtené zprávy
+    expected: >
+      Skupina zmizí ze seznamu.
+      Badge se přepočítá.
+      Zprávy a readStatuses se smažou.
+
+  - id: CHAT-E004
+    name: Více oken/sessions
+    description: Uživatel má otevřeno více oken aplikace
+    expected: >
+      Zustand persist synchronizuje data přes localStorage.
+      Nové zprávy se zobrazí v obou oknech.

@@ -1,0 +1,148 @@
+# SYSTEM.PRO - KPI Dashboard Module Specification
+# Modul pro přehled klíčových ukazatelů
+
+module:
+  id: kpi-dashboard
+  name: KPI Dashboard
+  description: Přehled klíčových ukazatelů výkonnosti
+  component: KpiDashboardModule
+  store: null  # aggreguje data z více stores
+  icon: ChartNoAxesCombined
+  column: top  # zobrazuje se v horní části
+
+access:
+  roles:
+    - role-2  # Administrátor
+    - role-8  # Majitel
+
+  note: >
+    Pouze manažerské role mají přístup ke KPI.
+    Dashboard agreguje data napříč systémem.
+
+data_model:
+  # KPI Dashboard nemá vlastní store
+  # Agreguje data z:
+  # - useSalesStore (tržby)
+  # - useAttendanceStore (docházka)
+  # - useTasksStore (úkoly)
+  # - useAbsenceStore (absence)
+
+  kpiMetric:
+    id: string
+    name: string
+    value: number | string
+    trend?: up | down | stable
+    comparison?: string  # např. "vs minulý měsíc"
+
+features:
+  - id: revenue_overview
+    name: Přehled tržeb
+    description: Souhrnné tržby za období
+    acceptance_criteria:
+      - Celkové tržby za aktuální období
+      - Porovnání s předchozím obdobím
+      - Rozpad: hotovost, karta, partner
+      - Trend (šipka nahoru/dolů)
+
+  - id: attendance_summary
+    name: Souhrn docházky
+    description: Přehled docházky zaměstnanců
+    acceptance_criteria:
+      - Počet přítomných dnes
+      - Procento odpracovaných hodin
+      - Přehledy absence
+
+  - id: task_metrics
+    name: Metriky úkolů
+    description: Stav plnění úkolů
+    acceptance_criteria:
+      - Počet otevřených úkolů
+      - Počet úkolů ke schválení
+      - Procento splněných v termínu
+
+  - id: absence_metrics
+    name: Metriky absencí
+    description: Přehled žádostí o absenci
+    acceptance_criteria:
+      - Počet pending žádostí
+      - Nadcházející plánované absence
+      - Přehledy podle typu
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: KPI-001
+    name: Zobrazení dashboardu pro Majitele
+    preconditions:
+      - Uživatel je přihlášen jako Majitel
+      - Existují data v systému
+    steps:
+      - Vidím KPI Dashboard v horní části
+      - Zobrazují se klíčové metriky
+      - Tržby za aktuální měsíc
+      - Počet aktivních úkolů
+      - Stav přítomnosti
+    expected:
+      - Kompaktní přehled všech KPI
+      - Vizuálně atraktivní zobrazení
+
+  - id: KPI-002
+    name: Trend tržeb
+    preconditions:
+      - Existují tržby za aktuální a minulý měsíc
+    steps:
+      - Vidím tržby za aktuální měsíc
+      - Vidím porovnání s minulým měsícem
+      - Šipka ukazuje trend (nahoru/dolů)
+    expected:
+      - Jasná vizuální indikace trendu
+      - Procentuální změna
+
+  - id: KPI-003
+    name: Přehled otevřených úkolů
+    preconditions:
+      - Existují úkoly v různých stavech
+    steps:
+      - Vidím počet úkolů ke schválení
+      - Vidím počet úkolů v řešení
+      - Mohu kliknout pro přechod do modulu Úkoly
+    expected:
+      - Aktuální počty z useTasksStore
+      - Proklik na detail
+
+  - id: KPI-004
+    name: Administrátor s omezeným přístupem
+    preconditions:
+      - Uživatel je Administrátor (role-2)
+    steps:
+      - Vidím KPI Dashboard
+      - Zobrazují se metriky relevantní pro mou roli
+      - Některé metriky mohou být omezené
+    expected:
+      - Přístup ke KPI dashboardu
+      - Možná omezená data vs Majitel
+
+edge_cases:
+  - id: KPI-E001
+    name: Prázdná data
+    description: Žádné tržby/úkoly v systému
+    expected: >
+      Metriky zobrazují 0 nebo "Žádná data".
+      Dashboard se stále zobrazuje.
+
+  - id: KPI-E002
+    name: Částečná data
+    description: Některé metriky mají data, jiné ne
+    expected: >
+      Dostupné metriky se zobrazují normálně.
+      Chybějící metriky zobrazují placeholder.
+
+  - id: KPI-E003
+    name: Velké objemy dat
+    description: Tisíce záznamů pro agregaci
+    expected: >
+      Performance může být ovlivněna.
+      (Potenciální vylepšení: caching, lazy loading)

@@ -1,0 +1,126 @@
+# SYSTEM.PRO - Cash Info Module Specification
+# Modul pro přehled stavu pokladny
+
+module:
+  id: cash-info
+  name: Stav pokladny
+  description: Přehled hotovosti k odevzdání a provozní základna
+  component: CashInfoModule
+  store: useSalesStore
+  icon: Landmark
+  column: top  # zobrazuje se v horní části
+
+access:
+  roles:
+    - role-1  # Prodavač
+
+  note: >
+    Modul je určen pouze pro Prodavače.
+    Zobrazuje se jako první modul v top sloupci.
+
+data_model:
+  # Data z useSalesStore
+  salesState:
+    cashToCollect: number  # hotovost k odvodu
+
+  # Konfigurace (statická nebo z config)
+  operatingBase: number  # provozní základna (typicky 10000 Kč)
+
+features:
+  - id: cash_to_collect
+    name: Hotovost k odvodu
+    description: Zobrazení akumulované hotovosti
+    acceptance_criteria:
+      - Zobrazuje cashToCollect z useSalesStore
+      - Formátování jako měna (Kč)
+      - Aktualizuje se automaticky
+
+  - id: operating_base
+    name: Provozní základna
+    description: Zobrazení základního zůstatku
+    acceptance_criteria:
+      - Statická hodnota (typicky 10000 Kč)
+      - Zobrazuje se pod hotovostí k odvodu
+      - Může být konfigurovatelná per prodejna
+
+  - id: quick_overview
+    name: Rychlý přehled
+    description: Kompaktní zobrazení v kartě
+    acceptance_criteria:
+      - Modul se zobrazuje v compact módu
+      - Kliknutím se rozbalí detail
+      - Barevné rozlišení (zelená pro OK, oranžová pro vysokou částku)
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: CASH-001
+    name: Zobrazení stavu pokladny
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+      - Existuje nějaká hotovost k odvodu
+    steps:
+      - Vidím modul Stav pokladny v horní části
+      - Modul zobrazuje aktuální cashToCollect
+      - Pod tím vidím provozní základnu
+    expected:
+      - Částky jsou správně formátované
+      - Zobrazují se v reálném čase
+
+  - id: CASH-002
+    name: Aktualizace po evidenci tržby
+    preconditions:
+      - cashToCollect = 20000
+    steps:
+      - Eviduji novou tržbu s hotovostí 5000 Kč
+      - Modul automaticky ukazuje 25000 Kč
+    expected:
+      - Aktualizace bez nutnosti refreshe
+
+  - id: CASH-003
+    name: Aktualizace po odvodu
+    preconditions:
+      - cashToCollect = 30000
+    steps:
+      - Provedu odvod hotovosti
+      - Modul ukazuje 0 Kč
+    expected:
+      - Okamžitá aktualizace na nulu
+
+  - id: CASH-004
+    name: Vizuální indikace vysoké částky
+    preconditions:
+      - cashToCollect je velmi vysoká (> threshold)
+    steps:
+      - Modul může zobrazovat varování
+      - Barva se mění na oranžovou/červenou
+    expected:
+      - Vizuální upozornění na potřebu odvodu
+      - (Závisí na implementaci)
+
+edge_cases:
+  - id: CASH-E001
+    name: Nulová hotovost
+    description: cashToCollect = 0
+    expected: >
+      Zobrazuje "0 Kč".
+      Žádné speciální varování.
+      Provozní základna se zobrazuje normálně.
+
+  - id: CASH-E002
+    name: Záporná hotovost
+    description: Teoreticky možné při chybě systému
+    expected: >
+      Systém by neměl dovolit zápornou hodnotu.
+      Pokud nastane, zobrazí se záporná částka.
+      (Potenciální bug: validace v submitSales)
+
+  - id: CASH-E003
+    name: Velmi vysoká částka
+    description: cashToCollect překračuje běžné hodnoty
+    expected: >
+      Formátování zachovává čitelnost.
+      Může být vhodné přidat varování.

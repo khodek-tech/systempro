@@ -1,0 +1,191 @@
+# SYSTEM.PRO - Sales Module Specification
+# Modul pro evidenci denních tržeb
+
+module:
+  id: sales
+  name: Tržby
+  description: Evidence denních tržeb - hotovost, karta, partner, příjmy/výdaje
+  component: SalesModule
+  store: useSalesStore
+  icon: Wallet
+
+access:
+  roles:
+    - role-1  # Prodavač
+
+  note: >
+    Modul je určen pouze pro Prodavače.
+    Ostatní role nemají přístup k evidenci tržeb.
+
+data_model:
+  salesFormData:
+    cash: number  # tržba hotovost
+    card: number  # tržba kartou
+    partner: number  # tržba přes partnera
+    incomes: ExtraRow[]  # mimořádné příjmy
+    expenses: ExtraRow[]  # mimořádné výdaje
+
+  extraRow:
+    id: string
+    amount: number
+    note: string  # povinná pokud amount > 0
+
+features:
+  - id: basic_sales
+    name: Základní tržby
+    description: Evidence hotovost, karta, partner
+    acceptance_criteria:
+      - Tři vstupní pole pro částky
+      - Akceptují pouze nezáporné hodnoty
+      - Automatický součet (calculateTotal)
+
+  - id: extra_incomes
+    name: Mimořádné příjmy
+    description: Evidence dodatečných příjmů
+    acceptance_criteria:
+      - Tlačítko "Přidat příjem"
+      - Každý řádek: částka + poznámka
+      - Poznámka povinná pokud částka > 0
+      - Možnost odstranit řádek
+
+  - id: extra_expenses
+    name: Mimořádné výdaje
+    description: Evidence výdajů
+    acceptance_criteria:
+      - Tlačítko "Přidat výdaj"
+      - Každý řádek: částka + poznámka
+      - Poznámka povinná pokud částka > 0
+      - Výdaje se odečítají od celkové tržby
+
+  - id: total_calculation
+    name: Výpočet celkové tržby
+    description: Automatický součet všech hodnot
+    acceptance_criteria:
+      - Celkem = cash + card + partner + Σincomes - Σexpenses
+      - Aktualizuje se při každé změně
+      - Zobrazuje se v reálném čase
+
+  - id: submit_sales
+    name: Odeslání tržby
+    description: Uložení denní tržby
+    acceptance_criteria:
+      - Validace povinných poznámek
+      - Přičtení cash k cashToCollect
+      - Reset formuláře po odeslání
+      - Potvrzující zpráva
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: SALES-001
+    name: Evidence základní tržby
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+      - Modul Tržby je dostupný
+    steps:
+      - Otevřu modul Tržby
+      - Zadám hotovost: 5000
+      - Zadám kartou: 3000
+      - Zadám partner: 1000
+      - Vidím celkem: 9000
+      - Kliknu "Odeslat tržbu"
+      - Formulář se vyčistí
+      - CashToCollect se zvýší o 5000
+    expected:
+      - Tržba je evidována
+      - Hotovost se přičte k odvodu
+
+  - id: SALES-002
+    name: Tržba s mimořádným příjmem
+    preconditions:
+      - Formulář je prázdný
+    steps:
+      - Zadám hotovost: 2000
+      - Kliknu "Přidat příjem"
+      - Zadám částku: 500
+      - Zadám poznámku: "Vratka od dodavatele"
+      - Vidím celkem: 2500
+      - Odešlu tržbu
+    expected:
+      - Příjem se připočte k celkové tržbě
+
+  - id: SALES-003
+    name: Tržba s výdajem
+    preconditions:
+      - Formulář je prázdný
+    steps:
+      - Zadám hotovost: 3000
+      - Kliknu "Přidat výdaj"
+      - Zadám částku: 200
+      - Zadám poznámku: "Nákup kancelářských potřeb"
+      - Vidím celkem: 2800
+      - Odešlu tržbu
+    expected:
+      - Výdaj se odečte od celkové tržby
+      - K cashToCollect se přičte pouze hotovost (3000)
+
+  - id: SALES-004
+    name: Validace povinné poznámky
+    preconditions:
+      - Formulář s příjmem/výdajem bez poznámky
+    steps:
+      - Zadám hotovost: 1000
+      - Přidám příjem s částkou 500
+      - Nechám poznámku prázdnou
+      - Kliknu "Odeslat tržbu"
+      - Zobrazí se chyba: "Doplňte povinné poznámky u všech pohybů!"
+      - Doplním poznámku
+      - Odešlu znovu
+      - Úspěšně odesláno
+    expected:
+      - Nelze odeslat bez poznámky pokud částka > 0
+
+  - id: SALES-005
+    name: Odstranění řádku příjmu/výdaje
+    preconditions:
+      - Existují přidané řádky příjmů/výdajů
+    steps:
+      - Přidám příjem 500 Kč
+      - Přidám další příjem 300 Kč
+      - Vidím celkem zahrnuje oba příjmy
+      - Kliknu X na prvním řádku
+      - Řádek zmizí
+      - Celkem se přepočítá
+    expected:
+      - Řádek je odstraněn
+      - Součet se aktualizuje
+
+edge_cases:
+  - id: SALES-E001
+    name: Nulová tržba
+    description: Odeslání formuláře s nulovými hodnotami
+    expected: >
+      Odeslání je povoleno.
+      CashToCollect se nezmění.
+      Formulář se resetuje.
+
+  - id: SALES-E002
+    name: Záporná celková tržba
+    description: Výdaje převyšují příjmy
+    expected: >
+      Celkem může být záporné.
+      Systém aktuálně nevaliduje.
+      (Potenciální vylepšení: varování)
+
+  - id: SALES-E003
+    name: Velmi vysoké částky
+    description: Zadání extrémně vysokých hodnot
+    expected: >
+      Systém akceptuje.
+      JavaScript number precision může být problém
+      pro velmi vysoké hodnoty (nad 10^15).
+
+  - id: SALES-E004
+    name: Příjem s nulovou částkou
+    description: Přidání příjmu s částkou 0
+    expected: >
+      Poznámka není povinná pro amount = 0.
+      Řádek se odešle bez problému.

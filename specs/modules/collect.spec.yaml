@@ -1,0 +1,170 @@
+# SYSTEM.PRO - Collect Module Specification
+# Modul pro odvody hotovosti
+
+module:
+  id: collect
+  name: Odvody
+  description: Evidence odvodů hotovosti řidičům
+  component: CollectModule
+  store: useCollectStore (+ useSalesStore pro cashToCollect)
+  icon: Truck
+
+access:
+  roles:
+    - role-1  # Prodavač
+
+  note: >
+    Modul je určen pouze pro Prodavače.
+    Odvody se provádějí v koordinaci s řidiči.
+
+data_model:
+  collectState:
+    driverName: string  # jméno řidiče pro odvod
+
+  # Data z useSalesStore
+  salesState:
+    cashToCollect: number  # akumulovaná hotovost k odvodu
+
+features:
+  - id: view_amount
+    name: Zobrazení částky k odvodu
+    description: Přehled akumulované hotovosti
+    acceptance_criteria:
+      - Zobrazuje cashToCollect z useSalesStore
+      - Aktualizuje se po každé evidenci tržby
+      - Zobrazuje období odvodu (1.-15. nebo 16.-konec)
+
+  - id: collection_period
+    name: Období odvodu
+    description: Automatické určení období
+    acceptance_criteria:
+      - Pokud je den >= 16: "1. - 15. {měsíc}"
+      - Pokud je den < 16: "16. - Konec min. měsíce"
+      - České názvy měsíců
+
+  - id: submit_collection
+    name: Provedení odvodu
+    description: Zaznamenání odvodu hotovosti
+    acceptance_criteria:
+      - Povinné jméno řidiče
+      - Reset cashToCollect na 0
+      - Reset driverName
+      - Potvrzující zpráva
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: COLL-001
+    name: Provedení odvodu
+    preconditions:
+      - Existuje nenulová částka k odvodu (cashToCollect > 0)
+      - Uživatel je přihlášen jako Prodavač
+    steps:
+      - Otevřu modul Odvody
+      - Vidím částku k odvodu (např. 28500 Kč)
+      - Vidím období odvodu
+      - Zadám jméno řidiče: "Jan Novák"
+      - Kliknu "Předat hotovost"
+      - Zobrazí se potvrzení
+      - Částka k odvodu se vynuluje
+      - Jméno řidiče se vymaže
+    expected:
+      - Odvod je zaznamenán
+      - cashToCollect = 0
+
+  - id: COLL-002
+    name: Odvod bez jména řidiče
+    preconditions:
+      - Existuje částka k odvodu
+    steps:
+      - Otevřu modul Odvody
+      - Nechám jméno řidiče prázdné
+      - Kliknu "Předat hotovost"
+      - Zobrazí se chyba: "Vyplňte jméno řidiče!"
+      - Formulář se neresetuje
+    expected:
+      - Odvod se neprovede bez jména
+
+  - id: COLL-003
+    name: Nulová částka k odvodu
+    preconditions:
+      - cashToCollect = 0
+    steps:
+      - Otevřu modul Odvody
+      - Vidím částku: 0 Kč
+      - Formulář je stále dostupný
+      - Zadám jméno řidiče
+      - Kliknu "Předat hotovost"
+    expected:
+      - Odvod se provede (nulový odvod)
+      - Některé implementace mohou blokovat nulový odvod
+
+  - id: COLL-004
+    name: Akumulace tržeb
+    preconditions:
+      - cashToCollect = 10000
+      - Uživatel eviduje další tržbu
+    steps:
+      - Eviduji tržbu s hotovostí 5000 Kč
+      - Otevřu modul Odvody
+      - Vidím částku: 15000 Kč
+      - Eviduji další tržbu s hotovostí 3000 Kč
+      - Vidím částku: 18000 Kč
+    expected:
+      - Hotovost se kumuluje
+      - Odvod se provádí za celé období
+
+  - id: COLL-005
+    name: Období odvodu - první polovina měsíce
+    preconditions:
+      - Dnešní datum je např. 10. ledna
+    steps:
+      - Otevřu modul Odvody
+      - Vidím období: "16. - Konec min. měsíce"
+    expected:
+      - Období odpovídá druhé polovině minulého měsíce
+
+  - id: COLL-006
+    name: Období odvodu - druhá polovina měsíce
+    preconditions:
+      - Dnešní datum je např. 20. ledna
+    steps:
+      - Otevřu modul Odvody
+      - Vidím období: "1. - 15. ledna"
+    expected:
+      - Období odpovídá první polovině aktuálního měsíce
+
+edge_cases:
+  - id: COLL-E001
+    name: Více odvodů za den
+    description: Provedení více odvodů ve stejný den
+    expected: >
+      Každý odvod vynuluje cashToCollect.
+      Historii odvodů systém aktuálně neukládá.
+      (Potenciální vylepšení: evidence historie)
+
+  - id: COLL-E002
+    name: Jméno řidiče se speciálními znaky
+    description: Zadání jména s diakritikou nebo speciálními znaky
+    expected: >
+      Systém akceptuje české znaky.
+      Validuje pouze neprázdnost (trim).
+
+  - id: COLL-E003
+    name: Velmi vysoká částka
+    description: Odvod extrémně vysoké částky
+    expected: >
+      Systém akceptuje.
+      Zobrazení formátované částky může být problematické
+      pro velmi vysoké hodnoty.
+
+  - id: COLL-E004
+    name: Přerušení odvodu
+    description: Uživatel zavře modul před dokončením
+    expected: >
+      Částečně vyplněný formulář se neukládá.
+      driverName se resetuje při dalším otevření.
+      cashToCollect zůstává nezměněný.

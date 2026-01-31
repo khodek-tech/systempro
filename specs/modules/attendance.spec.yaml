@@ -1,0 +1,171 @@
+# SYSTEM.PRO - Attendance Module Specification
+# Modul pro evidenci docházky (příchod/odchod)
+
+module:
+  id: attendance
+  name: Docházka
+  description: Evidence příchodů a odchodů zaměstnanců
+  component: HeaderAttendance
+  store: useAttendanceStore
+  icon: Clock
+  column: header  # zobrazuje se v hlavičce
+
+access:
+  roles:
+    - role-1  # Prodavač
+    - role-3  # Skladník
+    - role-4  # Vedoucí skladu
+    - role-5  # Obsluha e-shopu
+    - role-6  # Obchodník
+    - role-7  # Vedoucí velkoobchodu
+
+  note: >
+    Administrátor (role-2) a Majitel (role-8) nemají tento modul
+    protože nevedou standardní docházku.
+
+data_model:
+  attendanceState:
+    isInWork: boolean  # je uživatel "v práci"
+    kasaConfirmed: boolean  # potvrzení stavu kasy před odchodem
+    workplaceType: WorkplaceType  # 'store' | 'role' | 'warehouse'
+    workplaceId: string  # ID pracoviště
+    workplaceName: string  # název pracoviště
+    requiresKasa: boolean  # vyžaduje pracoviště potvrzení kasy
+    checkedInUsers: Set<string>  # globální tracking přihlášených
+
+  workplaceType: store | role | warehouse
+
+features:
+  - id: check_in
+    name: Příchod
+    description: Zaznamenání příchodu do práce
+    acceptance_criteria:
+      - Toggle tlačítko pro příchod
+      - Nastaví isInWork=true
+      - Přidá userId do checkedInUsers
+      - Zobrazí aktuální pracoviště
+
+  - id: check_out
+    name: Odchod
+    description: Zaznamenání odchodu z práce
+    acceptance_criteria:
+      - Toggle tlačítko pro odchod
+      - Pokud requiresKasa=true, vyžaduje potvrzení stavu kasy
+      - Nastaví isInWork=false
+      - Odebere userId z checkedInUsers
+
+  - id: kasa_confirmation
+    name: Potvrzení kasy
+    description: Potvrzení stavu pokladny před odchodem
+    acceptance_criteria:
+      - Pouze pro pracoviště typu 'store'
+      - Checkbox pro potvrzení
+      - Blokuje odchod pokud nepotvrzeno
+
+  - id: workplace_display
+    name: Zobrazení pracoviště
+    description: Informace o aktuálním pracovišti
+    acceptance_criteria:
+      - Název pracoviště
+      - Typ pracoviště (prodejna/sklad/role)
+      - Aktualizuje se podle přihlášeného uživatele
+
+notifications:
+  badge:
+    type: none
+    description: Modul nemá badge notifikace
+
+scenarios:
+  - id: ATT-001
+    name: Příchod Prodavače na prodejnu
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+      - Má přiřazenou prodejnu
+      - Není v práci (isInWork=false)
+    steps:
+      - Vidím tlačítko "Příchod" v hlavičce
+      - Vidím název prodejny
+      - Kliknu na tlačítko příchodu
+      - Stav se změní na "V práci"
+      - Tlačítko se změní na "Odchod"
+    expected:
+      - isInWork=true
+      - userId je v checkedInUsers
+      - Zobrazí se v modulu Přítomnost
+
+  - id: ATT-002
+    name: Odchod s potvrzením kasy
+    preconditions:
+      - Uživatel je na prodejně (requiresKasa=true)
+      - Je v práci (isInWork=true)
+    steps:
+      - Kliknu na "Odchod"
+      - Zobrazí se požadavek na potvrzení kasy
+      - Kliknu odchod bez potvrzení
+      - Zobrazí se chyba: "Před odchodem potvrďte stav kasy!"
+      - Zaškrtnu checkbox potvrzení kasy
+      - Kliknu znovu na "Odchod"
+      - Úspěšně odchod
+    expected:
+      - Nelze odejít bez potvrzení kasy
+      - Po potvrzení se odchod provede
+
+  - id: ATT-003
+    name: Příchod Skladníka (bez kasy)
+    preconditions:
+      - Uživatel je přihlášen jako Skladník
+      - Není přiřazen k prodejně (requiresKasa=false)
+    steps:
+      - Vidím tlačítko "Příchod"
+      - Kliknu na tlačítko
+      - Příchod se zaznamená
+      - Kliknu na "Odchod"
+      - Odchod se provede bez potvrzení kasy
+    expected:
+      - Kasa se nepotvrzuje pro neprodejní pracoviště
+
+  - id: ATT-004
+    name: Globální tracking přítomnosti
+    preconditions:
+      - Více uživatelů v systému
+    steps:
+      - Uživatel A se přihlásí do práce
+      - Uživatel B se přihlásí do práce
+      - Vedoucí vidí oba v modulu Přítomnost
+      - Uživatel A odejde
+      - Vedoucí vidí pouze uživatele B
+    expected:
+      - checkedInUsers obsahuje správné userId
+      - Modul Přítomnost reflektuje aktuální stav
+
+edge_cases:
+  - id: ATT-E001
+    name: Dvojí příchod
+    description: Pokus o příchod když už je v práci
+    expected: >
+      Tlačítko je toggle - zobrazuje "Odchod" místo "Příchod".
+      Dvojí příchod není možný.
+
+  - id: ATT-E002
+    name: Odchod bez příchodu
+    description: Pokus o odchod bez předchozího příchodu
+    expected: >
+      Tlačítko je toggle - zobrazuje "Příchod" místo "Odchod".
+      Odchod bez příchodu není možný.
+
+  - id: ATT-E003
+    name: Změna pracoviště během směny
+    description: Uživatel změní výběr pracoviště v průběhu
+    expected: >
+      Pracoviště se nastaví při přihlášení.
+      Změna za běhu vyžaduje setWorkplace.
+      isInWork zůstává zachováno.
+
+  - id: ATT-E004
+    name: Reset při refresh/reload
+    description: Uživatel refreshne stránku
+    expected: >
+      State se nepersistuje (není v persist).
+      Po refreshu isInWork=false.
+      Uživatel musí znovu potvrdit příchod.
+      (Potenciální vylepšení: persist)
