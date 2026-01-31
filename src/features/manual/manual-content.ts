@@ -1,19 +1,8 @@
 /**
  * Manual content configuration
- * Maps roles to their modules and provides content structure
+ * Provides content structure for the manual module
+ * Note: Role to module mapping is now handled by useModulesStore.getModulesForRole()
  */
-
-// Role to module mapping
-export const ROLE_MODULES: Record<string, string[]> = {
-  'role-1': ['cash-info', 'sales', 'collect', 'absence-report', 'tasks', 'attendance', 'shifts', 'chat'], // Prodavač
-  'role-2': ['kpi-dashboard', 'reports', 'absence-approval', 'tasks', 'presence', 'chat'], // Administrátor
-  'role-3': ['absence-report', 'tasks', 'attendance', 'chat'], // Skladník
-  'role-4': ['absence-report', 'absence-approval', 'tasks', 'attendance', 'presence', 'chat'], // Vedoucí skladu
-  'role-5': ['absence-report', 'tasks', 'attendance', 'chat'], // Obsluha e-shopu
-  'role-6': ['absence-report', 'tasks', 'shifts', 'chat'], // Obchodník
-  'role-7': ['absence-report', 'absence-approval', 'tasks', 'attendance', 'presence', 'shifts', 'chat'], // Vedoucí velkoobchodu
-  'role-8': ['kpi-dashboard', 'absence-approval', 'tasks', 'presence', 'shifts', 'chat'], // Majitel
-};
 
 // Module names for display
 export const MODULE_NAMES: Record<string, string> = {
@@ -377,13 +366,6 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
     ],
   },
 };
-
-/**
- * Get modules for a specific role
- */
-export function getModulesForRole(roleId: string): string[] {
-  return ROLE_MODULES[roleId] || [];
-}
 
 /**
  * Get role intro content

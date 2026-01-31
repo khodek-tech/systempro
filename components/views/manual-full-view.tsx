@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { FaqList, TipsList, StepsList } from '@/lib/markdown-parser';
 import { useManualStore } from '@/stores/manual-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useModulesStore } from '@/stores/modules-store';
 import {
-  getModulesForRole,
   getRoleIntro,
   getModuleContent,
   getModuleName,
@@ -24,9 +24,12 @@ export function ManualFullView() {
   } = useManualStore();
 
   const { activeRoleId } = useAuthStore();
+  const { getModulesForRole } = useModulesStore();
 
-  // Get modules for current role
-  const roleModules = activeRoleId ? getModulesForRole(activeRoleId) : [];
+  // Get modules for current role from actual configuration
+  const roleModules = activeRoleId
+    ? getModulesForRole(activeRoleId).map((m) => m.moduleId)
+    : [];
   const filteredModules = filterModulesBySearch(roleModules, searchQuery);
   const roleIntro = activeRoleId ? getRoleIntro(activeRoleId) : null;
 
