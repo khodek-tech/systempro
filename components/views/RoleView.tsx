@@ -6,9 +6,11 @@ import { AbsenceFullView } from '@/components/views/absence-full-view';
 import { ApprovalFullView } from '@/components/views/approval-full-view';
 import { ShiftsFullView } from '@/components/views/shifts-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
+import { ChatFullView } from '@/components/views/chat-full-view';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useShiftsStore } from '@/stores/shifts-store';
 import { useTasksStore } from '@/stores/tasks-store';
+import { useChatStore } from '@/stores/chat-store';
 
 interface RoleViewProps {
   /**
@@ -27,6 +29,10 @@ interface RoleViewProps {
    * Whether to show fullscreen tasks view when tasksViewMode === 'view'
    */
   showTasksFullView?: boolean;
+  /**
+   * Whether to show fullscreen chat view when chatViewMode === 'view'
+   */
+  showChatFullView?: boolean;
   /**
    * Optional custom content to render instead of ModuleRenderer
    */
@@ -63,6 +69,7 @@ export function RoleView({
   showApprovalFullView = false,
   showShiftsFullView = false,
   showTasksFullView = false,
+  showChatFullView = false,
   customContent,
   isWarehouse = false,
   className = '',
@@ -70,8 +77,14 @@ export function RoleView({
   const { absenceViewMode, approvalViewMode } = useAbsenceStore();
   const { shiftsViewMode } = useShiftsStore();
   const { tasksViewMode } = useTasksStore();
+  const { chatViewMode } = useChatStore();
 
-  // Fullscreen tasks view has priority
+  // Fullscreen chat view has priority
+  if (showChatFullView && chatViewMode === 'view') {
+    return <ChatFullView />;
+  }
+
+  // Fullscreen tasks view
   if (showTasksFullView && tasksViewMode === 'view') {
     return <TasksFullView />;
   }

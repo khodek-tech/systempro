@@ -46,6 +46,7 @@ import { ReportsModule } from './ReportsModule';
 import { PlaceholderModule } from './PlaceholderModule';
 import { ShiftsModule } from './ShiftsModule';
 import { PresenceModule } from './PresenceModule';
+import { ChatModule } from './ChatModule';
 
 // Registry mapping component names to actual React components
 export const MODULE_REGISTRY: Record<string, ComponentType> = {
@@ -60,6 +61,7 @@ export const MODULE_REGISTRY: Record<string, ComponentType> = {
   PlaceholderModule,
   ShiftsModule,
   PresenceModule,
+  ChatModule,
 };
 
 // Helper to get component by name

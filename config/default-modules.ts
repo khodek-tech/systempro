@@ -79,6 +79,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'PresenceModule',
     icon: 'Users',
   },
+  {
+    id: 'chat',
+    name: 'Chat',
+    description: 'Skupinové konverzace',
+    component: 'ChatModule',
+    icon: 'MessageCircle',
+  },
 ];
 
 // Default module configuration
@@ -189,5 +196,12 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
       { viewerRoleId: 'role-2', visibleRoleIds: ['role-4', 'role-7'] },
       { viewerRoleId: 'role-8', visibleRoleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7'] },
     ],
+  },
+  {
+    moduleId: 'chat',
+    roleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7', 'role-8'],
+    order: 7,
+    column: 'left',
+    enabled: true,
   },
 ];

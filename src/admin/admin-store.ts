@@ -8,6 +8,7 @@ type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules';
 interface AdminState {
   subView: AdminSubView;
   settingsTab: SettingsTab;
+  selectedModuleId: string | null;
   storeFilter: string;
   monthFilter: string;
   yearFilter: string;
@@ -26,6 +27,7 @@ interface AdminActions {
   goToReports: () => void;
   goToSettings: () => void;
   setSettingsTab: (tab: SettingsTab) => void;
+  selectModule: (moduleId: string | null) => void;
 
   // Filters
   setStoreFilter: (filter: string) => void;
@@ -43,6 +45,7 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   // Initial state
   subView: 'main',
   settingsTab: 'stores',
+  selectedModuleId: null,
   storeFilter: 'all',
   monthFilter: 'all',
   yearFilter: 'all',
@@ -52,7 +55,8 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   goToMain: () => set({ subView: 'main' }),
   goToReports: () => set({ subView: 'reports' }),
   goToSettings: () => set({ subView: 'settings', settingsTab: 'stores' }),
-  setSettingsTab: (tab) => set({ settingsTab: tab }),
+  setSettingsTab: (tab) => set({ settingsTab: tab, selectedModuleId: null }),
+  selectModule: (moduleId) => set({ selectedModuleId: moduleId }),
 
   // Filters
   setStoreFilter: (filter) => set({ storeFilter: filter }),

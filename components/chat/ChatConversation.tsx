@@ -1,0 +1,120 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { Search, X } from 'lucide-react';
+import { useChatStore } from '@/stores/chat-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { groupMessagesByDate } from '@/features/chat';
+import { ChatMessage } from './ChatMessage';
+import { ChatMessageInput } from './ChatMessageInput';
+
+export function ChatConversation() {
+  const {
+    selectedGroupId,
+    searchQuery,
+    setSearchQuery,
+    getMessagesForGroup,
+    getGroupById,
+    sendMessage,
+    markGroupAsRead,
+  } = useChatStore();
+  const { currentUser } = useAuthStore();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const group = selectedGroupId ? getGroupById(selectedGroupId) : null;
+  const messages = selectedGroupId ? getMessagesForGroup(selectedGroupId) : [];
+  const groupedMessages = groupMessagesByDate(messages);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  // Mark as read when viewing
+  useEffect(() => {
+    if (selectedGroupId && currentUser) {
+      markGroupAsRead(selectedGroupId, currentUser.id);
+    }
+  }, [selectedGroupId, currentUser, markGroupAsRead, messages.length]);
+
+  const handleSend = (text: string, attachments: typeof messages[0]['attachments']) => {
+    if (!selectedGroupId || !currentUser) return;
+    sendMessage(selectedGroupId, currentUser.id, text, attachments);
+  };
+
+  if (!selectedGroupId || !group) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-slate-50">
+        <div className="text-center text-slate-400">
+          <p className="text-lg font-medium">Vyberte konverzaci</p>
+          <p className="text-sm mt-1">Klikněte na skupinu vlevo pro zobrazení zpráv</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-white">
+      {/* Header */}
+      <div className="border-b border-slate-200 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">{group.name}</h2>
+            <p className="text-sm text-slate-500">{group.memberIds.length} členů</p>
+          </div>
+
+          {/* Search in conversation */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Hledat ve zprávách..."
+              className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-300 transition-colors w-56"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-slate-400">
+            <p>{searchQuery ? 'Žádné zprávy nenalezeny' : 'Zatím žádné zprávy'}</p>
+          </div>
+        ) : (
+          Array.from(groupedMessages.entries()).map(([date, dateMessages]) => (
+            <div key={date}>
+              {/* Date separator */}
+              <div className="flex items-center justify-center my-4">
+                <span className="text-xs font-medium text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-100">
+                  {date}
+                </span>
+              </div>
+
+              {/* Messages for this date */}
+              <div className="space-y-3">
+                {dateMessages.map((message) => (
+                  <ChatMessage key={message.id} message={message} />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <ChatMessageInput onSend={handleSend} />
+    </div>
+  );
+}

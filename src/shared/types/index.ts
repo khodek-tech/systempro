@@ -48,3 +48,13 @@ export type {
   ViewRoleMapping,
   ModuleConfig,
 } from './module.types';
+
+// Chat types
+export type {
+  ChatReactionType,
+  ChatAttachment,
+  ChatReaction,
+  ChatMessage,
+  ChatReadStatus,
+  ChatGroup,
+} from './chat.types';

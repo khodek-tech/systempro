@@ -11,10 +11,12 @@ import { AdminSettingsView } from '@/components/admin-dashboard/settings/AdminSe
 import { ModuleRenderer } from '@/components/ModuleRenderer';
 import { ApprovalFullView } from '@/components/views/approval-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
+import { ChatFullView } from '@/components/views/chat-full-view';
 import { adminStores, months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useTasksStore } from '@/stores/tasks-store';
+import { useChatStore } from '@/stores/chat-store';
 
 export function AdminView() {
   const {
@@ -32,10 +34,16 @@ export function AdminView() {
   } = useAdminStore();
   const { approvalViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
+  const { chatViewMode } = useChatStore();
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
   const visibleStores = getVisibleStores();
+
+  // Fullscreen chat view nahrazuje celý obsah
+  if (chatViewMode === 'view') {
+    return <ChatFullView />;
+  }
 
   // Fullscreen tasks view nahrazuje celý obsah
   if (tasksViewMode === 'view') {
