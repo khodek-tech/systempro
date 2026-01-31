@@ -7,10 +7,12 @@ import { ApprovalFullView } from '@/components/views/approval-full-view';
 import { ShiftsFullView } from '@/components/views/shifts-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
 import { ChatFullView } from '@/components/views/chat-full-view';
+import { ManualFullView } from '@/components/views/manual-full-view';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useShiftsStore } from '@/stores/shifts-store';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
+import { useManualStore } from '@/stores/manual-store';
 
 interface RoleViewProps {
   /**
@@ -78,6 +80,12 @@ export function RoleView({
   const { shiftsViewMode } = useShiftsStore();
   const { tasksViewMode } = useTasksStore();
   const { chatViewMode } = useChatStore();
+  const { manualViewMode } = useManualStore();
+
+  // Fullscreen manual view has highest priority
+  if (manualViewMode === 'view') {
+    return <ManualFullView />;
+  }
 
   // Fullscreen chat view has priority
   if (showChatFullView && chatViewMode === 'view') {

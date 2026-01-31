@@ -1,0 +1,235 @@
+# SYSTEM.PRO - Manual Module Specification
+# Modul kontextové nápovědy pro zaměstnance
+
+module:
+  id: manual
+  name: Nápověda
+  description: Kontextová nápověda přizpůsobená roli uživatele
+  component: ManualFullView
+  store: useManualStore
+  icon: HelpCircle
+
+access:
+  roles:
+    - role-1  # Prodavač
+    - role-2  # Administrátor
+    - role-3  # Skladník
+    - role-4  # Vedoucí skladu
+    - role-5  # Obsluha e-shopu
+    - role-6  # Obchodník
+    - role-7  # Vedoucí velkoobchodu
+    - role-8  # Majitel
+
+  notes:
+    - Všechny role mají přístup přes ikonu HelpCircle v hlavičce
+    - Obsah se přizpůsobuje aktivní roli
+
+data_model:
+  manualState:
+    manualViewMode: 'card' | 'view'
+    expandedSections: string[]  # moduleIds
+    searchQuery: string
+
+  roleIntro:
+    title: string
+    intro: string
+    workflow: string[]
+    principles: string[]
+    contact: string
+
+  moduleContent:
+    description: string
+    purpose: string
+    howToUse: string[]
+    faq: FaqItem[]
+    tips: string[]
+
+  faqItem:
+    q: string
+    a: string
+
+features:
+  - id: role_intro
+    name: Úvod pro roli
+    description: Každá role vidí přizpůsobený úvod s popisem typického dne
+    acceptance_criteria:
+      - Zobrazuje se titul a úvodní text pro aktuální roli
+      - Obsahuje typický pracovní den (workflow)
+      - Obsahuje důležité zásady
+      - Zobrazuje kontakt na nadřízeného
+
+  - id: module_help
+    name: Nápověda k modulům
+    description: Návody k modulům přiřazeným dané roli
+    acceptance_criteria:
+      - Zobrazují se pouze moduly přiřazené aktivní roli
+      - Každý modul má rozbalovací sekci
+      - Obsahuje účel, návod, FAQ a tipy
+
+  - id: search
+    name: Vyhledávání
+    description: Fulltextové vyhledávání v obsahu nápovědy
+    acceptance_criteria:
+      - Filtruje moduly obsahující hledaný text
+      - Prohledává název, popis, návody, FAQ a tipy
+      - Při vyhledávání jsou sekce automaticky rozbalené
+      - Case-insensitive
+
+  - id: collapsible_sections
+    name: Sbalovací sekce
+    description: Uživatel může rozbalovat/sbalovat sekce modulů
+    acceptance_criteria:
+      - Klik na sekci toggle její stav
+      - Stav se neukládá mezi sessions
+      - Při vyhledávání jsou všechny sekce rozbalené
+
+role_modules:
+  role-1:  # Prodavač
+    - cash-info
+    - sales
+    - collect
+    - absence-report
+    - tasks
+    - attendance
+    - shifts
+    - chat
+  role-2:  # Administrátor
+    - kpi-dashboard
+    - reports
+    - absence-approval
+    - tasks
+    - presence
+    - chat
+  role-3:  # Skladník
+    - absence-report
+    - tasks
+    - attendance
+    - chat
+  role-4:  # Vedoucí skladu
+    - absence-report
+    - absence-approval
+    - tasks
+    - attendance
+    - presence
+    - chat
+  role-5:  # Obsluha e-shopu
+    - absence-report
+    - tasks
+    - attendance
+    - chat
+  role-6:  # Obchodník
+    - absence-report
+    - tasks
+    - shifts
+    - chat
+  role-7:  # Vedoucí velkoobchodu
+    - absence-report
+    - absence-approval
+    - tasks
+    - attendance
+    - presence
+    - shifts
+    - chat
+  role-8:  # Majitel
+    - kpi-dashboard
+    - absence-approval
+    - tasks
+    - presence
+    - shifts
+    - chat
+
+ui:
+  location: header
+  trigger: HelpCircle icon button
+  style: fullscreen view
+
+scenarios:
+  - id: MANUAL-001
+    name: Zobrazení nápovědy pro prodavače
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+    steps:
+      - Kliknu na ikonu HelpCircle v hlavičce
+      - Zobrazí se fullscreen nápověda
+      - Vidím úvod pro roli Prodavač
+      - Vidím 8 modulů v seznamu
+      - Kliknu na sekci "Stav pokladny"
+      - Sekce se rozbalí s obsahem
+    expected:
+      - Zobrazuje se kontextová nápověda pro Prodavače
+      - Sekce jsou funkční
+
+  - id: MANUAL-002
+    name: Zobrazení nápovědy pro administrátora
+    preconditions:
+      - Uživatel je přihlášen jako Administrátor
+    steps:
+      - Kliknu na ikonu HelpCircle v hlavičce
+      - Zobrazí se fullscreen nápověda
+      - Vidím úvod pro roli Administrátor
+      - Vidím 6 modulů v seznamu
+    expected:
+      - Administrátor vidí pouze své moduly
+      - Nevidí moduly jako Stav pokladny nebo Tržby
+
+  - id: MANUAL-003
+    name: Vyhledávání v nápovědě
+    preconditions:
+      - Nápověda je otevřená
+    steps:
+      - Zadám do vyhledávání "schválení"
+      - Zobrazí se pouze relevantní moduly
+      - Sekce jsou automaticky rozbalené
+      - Vymažu vyhledávání
+      - Zobrazí se všechny moduly
+    expected:
+      - Filtrování funguje správně
+      - Při vyhledávání mizí úvodní sekce
+
+  - id: MANUAL-004
+    name: Sbalovací sekce
+    preconditions:
+      - Nápověda je otevřená
+    steps:
+      - Kliknu na sekci modulu - rozbalí se
+      - Kliknu znovu - sbalí se
+      - Rozbalím více sekcí najednou
+    expected:
+      - Toggle funguje správně
+      - Více sekcí může být rozbalených současně
+
+  - id: MANUAL-005
+    name: Přepnutí role a aktualizace nápovědy
+    preconditions:
+      - Uživatel má více rolí
+    steps:
+      - Otevřu nápovědu
+      - Vidím moduly pro aktuální roli
+      - Zavřu nápovědu
+      - Přepnu roli v hlavičce
+      - Znovu otevřu nápovědu
+      - Vidím moduly pro novou roli
+    expected:
+      - Obsah se aktualizuje podle aktivní role
+
+edge_cases:
+  - id: MANUAL-E001
+    name: Role bez modulů
+    description: Role nemá přiřazené žádné moduly
+    expected: >
+      Zobrazí se prázdný stav s textem.
+      Úvodní sekce role se stále zobrazí.
+
+  - id: MANUAL-E002
+    name: Vyhledávání bez výsledků
+    description: Hledaný text není v žádném modulu
+    expected: >
+      Zobrazí se zpráva "Žádné výsledky pro zadaný dotaz".
+      Úvodní sekce role se skryje.
+
+  - id: MANUAL-E003
+    name: Neznámá role
+    description: RoleId neexistuje v mapování
+    expected: >
+      Prázdný seznam modulů.
+      Prázdná úvodní sekce.

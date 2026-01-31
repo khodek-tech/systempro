@@ -12,11 +12,13 @@ import { ModuleRenderer } from '@/components/ModuleRenderer';
 import { ApprovalFullView } from '@/components/views/approval-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
 import { ChatFullView } from '@/components/views/chat-full-view';
+import { ManualFullView } from '@/components/views/manual-full-view';
 import { adminStores, months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
+import { useManualStore } from '@/stores/manual-store';
 
 export function AdminView() {
   const {
@@ -35,10 +37,16 @@ export function AdminView() {
   const { approvalViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
   const { chatViewMode } = useChatStore();
+  const { manualViewMode } = useManualStore();
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
   const visibleStores = getVisibleStores();
+
+  // Fullscreen manual view has highest priority
+  if (manualViewMode === 'view') {
+    return <ManualFullView />;
+  }
 
   // Fullscreen chat view nahrazuje celý obsah
   if (chatViewMode === 'view') {

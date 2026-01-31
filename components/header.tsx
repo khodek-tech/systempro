@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ChevronDown, Settings, User } from 'lucide-react';
+import { ChevronDown, Settings, User, HelpCircle } from 'lucide-react';
 import { AttendanceModule } from './attendance-module';
 import { LiveClock } from './live-clock';
 import { useAuthStore } from '@/stores/auth-store';
@@ -9,6 +9,7 @@ import { useAttendanceStore } from '@/stores/attendance-store';
 import { useAdminStore } from '@/stores/admin-store';
 import { useUsersStore } from '@/stores/users-store';
 import { useModulesStore } from '@/stores/modules-store';
+import { useManualStore } from '@/stores/manual-store';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -178,6 +179,20 @@ export function Header() {
               aria-label="Nastavení"
             >
               <Settings className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </>
+        )}
+
+        {/* Help Icon (available for all roles) */}
+        {_hydrated && (
+          <>
+            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <button
+              onClick={useManualStore.getState().openManualView}
+              className="p-2.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              aria-label="Nápověda"
+            >
+              <HelpCircle className="w-5 h-5" aria-hidden="true" />
             </button>
           </>
         )}

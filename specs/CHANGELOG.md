@@ -2,6 +2,26 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.1.0] - 2026-01-31
+
+### Přidáno
+
+#### Nový modul
+- `/specs/modules/manual.spec.yaml` - Kontextová nápověda pro zaměstnance
+
+#### Popis
+Modul Nápověda (Manual) poskytuje kontextovou nápovědu přizpůsobenou roli uživatele.
+Každá role vidí pouze návody k modulům, které má přiřazené. Obsahuje:
+- Úvod pro roli s popisem typického pracovního dne
+- Důležité zásady a kontakt na nadřízeného
+- Rozbalovací sekce s návody k jednotlivým modulům
+- Vyhledávání v obsahu nápovědy
+
+### Změněno
+- Přidána ikona HelpCircle do hlavičky aplikace (dostupná pro všechny role)
+
+---
+
 ## [1.0.0] - 2026-01-31
 
 ### Přidáno
@@ -36,7 +56,7 @@ Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 - `/specs/modules/reports.spec.yaml` - Reporty tržeb a docházky
 
 ### Celkem
-- 12 modulových specifikací
+- 13 modulových specifikací
 - 3 sdílené specifikace
 - 55+ testovacích scénářů
 - 40+ edge cases

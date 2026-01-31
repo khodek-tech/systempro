@@ -19,6 +19,7 @@
 10. [Přítomnost (Presence)](#10-přítomnost-presence)
 11. [KPI Dashboard](#11-kpi-dashboard)
 12. [Reporty](#12-reporty)
+13. [Nápověda (Manual)](#13-nápověda-manual)
 
 ---
 
@@ -463,6 +464,82 @@
 | 3 | Vybrat filtr: Prodejna = Bohnice | Filtrovano |
 | 4 | Vybrat měsíc: Leden | Filtrovano |
 | 5 | Zkontrolovat data | Správné záznamy |
+
+---
+
+## 13. Nápověda (Manual)
+
+**Modul:** ManualFullView
+**Store:** useManualStore
+**Badge:** Žádný
+
+### Testovací scénáře
+
+#### MANUAL-001: Zobrazení nápovědy pro prodavače
+
+**Přístup:** Prodavač (role-1)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Přihlásit se jako Prodavač | Přihlášen |
+| 2 | Kliknout na ikonu HelpCircle v hlavičce | Otevře se fullscreen nápověda |
+| 3 | Vidět úvod pro roli Prodavač | Titul, úvod, workflow, zásady |
+| 4 | Vidět 8 modulů v seznamu | cash-info, sales, collect, absence-report, tasks, attendance, shifts, chat |
+| 5 | Kliknout na sekci "Stav pokladny" | Sekce se rozbalí |
+| 6 | Vidět obsah sekce | Účel, návod, FAQ, tipy |
+
+#### MANUAL-002: Zobrazení nápovědy pro administrátora
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Přihlásit se jako Administrátor | Přihlášen |
+| 2 | Kliknout na ikonu HelpCircle | Otevře se nápověda |
+| 3 | Vidět úvod pro roli Administrátor | Přizpůsobený obsah |
+| 4 | Vidět 6 modulů | kpi-dashboard, reports, absence-approval, tasks, presence, chat |
+| 5 | Nevidět moduly Prodavače | Stav pokladny, Tržby, Odvody |
+
+#### MANUAL-003: Vyhledávání v nápovědě
+
+**Přístup:** Jakákoliv role
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít nápovědu | Nápověda zobrazena |
+| 2 | Zadat do vyhledávání "schválení" | Zobrazí se relevantní moduly |
+| 3 | Sekce jsou automaticky rozbalené | Obsah viditelný |
+| 4 | Úvodní sekce zmizí | Pouze výsledky hledání |
+| 5 | Vymazat vyhledávání | Všechny moduly zpět, úvod zobrazen |
+
+#### MANUAL-004: Sbalovací sekce
+
+**Přístup:** Jakákoliv role
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít nápovědu | Nápověda zobrazena |
+| 2 | Kliknout na sekci modulu | Sekce se rozbalí |
+| 3 | Kliknout znovu | Sekce se sbalí |
+| 4 | Rozbalit více sekcí najednou | Funguje správně |
+
+#### MANUAL-005: Přepnutí role
+
+**Přístup:** Uživatel s více rolemi
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít nápovědu | Vidím moduly pro aktuální roli |
+| 2 | Zavřít nápovědu | Zpět na dashboard |
+| 3 | Přepnout roli v hlavičce | Role změněna |
+| 4 | Znovu otevřít nápovědu | Obsah aktualizován pro novou roli |
+
+### Edge Cases
+
+| ID | Popis | Očekávané chování |
+|----|-------|-------------------|
+| MANUAL-E001 | Vyhledávání bez výsledků | Zobrazí se "Žádné výsledky pro zadaný dotaz" |
+| MANUAL-E002 | Neznámá role | Prázdný seznam modulů |
 
 ---
 
