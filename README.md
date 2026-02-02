@@ -3,7 +3,7 @@
 Interní systém pro správu tržeb, docházky a absencí zaměstnanců v maloobchodní síti.
 Aplikace podporuje **8 různých rolí** s multi-role systémem - uživatel může mít přiřazeno více rolí a přepínat mezi nimi.
 
-**Verze:** Enterprise v5.4
+**Verze:** Enterprise v5.5
 **Stav:** Frontend only (bez backendu, mock data)
 
 ---
@@ -29,9 +29,9 @@ Aplikace podporuje **8 různých rolí** s multi-role systémem - uživatel mů�
 Aplikace používá dynamický modulový systém, který umožňuje:
 - Definovat moduly nezávisle na rolích
 - Přiřazovat moduly k rolím v administraci
-- Konfigurovat pozici modulů (top, left, right, full)
+- Konfigurovat pozici modulů (top, left, right, sidebar, full, header)
 - Zapínat/vypínat moduly pro jednotlivé role
-- Nastavovat hierarchii schvalování absencí
+- Nastavovat hierarchie: schvalování absencí, viditelnost úkolů, přítomnost
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -42,7 +42,8 @@ Aplikace používá dynamický modulový systém, který umožňuje:
                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      ModuleConfig                               │
-│  (moduleId, roleIds[], order, column, enabled, approvalMappings)│
+│  (moduleId, roleIds[], order, column, enabled,                  │
+│   approvalMappings, viewMappings)                               │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
                       ▼
@@ -52,7 +53,7 @@ Aplikace používá dynamický modulový systém, který umožňuje:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Dostupné moduly
+### Dostupné moduly (13)
 
 | ID modulu | Název | Komponenta | Popis |
 |-----------|-------|------------|-------|
@@ -61,10 +62,14 @@ Aplikace používá dynamický modulový systém, který umožňuje:
 | `collect` | Odvody | CollectModule | Evidence odvodů hotovosti |
 | `absence-report` | Absence | AbsenceReportModule | Hlášení nepřítomnosti s notifikacemi |
 | `absence-approval` | Schvalování | AbsenceApprovalModule | Schvalování žádostí o absenci |
-| `tasks` | Úkoly | TasksModule | Seznam úkolů |
+| `tasks` | Úkoly | TasksModule | Seznam úkolů s hierarchickým zobrazením |
 | `kpi-dashboard` | KPI Dashboard | KpiDashboardModule | Přehled klíčových ukazatelů |
 | `reports` | Tržba a Docházka | ReportsModule | Reporty tržeb a docházky |
 | `attendance` | Docházka | HeaderAttendance | Evidence příchodů/odchodů (v header) |
+| `shifts` | Směny | ShiftsModule | Plánování a přehled směn |
+| `presence` | Přítomnost | PresenceModule | Přehled přítomnosti zaměstnanců |
+| `chat` | Chat | ChatModule | Skupinové konverzace s reakcemi |
+| `manual` | Nápověda | ManualModule | Kontextová nápověda podle role |
 
 ---
 
@@ -72,102 +77,257 @@ Aplikace používá dynamický modulový systém, který umožňuje:
 
 ```
 systempro/
-├── app/
-│   ├── layout.tsx          # Root layout (Inter font, metadata)
-│   ├── page.tsx            # Home - renderuje view podle role
-│   └── globals.css         # Tailwind + custom animace
+├── app/                          # Next.js App Router
+│   ├── layout.tsx                # Root layout (Inter font, metadata)
+│   ├── page.tsx                  # Home - renderuje view podle role
+│   └── globals.css               # Tailwind + custom animace
 │
 ├── components/
-│   ├── admin-dashboard/    # Komponenty pro dashboard
-│   │   ├── kpi-cards.tsx           # 4 KPI karty
-│   │   ├── attendance-table.tsx    # Tabulka docházky
-│   │   ├── sales-table.tsx         # Tabulka tržeb
-│   │   ├── last-pickups.tsx        # Panel posledních svozů
-│   │   ├── absence-requests.tsx    # Panel žádostí o volno
+│   ├── admin-dashboard/          # Komponenty pro dashboard
+│   │   ├── kpi-cards.tsx
+│   │   ├── attendance-table.tsx
+│   │   ├── sales-table.tsx
+│   │   ├── last-pickups.tsx
+│   │   ├── absence-requests.tsx
 │   │   │
-│   │   └── settings/               # Nastavení systému
-│   │       ├── AdminSettingsView.tsx    # Hlavní view nastavení
-│   │       ├── EmployeesSettings.tsx    # Správa zaměstnanců
-│   │       ├── EmployeeFormModal.tsx    # Modal formulář zaměstnance
-│   │       ├── RolesSettings.tsx        # Správa rolí
-│   │       ├── RoleFormModal.tsx        # Modal formulář role
-│   │       ├── StoresSettings.tsx       # Správa prodejen
-│   │       ├── StoreFormModal.tsx       # Modal formulář prodejny
-│   │       ├── ModulesSettings.tsx      # Správa modulů a přístupů
-│   │       └── DeleteConfirmModal.tsx   # Potvrzení mazání
+│   │   └── settings/             # Nastavení systému
+│   │       ├── AdminSettingsView.tsx
+│   │       ├── EmployeesSettings.tsx
+│   │       ├── EmployeeFormModal.tsx
+│   │       ├── RolesSettings.tsx
+│   │       ├── RoleFormModal.tsx
+│   │       ├── StoresSettings.tsx
+│   │       ├── StoreFormModal.tsx
+│   │       ├── ModulesSettings.tsx
+│   │       ├── ModuleSettingsCard.tsx
+│   │       ├── ModuleSettingsDetail.tsx
+│   │       ├── ChatGroupsSettings.tsx    # Správa chat skupin
+│   │       ├── ChatGroupFormModal.tsx
+│   │       └── DeleteConfirmModal.tsx
+│   │
+│   ├── chat/                     # Chat komponenty
+│   │   ├── ChatGroupList.tsx
+│   │   ├── ChatGroupItem.tsx
+│   │   ├── ChatConversation.tsx
+│   │   ├── ChatMessage.tsx
+│   │   ├── ChatMessageInput.tsx
+│   │   ├── ChatReactionPicker.tsx
+│   │   ├── ChatAttachmentPreview.tsx
+│   │   └── index.ts
 │   │
 │   ├── modals/
-│   │   ├── sales-modal.tsx         # Formulář denních tržeb
-│   │   ├── collect-modal.tsx       # Formulář odevzdání hotovosti
-│   │   └── absence-modal.tsx       # Formulář nahlášení absence
+│   │   ├── sales-modal.tsx
+│   │   ├── collect-modal.tsx
+│   │   └── absence-modal.tsx
 │   │
-│   ├── shared/             # Sdílené komponenty
-│   │   ├── absence-card.tsx        # Karta absence s badge notifikací
-│   │   ├── absence-request-form.tsx # Formulář žádosti o absenci
-│   │   ├── absence-requests-list.tsx # Seznam žádostí o absenci
-│   │   └── absence-approval-box.tsx  # Box schvalování absencí
+│   ├── shared/                   # Sdílené komponenty
+│   │   ├── absence-card.tsx
+│   │   ├── absence-request-form.tsx
+│   │   ├── absence-requests-list.tsx
+│   │   └── absence-approval-box.tsx
 │   │
-│   ├── ui/                 # Základní UI komponenty
+│   ├── ui/                       # Základní UI komponenty
 │   │   ├── button.tsx, dialog.tsx, input.tsx, select.tsx
 │   │   ├── checkbox.tsx, table.tsx, card.tsx
-│   │   └── currency-input.tsx      # Custom input pro Kč
+│   │   └── currency-input.tsx
 │   │
-│   ├── views/              # Views pro jednotlivé role
-│   │   ├── prodavac-view.tsx           # Prodavač
-│   │   ├── skladnik-view.tsx           # Skladník
-│   │   ├── vedouci-sklad-view.tsx      # Vedoucí skladu
-│   │   ├── obsluha-eshop-view.tsx      # Obsluha e-shopu
-│   │   ├── obchodnik-view.tsx          # Obchodník
-│   │   ├── vedouci-velkoobchod-view.tsx # Vedoucí velkoobchodu
-│   │   ├── admin-view.tsx              # Administrator
-│   │   ├── majitel-view.tsx            # Majitel
-│   │   ├── absence-full-view.tsx       # Fullscreen view absencí
-│   │   └── approval-full-view.tsx      # Fullscreen view schvalování
+│   ├── views/                    # Views pro jednotlivé role
+│   │   ├── RoleView.tsx              # Dynamický view renderer
+│   │   ├── prodavac-view.tsx
+│   │   ├── skladnik-view.tsx
+│   │   ├── obchodnik-view.tsx
+│   │   ├── vedouci-sklad-view.tsx
+│   │   ├── vedouci-velkoobchod-view.tsx
+│   │   ├── obsluha-eshop-view.tsx
+│   │   ├── admin-view.tsx
+│   │   ├── majitel-view.tsx
+│   │   ├── absence-full-view.tsx
+│   │   ├── approval-full-view.tsx
+│   │   ├── tasks-full-view.tsx
+│   │   ├── shifts-full-view.tsx
+│   │   ├── chat-full-view.tsx
+│   │   └── manual-full-view.tsx
 │   │
-│   ├── ModuleRenderer.tsx          # Dynamický renderer modulů
-│   ├── header.tsx                  # Hlavička s logo, role, docházka
-│   ├── attendance-module.tsx       # Modul docházky (příchod/odchod)
-│   ├── live-clock.tsx              # Živé hodiny
-│   └── cash-monitor.tsx            # Banner s hotovostí k odevzdání
+│   ├── ModuleRenderer.tsx
+│   ├── header.tsx
+│   ├── attendance-module.tsx
+│   ├── live-clock.tsx
+│   └── cash-monitor.tsx
 │
-├── modules/                # Modulové komponenty
-│   ├── index.ts                    # Export všech modulů
-│   ├── registry.ts                 # Registry mapující komponenty
-│   ├── CashInfoModule.tsx          # Modul stavu pokladny
-│   ├── SalesModule.tsx             # Modul tržeb
-│   ├── CollectModule.tsx           # Modul odvodů
-│   ├── AbsenceReportModule.tsx     # Modul hlášení absencí
-│   ├── AbsenceApprovalModule.tsx   # Modul schvalování
-│   ├── TasksModule.tsx             # Modul úkolů
-│   ├── KpiDashboardModule.tsx      # KPI dashboard
-│   ├── ReportsModule.tsx           # Modul reportů
-│   └── PlaceholderModule.tsx       # Placeholder pro nové moduly
+├── modules/                      # Modulové komponenty (13)
+│   ├── index.ts
+│   ├── registry.ts
+│   ├── CashInfoModule.tsx
+│   ├── SalesModule.tsx
+│   ├── CollectModule.tsx
+│   ├── AbsenceReportModule.tsx
+│   ├── AbsenceApprovalModule.tsx
+│   ├── TasksModule.tsx
+│   ├── KpiDashboardModule.tsx
+│   ├── ReportsModule.tsx
+│   ├── ShiftsModule.tsx
+│   ├── PresenceModule.tsx
+│   ├── ChatModule.tsx
+│   └── PlaceholderModule.tsx
 │
 ├── config/
-│   └── default-modules.ts  # Výchozí konfigurace modulů a rolí
+│   └── default-modules.ts        # Výchozí konfigurace modulů a rolí
 │
-├── stores/                 # Zustand state management
-│   ├── auth-store.ts               # Autentizace, aktivní role/prodejna
-│   ├── users-store.ts              # Správa uživatelů
-│   ├── roles-store.ts              # Správa rolí
-│   ├── stores-store.ts             # Správa prodejen
-│   ├── modules-store.ts            # Konfigurace modulů
-│   ├── attendance-store.ts         # Docházka
-│   ├── sales-store.ts              # Tržby
-│   ├── absence-store.ts            # Absence a notifikace
-│   ├── collect-store.ts            # Odvody
-│   ├── admin-store.ts              # Admin nastavení
-│   └── ui-store.ts                 # UI stav (modály, filtry)
+├── specs/                        # Living Specification systém
+│   ├── MASTER-SPEC.md            # Přehled systému
+│   ├── TEST-RUNNER.md            # Instrukce pro testování
+│   ├── CHANGELOG.md              # Historie změn
+│   ├── modules/                  # Specifikace modulů (13 souborů)
+│   │   ├── cash-info.spec.yaml
+│   │   ├── sales.spec.yaml
+│   │   ├── collect.spec.yaml
+│   │   ├── absence-report.spec.yaml
+│   │   ├── absence-approval.spec.yaml
+│   │   ├── tasks.spec.yaml
+│   │   ├── kpi-dashboard.spec.yaml
+│   │   ├── reports.spec.yaml
+│   │   ├── attendance.spec.yaml
+│   │   ├── shifts.spec.yaml
+│   │   ├── presence.spec.yaml
+│   │   ├── chat.spec.yaml
+│   │   └── manual.spec.yaml
+│   └── shared/
+│       ├── roles.yaml            # Definice rolí
+│       ├── notifications.yaml    # Badge logika
+│       └── ui-patterns.yaml      # UI vzory
 │
-├── lib/
-│   ├── mock-data.ts        # Testovací data + select options
-│   └── utils.ts            # cn() pro Tailwind třídy
+├── src/                          # Feature-based architektura
+│   ├── core/
+│   │   └── stores/               # Hlavní Zustand stores
+│   │       ├── index.ts
+│   │       ├── store-helpers.ts
+│   │       ├── auth-store.ts
+│   │       ├── users-store.ts
+│   │       ├── roles-store.ts
+│   │       ├── stores-store.ts
+│   │       ├── modules-store.ts
+│   │       └── ui-store.ts
+│   │
+│   ├── features/                 # Feature moduly s vlastními stores
+│   │   ├── absence/
+│   │   │   ├── absence-store.ts
+│   │   │   ├── absence-helpers.ts
+│   │   │   └── index.ts
+│   │   ├── attendance/
+│   │   │   ├── attendance-store.ts
+│   │   │   └── index.ts
+│   │   ├── sales/
+│   │   │   ├── sales-store.ts
+│   │   │   └── index.ts
+│   │   ├── collect/
+│   │   │   ├── collect-store.ts
+│   │   │   └── index.ts
+│   │   ├── tasks/
+│   │   │   ├── tasks-store.ts
+│   │   │   ├── tasks-helpers.ts
+│   │   │   └── index.ts
+│   │   ├── shifts/
+│   │   │   ├── shifts-store.ts
+│   │   │   └── index.ts
+│   │   ├── presence/
+│   │   │   ├── presence-store.ts
+│   │   │   └── index.ts
+│   │   ├── chat/
+│   │   │   ├── chat-store.ts
+│   │   │   ├── chat-helpers.ts
+│   │   │   └── index.ts
+│   │   ├── manual/
+│   │   │   ├── manual-store.ts
+│   │   │   ├── manual-content.ts
+│   │   │   └── index.ts
+│   │   └── reports/
+│   │       └── (budoucí implementace)
+│   │
+│   ├── admin/
+│   │   ├── admin-store.ts
+│   │   ├── employee-form-store.ts
+│   │   └── index.ts
+│   │
+│   └── shared/
+│       ├── types/                # Distribuované typy
+│       │   ├── index.ts
+│       │   ├── base.types.ts     # User, Role, Store
+│       │   ├── module.types.ts   # ModuleDefinition, ModuleConfig
+│       │   ├── absence.types.ts
+│       │   ├── attendance.types.ts
+│       │   ├── sales.types.ts
+│       │   ├── presence.types.ts
+│       │   ├── task.types.ts
+│       │   └── chat.types.ts
+│       ├── utils/
+│       │   ├── cn.ts
+│       │   └── index.ts
+│       ├── hooks/
+│       │   ├── use-sortable-table.ts
+│       │   └── index.ts
+│       └── components/
+│           └── index.ts
+│
+├── stores/                       # Legacy stores (re-exporty z src/)
+│   ├── auth-store.ts
+│   ├── users-store.ts
+│   ├── roles-store.ts
+│   ├── stores-store.ts
+│   ├── modules-store.ts
+│   ├── ui-store.ts
+│   ├── absence-store.ts
+│   ├── attendance-store.ts
+│   ├── sales-store.ts
+│   ├── collect-store.ts
+│   ├── tasks-store.ts
+│   ├── shifts-store.ts
+│   ├── presence-store.ts
+│   ├── chat-store.ts
+│   ├── manual-store.ts
+│   ├── admin-store.ts
+│   ├── employee-form-store.ts
+│   └── store-helpers.ts
 │
 ├── types/
-│   └── index.ts            # TypeScript typy a interfaces
+│   └── index.ts                  # Re-export z src/shared/types
 │
-└── CLAUDE.md               # Pravidla pro vývoj + design system
+├── lib/
+│   ├── mock-data.ts              # Testovací data + select options
+│   └── utils.ts                  # cn() pro Tailwind třídy
+│
+├── testy.md                      # Čitelný přehled testovacích scénářů
+└── CLAUDE.md                     # Pravidla pro vývoj + design system
 ```
+
+---
+
+## Living Specification
+
+Projekt používá "Living Specification" systém - živou dokumentaci všech modulů s testovacími scénáři.
+
+### Struktura
+
+```
+/specs/
+├── MASTER-SPEC.md           # Přehled celého systému
+├── TEST-RUNNER.md           # Instrukce pro testování
+├── CHANGELOG.md             # Historie změn specifikací
+├── modules/                 # Spec soubor pro každý modul
+│   └── {module-id}.spec.yaml
+└── shared/
+    ├── roles.yaml           # Definice rolí a hierarchie
+    ├── notifications.yaml   # Badge logika a notifikace
+    └── ui-patterns.yaml     # Společné UI vzory
+```
+
+### Pravidla aktualizace
+
+Při změně modulu **VŽDY** aktualizovat:
+1. `/specs/modules/{module-id}.spec.yaml` - specifikaci modulu
+2. `/testy.md` - příslušnou sekci testů
+3. `/specs/CHANGELOG.md` - záznam o změně
+
+Viz `CLAUDE.md` pro detailní pravidla.
 
 ---
 
@@ -219,44 +379,60 @@ systempro/
 - **Tržby**: Zadání hotovosti, karet, partnera + příjmy/výdaje
 - **Odvody**: Odevzdání hotovosti řidiči (jméno, číslo vaku)
 - **Absence**: Žádosti o dovolenou, nemoc, lékaře, neplacené volno
-- **Notifikace**: Badge na kartě Absence ukazující počet nových schválených/zamítnutých žádostí
+- **Směny**: Přehled vlastních směn
+- **Chat**: Skupinové konverzace
+- **Nápověda**: Kontextová nápověda pro roli prodavače
 
 #### Skladník, Obsluha e-shop, Obchodník
 - **Docházka**: Příchod/Odchod na pracovišti role
 - **Absence**: Žádosti s notifikacemi o zpracování
 - **Úkoly**: Seznam přiřazených úkolů
+- **Směny**: Přehled vlastních směn
+- **Chat**: Skupinové konverzace
 
-#### Vedoucí skladu
+#### Vedoucí skladu / Vedoucí velkoobchodu
 - **Docházka**: Vlastní docházka
 - **Absence**: Vlastní žádosti + notifikace
-- **Schvalování**: Schvaluje skladníky a obsluhu e-shopu
-- **Úkoly**: Seznam úkolů
-
-#### Vedoucí velkoobchodu
-- **Docházka**: Vlastní docházka
-- **Absence**: Vlastní žádosti + notifikace
-- **Schvalování**: Schvaluje prodavače a obchodníky
-- **Úkoly**: Seznam úkolů
+- **Schvalování**: Schvaluje podřízené dle hierarchie
+- **Úkoly**: Seznam úkolů + přehled úkolů podřízených
+- **Přítomnost**: Sledování přítomnosti podřízených
+- **Chat**: Skupinové konverzace
 
 #### Administrator
 - **KPI Dashboard**: Přehled klíčových ukazatelů
 - **Reporty**: Filtrovatelné tabulky tržeb a docházky
 - **Schvalování**: Schvaluje vedoucí skladu a velkoobchodu
+- **Úkoly**: Přehled všech úkolů
+- **Přítomnost**: Přehled přítomnosti vedoucích
+- **Chat**: Přístup ke všem skupinám + správa skupin
 - **Nastavení systému**:
   - Správa zaměstnanců (CRUD)
   - Správa rolí (aktivace/deaktivace)
   - Správa prodejen (CRUD)
-  - Správa modulů (přiřazení k rolím, hierarchie schvalování)
+  - Správa modulů (přiřazení k rolím, hierarchie)
+  - Správa chat skupin
 
 #### Majitel
 - **KPI Dashboard**: Kompletní přehled všech ukazatelů
 - **Schvalování**: Může schvalovat žádosti všech zaměstnanců
+- **Úkoly**: Přehled všech úkolů
+- **Přítomnost**: Přehled přítomnosti všech zaměstnanců
+- **Chat**: Přístup ke všem skupinám
 
 ---
 
 ## Zustand Stores
 
-### useAuthStore
+### Architektura stores
+
+Projekt používá dual-store systém:
+- **Core stores** (`src/core/stores/`) - základní entity (auth, users, roles, stores, modules, ui)
+- **Feature stores** (`src/features/*/`) - business logika pro jednotlivé moduly
+- **Legacy stores** (`stores/`) - re-exporty pro zpětnou kompatibilitu
+
+### Core Stores
+
+#### useAuthStore
 ```typescript
 State:
   currentUser: User | null
@@ -265,134 +441,79 @@ State:
   _hydrated: boolean
 
 Actions:
-  setCurrentUser(user)     // Nastaví uživatele s defaultními hodnotami
-  setActiveRole(roleId)    // Přepne aktivní roli
-  setActiveStore(storeId)  // Přepne aktivní prodejnu
-  switchToUser(userId)     // Přepne na jiného uživatele
+  setCurrentUser(user)
+  setActiveRole(roleId)
+  setActiveStore(storeId)
+  switchToUser(userId)
 
 Computed:
-  getActiveRole()          // Vrátí aktivní roli
-  getAvailableRoles()      // Role dostupné pro uživatele
-  getAvailableStores()     // Prodejny dostupné pro uživatele
-  getAllActiveUsers()      // Všichni aktivní uživatelé
-  needsStoreSelection()    // Potřebuje vybrat prodejnu?
-  getActiveRoleType()      // Typ aktivní role
-  canReportAbsence()       // Může hlásit absenci?
+  getActiveRole(), getAvailableRoles(), getAvailableStores()
+  getActiveRoleType(), canReportAbsence(), needsStoreSelection()
 ```
 
-### useModulesStore
+#### useModulesStore
 ```typescript
 State:
-  definitions: ModuleDefinition[]  // Definice všech modulů
-  configs: ModuleConfig[]          // Konfigurace pro role
+  definitions: ModuleDefinition[]
+  configs: ModuleConfig[]
 
 Actions:
-  updateModuleConfig(moduleId, config)      // Aktualizuje konfiguraci
-  toggleRoleAccess(moduleId, roleId)        // Přepne přístup role
-  setModuleColumn(moduleId, column)         // Nastaví pozici
-  toggleModuleEnabled(moduleId)             // Zapne/vypne modul
-  toggleSubordinateRole(...)                // Nastaví podřízenou roli
+  updateModuleConfig(moduleId, config)
+  toggleRoleAccess(moduleId, roleId)
+  setModuleColumn(moduleId, column)
+  toggleModuleEnabled(moduleId)
+  toggleSubordinateRole(...)
 
 Computed:
-  getModulesForRole(roleId)                 // Moduly pro roli
-  getModuleDefinition(moduleId)             // Definice modulu
-  getModuleConfig(moduleId)                 // Konfigurace modulu
-  getSubordinatesForApprover(...)           // Podřízení pro schvalovatele
+  getModulesForRole(roleId)
+  getModuleDefinition(moduleId)
+  getModuleConfig(moduleId)
+  getSubordinatesForApprover(...)
 ```
 
-### useAbsenceStore
-```typescript
-State:
-  formData: AbsenceFormData
-  absenceRequests: AbsenceRequest[]
-  absenceViewMode: 'card' | 'view'
-  approvalViewMode: 'card' | 'view'
-  // Filtry pro žádosti
+### Feature Stores
 
-Actions:
-  setAbsenceType(type), setDateFrom(date), setDateTo(date)
-  setTimeFrom(time), setTimeTo(time), setNote(note)
-  submitAbsenceRequest(userId)
-  approveAbsence(requestId, approverId)
-  rejectAbsence(requestId, approverId)
-  openAbsenceView(), closeAbsenceView()
-  openApprovalView(), closeApprovalView()
-  markMyRequestsAsSeen(userId)    // Označí jako viděné
+#### useAbsenceStore
+- Evidence žádostí o absenci
+- Notifikační systém (seenByUser)
+- Filtry a view módy
 
-Computed:
-  showTimeSection()               // Zobrazit časovou sekci?
-  getMyRequests(userId)           // Moje žádosti
-  getFilteredMyRequests(userId)   // Filtrované žádosti
-  getPendingRequestsForApproval(approverId, roleType)
-  getFilteredRequestsForApproval(approverId, roleType)
-  getUnseenProcessedRequestsCount(userId)  // Počet notifikací
-```
+#### useAttendanceStore
+- Příchod/Odchod
+- Potvrzení kasy
+- Volba pracoviště
 
-### useAttendanceStore
-```typescript
-State:
-  isInWork: boolean
-  kasaConfirmed: boolean
-  workplace: { type, id, name }
+#### useSalesStore
+- Evidence tržeb (hotovost, karty, partner)
+- Příjmy/výdaje
+- Validace formuláře
 
-Actions:
-  toggleAttendance()              // Příchod/Odchod
-  confirmKasa()                   // Potvrzení kasy
-  changeWorkplace(type, id, name) // Změna pracoviště
+#### useCollectStore
+- Odvody hotovosti
+- Jméno řidiče, číslo vaku
 
-Computed:
-  isWarehouse()                   // Je na skladu?
-```
+#### useTasksStore
+- Seznam úkolů
+- Filtry podle stavu a role
+- Hierarchické zobrazení
 
-### useSalesStore
-```typescript
-State:
-  cashToCollect: number           // Default: 28500
-  formData: SalesFormData
+#### useShiftsStore
+- Plánování směn
+- Přehled směn podle zaměstnance/prodejny
+- Týdenní/měsíční zobrazení
 
-Actions:
-  calculateTotal()                // Výpočet celkové tržby
-  getCollectionPeriod()           // Období svozu
-  updateField(field, value)
-  add/update/removeIncomeRow()
-  add/update/removeExpenseRow()
-  validateForm()
-  submitSales()
-  submitCollection(driverName, bagNumber)
+#### usePresenceStore
+- Real-time přítomnost zaměstnanců
+- Filtrování podle role a prodejny
 
-Validace: Každý řádek s částkou musí mít poznámku
-```
+#### useChatStore
+- Chat skupiny a zprávy
+- Reakce na zprávy
+- Nepřečtené zprávy
 
-### useCollectStore
-```typescript
-State:
-  formData: CollectionFormData
-
-Actions:
-  setDriverName(name)
-  setAmount(amount)
-  setPeriod(period)
-  submitCollection()
-  resetForm()
-```
-
-### useUsersStore, useRolesStore, useStoresStore
-```typescript
-// CRUD operace pro entity
-State: users[] / roles[] / stores[]
-Actions: add, update, delete, getById, getActive
-```
-
-### useUIStore
-```typescript
-State:
-  salesModalOpen, collectModalOpen, absenceModalOpen
-  subView, storeFilter, monthFilter, yearFilter
-
-Actions:
-  open/close/set modály
-  setSubView(), setFilters(), resetFilters()
-```
+#### useManualStore
+- Kontextová nápověda
+- Obsah podle aktivní role
 
 ---
 
@@ -410,15 +531,12 @@ type RoleType =
   | 'administrator'
   | 'majitel';
 
-// Workplace types
-type WorkplaceType = 'store' | 'role';
-
 // Main entities
 interface User {
   id: string;
   username: string;
   fullName: string;
-  roleIds: string[];       // Multi-role podpora
+  roleIds: string[];
   storeIds: string[];
   defaultRoleId?: string;
   defaultStoreId?: string;
@@ -437,26 +555,65 @@ interface Store {
   name: string;
   address: string;
   active: boolean;
+  managerId?: string;
 }
 
 // Absence system
-type AbsenceType = 'Dovolená' | 'Nemoc / Neschopenka' | 'Lékař' | 'Neplacené volno';
-type AbsenceRequestStatus = 'pending' | 'approved' | 'rejected';
-
 interface AbsenceRequest {
   id: string;
   userId: string;
   type: AbsenceType;
   dateFrom: string;
   dateTo: string;
-  timeFrom?: string;         // Pouze pro typ "Lékař"
+  timeFrom?: string;
   timeTo?: string;
   note: string;
-  status: AbsenceRequestStatus;
+  status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   approvedBy?: string;
   approvedAt?: string;
-  seenByUser?: boolean;      // Notifikace - viděl uživatel změnu?
+  seenByUser?: boolean;
+}
+
+// Chat system
+interface ChatGroup {
+  id: string;
+  name: string;
+  description?: string;
+  memberIds: string[];
+  createdAt: string;
+  createdBy: string;
+}
+
+interface ChatMessage {
+  id: string;
+  groupId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  reactions: ChatReaction[];
+  attachments?: ChatAttachment[];
+}
+
+// Shifts
+interface Shift {
+  id: string;
+  userId: string;
+  storeId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  type: 'morning' | 'afternoon' | 'night' | 'full';
+}
+
+// Presence
+interface PresenceRecord {
+  id: string;
+  oderId: string;
+  storeId: string;
+  status: 'present' | 'absent' | 'late' | 'left-early';
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 // Module system
@@ -464,46 +621,18 @@ interface ModuleDefinition {
   id: string;
   name: string;
   description: string;
-  component: string;         // Název komponenty v registry
-  icon: string;              // Lucide icon name
-}
-
-interface ApprovalRoleMapping {
-  approverRoleId: string;
-  subordinateRoleIds: string[];
+  component: string;
+  icon: string;
 }
 
 interface ModuleConfig {
   moduleId: string;
   roleIds: string[];
   order: number;
-  column: 'left' | 'right' | 'full' | 'top' | 'header';
+  column: 'left' | 'right' | 'full' | 'top' | 'header' | 'sidebar';
   enabled: boolean;
   approvalMappings?: ApprovalRoleMapping[];
-}
-
-// Forms
-interface SalesFormData {
-  cash: number;
-  card: number;
-  partner: number;
-  incomes: ExtraRow[];
-  expenses: ExtraRow[];
-}
-
-interface ExtraRow {
-  id: string;
-  amount: number;
-  note: string;
-}
-
-interface AbsenceFormData {
-  type: AbsenceType;
-  dateFrom: string;
-  dateTo: string;
-  timeFrom?: string;
-  timeTo?: string;
-  note: string;
+  viewMappings?: ViewRoleMapping[];
 }
 ```
 
@@ -513,32 +642,15 @@ interface AbsenceFormData {
 
 ### Absence notifikace
 
-Modul Absence zobrazuje badge s počtem nových zpracovaných žádostí:
-
 1. **Při schválení/zamítnutí** žádosti se nastaví `seenByUser: false`
 2. **AbsenceCard** zobrazuje badge s počtem neviděných zpracovaných žádostí
 3. **Po kliknutí** na modul Absence se všechny žádosti označí jako viděné
-4. Badge zmizí
 
-```typescript
-// Počet notifikací
-getUnseenProcessedRequestsCount(userId) {
-  return absenceRequests.filter(
-    r => r.userId === userId &&
-         r.status !== 'pending' &&
-         r.seenByUser === false
-  ).length;
-}
+### Chat notifikace
 
-// Označení jako viděné
-markMyRequestsAsSeen(userId) {
-  absenceRequests.map(r =>
-    r.userId === userId && r.status !== 'pending'
-      ? { ...r, seenByUser: true }
-      : r
-  );
-}
-```
+1. Počet nepřečtených zpráv na kartě Chat
+2. Badge na jednotlivých skupinách
+3. Označení jako přečtené při otevření konverzace
 
 ---
 
@@ -550,7 +662,7 @@ markMyRequestsAsSeen(userId) {
 - **State**: Veškerá data pouze v Zustand stores
 - **Komponenty**: Bez business logiky, pouze prezentace a volání akcí
 - **Design**: Dodržovat design pattern z CLAUDE.md (barvy, spacing, typography)
-- **Nepoužívat**: `// eslint-disable` komentáře bez schválení
+- **Specifikace**: Při změně modulu aktualizovat `/specs/` a `/testy.md`
 
 ---
 
@@ -577,6 +689,7 @@ Aplikace obsahuje mock data pro testování:
 - **10 prodejen** (Bohnice, Butovice, Brno, ...)
 - **8 rolí** s definovanými právy
 - **21 žádostí o absenci** v různých stavech
+- **Chat skupiny** s testovacími zprávami
 
 Přepínání mezi uživateli je možné přes dropdown v headeru.
 
@@ -584,31 +697,32 @@ Přepínání mezi uživateli je možné přes dropdown v headeru.
 
 ## Testovací scénáře
 
-### Absence workflow
+Kompletní testovací scénáře jsou v `/testy.md`.
 
-1. Přihlásit se jako prodavač (např. "Burianová Aneta")
-2. Kliknout na modul Absence
-3. Vytvořit novou žádost o dovolenou
-4. Přepnout na schvalovatele (např. "Lhoták Jan - Vedoucí velkoobchodu")
-5. V modulu Schvalování schválit/zamítnout žádost
-6. Přepnout zpět na prodavače
-7. Ověřit badge notifikaci na kartě Absence
-8. Kliknout na Absence - badge zmizí
+### Rychlý start
 
-### Admin workflow
+1. **Absence workflow**
+   - Přihlásit jako prodavač → vytvořit žádost
+   - Přepnout na schvalovatele → schválit/zamítnout
+   - Ověřit notifikace
 
-1. Přihlásit se jako Administrator ("Hodek Karel")
-2. Kliknout na "Nastavení"
-3. Testovat CRUD operace pro zaměstnance, role, prodejny
-4. V záložce "Moduly" upravit přístupy a hierarchii schvalování
+2. **Chat workflow**
+   - Přihlásit jako uživatel s přístupem k chatu
+   - Otevřít skupinu → poslat zprávu
+   - Přidat reakci na zprávu
+
+3. **Admin workflow**
+   - Přihlásit jako Administrator
+   - Správa zaměstnanců, rolí, prodejen
+   - Konfigurace modulů a chat skupin
 
 ---
 
-## TODO / Rozpracované funkce
+## TODO / Roadmap
 
-- [ ] Tlačítko "Úkoly" - zatím placeholder
 - [ ] Backend integrace - aktuálně mock data
 - [ ] Export XLS - připravené tlačítko
-- [ ] Push notifikace - email/SMS při změně stavu žádosti
+- [ ] Push notifikace - email/SMS při změně stavu
 - [ ] Kalendářní přehled absencí
-- [ ] Reporting a statistiky absencí
+- [ ] Reporting a statistiky
+- [ ] Real-time WebSocket pro chat a přítomnost
