@@ -9,7 +9,6 @@ import { ChatGroupsSettings } from './ChatGroupsSettings';
 import {
   Info,
   Wallet,
-  Send,
   Umbrella,
   ClipboardCheck,
   CheckSquare,
@@ -17,6 +16,10 @@ import {
   Clock,
   Calendar,
   Users,
+  Landmark,
+  Truck,
+  ChartNoAxesCombined,
+  MessagesSquare,
 } from 'lucide-react';
 
 interface ModuleSettingsDetailProps {
@@ -27,7 +30,6 @@ interface ModuleSettingsDetailProps {
 const iconMap: Record<string, React.ElementType> = {
   Info,
   Wallet,
-  Send,
   Umbrella,
   ClipboardCheck,
   CheckSquare,
@@ -35,6 +37,10 @@ const iconMap: Record<string, React.ElementType> = {
   Clock,
   Calendar,
   Users,
+  Landmark,
+  Truck,
+  ChartNoAxesCombined,
+  MessagesSquare,
 };
 
 const colorSchemes: Record<string, { bg: string; text: string }> = {
@@ -49,6 +55,7 @@ const colorSchemes: Record<string, { bg: string; text: string }> = {
   'attendance': { bg: 'bg-amber-50', text: 'text-amber-500' },
   'shifts': { bg: 'bg-blue-50', text: 'text-blue-500' },
   'presence': { bg: 'bg-sky-50', text: 'text-sky-500' },
+  'chat': { bg: 'bg-rose-50', text: 'text-rose-500' },
 };
 
 export function ModuleSettingsDetail({ moduleId, onBack }: ModuleSettingsDetailProps) {

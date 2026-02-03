@@ -7,7 +7,7 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     name: 'Stav pokladny',
     description: 'Přehled hotovosti k odevzdání a provozní základna',
     component: 'CashInfoModule',
-    icon: 'Info',
+    icon: 'Landmark',
   },
   {
     id: 'sales',
@@ -21,7 +21,7 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     name: 'Odvody',
     description: 'Evidence odvodů hotovosti',
     component: 'CollectModule',
-    icon: 'Send',
+    icon: 'Truck',
   },
   {
     id: 'absence-report',
@@ -49,7 +49,7 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     name: 'KPI Dashboard',
     description: 'Přehled klíčových ukazatelů',
     component: 'KpiDashboardModule',
-    icon: 'ChartColumnIncreasing',
+    icon: 'ChartNoAxesCombined',
   },
   {
     id: 'reports',
@@ -84,7 +84,7 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     name: 'Chat',
     description: 'Skupinové konverzace',
     component: 'ChatModule',
-    icon: 'MessageCircle',
+    icon: 'MessagesSquare',
   },
 ];
 

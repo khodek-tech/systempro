@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Store, Users, Shield, LayoutGrid, Save, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Store, Users, Shield, LayoutGrid, Save, Loader2, Check, AlertCircle, Database } from 'lucide-react';
 import { useAdminStore } from '@/stores/admin-store';
 import { useUsersStore } from '@/stores/users-store';
 import { useStoresStore } from '@/stores/stores-store';
@@ -12,6 +12,7 @@ import { StoresSettings } from './StoresSettings';
 import { RolesSettings } from './RolesSettings';
 import { EmployeesSettings } from './EmployeesSettings';
 import { ModulesSettings } from './ModulesSettings';
+import { PohodaSettings } from './PohodaSettings';
 import { cn } from '@/lib/utils';
 
 const tabs = [
@@ -19,6 +20,7 @@ const tabs = [
   { id: 'roles' as const, label: 'Role', icon: Shield },
   { id: 'employees' as const, label: 'Zaměstnanci', icon: Users },
   { id: 'modules' as const, label: 'Moduly', icon: LayoutGrid },
+  { id: 'pohoda' as const, label: 'Pohoda', icon: Database },
 ];
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error';
@@ -131,6 +133,7 @@ export function AdminSettingsView() {
         {settingsTab === 'roles' && <RolesSettings />}
         {settingsTab === 'employees' && <EmployeesSettings />}
         {settingsTab === 'modules' && <ModulesSettings />}
+        {settingsTab === 'pohoda' && <PohodaSettings />}
       </div>
     </div>
   );

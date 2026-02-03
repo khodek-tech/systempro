@@ -42,6 +42,7 @@ export interface Store {
   address: string;
   active: boolean;
   openingHours?: StoreOpeningHours;
+  cashBase?: number;  // Provozní základna kasy (výchozí: 0)
 }
 
 // Role interface

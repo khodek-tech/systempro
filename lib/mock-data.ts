@@ -5,12 +5,13 @@ import { AttendanceRecord, Store, Role, User, AbsenceRequest, Task } from '@/typ
 
 // Mock stores
 export const MOCK_STORES: Store[] = [
-  { id: 'store-1', name: 'Bohnice', address: '', active: true },
+  { id: 'store-1', name: 'Bohnice', address: '', active: true, cashBase: 2000 },
   {
     id: 'store-2',
     name: 'Butovice',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: true,
       default: { open: '09:00', close: '21:00', closed: false },
@@ -21,17 +22,19 @@ export const MOCK_STORES: Store[] = [
     name: 'Brno',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: true,
       default: { open: '10:00', close: '21:00', closed: false },
     },
   },
-  { id: 'store-4', name: 'Č Most', address: '', active: true },
+  { id: 'store-4', name: 'Č Most', address: '', active: true, cashBase: 2000 },
   {
     id: 'store-5',
     name: 'OC Šestka',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: true,
       default: { open: '09:00', close: '20:00', closed: false },
@@ -42,6 +45,7 @@ export const MOCK_STORES: Store[] = [
     name: 'Prosek',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: false,
       monday: { open: '07:00', close: '20:00', closed: false },
@@ -58,6 +62,7 @@ export const MOCK_STORES: Store[] = [
     name: 'Ústí',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: true,
       default: { open: '08:00', close: '20:00', closed: false },
@@ -68,6 +73,7 @@ export const MOCK_STORES: Store[] = [
     name: 'Chodov',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: true,
       default: { open: '09:00', close: '21:00', closed: false },
@@ -78,6 +84,7 @@ export const MOCK_STORES: Store[] = [
     name: 'Vysočany',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: false,
       monday: { open: '09:00', close: '19:00', closed: false },
@@ -94,6 +101,7 @@ export const MOCK_STORES: Store[] = [
     name: 'Zličín',
     address: '',
     active: true,
+    cashBase: 2000,
     openingHours: {
       sameAllWeek: true,
       default: { open: '09:00', close: '21:00', closed: false },

@@ -1,6 +1,6 @@
 'use client';
 
-import { Send } from 'lucide-react';
+import { Truck } from 'lucide-react';
 import { CollectModal } from '@/components/modals/collect-modal';
 import { useUIStore } from '@/stores/ui-store';
 import { useSalesStore } from '@/stores/sales-store';
@@ -20,7 +20,7 @@ export function CollectModule() {
         <div className="relative bg-blue-50 w-32 h-32 sm:w-36 sm:h-36 rounded-[36px] flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 z-10">
           <div className="absolute inset-0 blur-3xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full bg-blue-50" />
           <div className="relative text-blue-500 transition-transform duration-500 group-hover:scale-110">
-            <Send className="w-[72px] h-[72px]" strokeWidth={1.2} />
+            <Truck className="w-[72px] h-[72px]" strokeWidth={1.2} />
           </div>
         </div>
         <div className="flex flex-col items-center space-y-3 z-10">

@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 import {
   Info,
   Wallet,
-  Send,
   Umbrella,
   ClipboardCheck,
   CheckSquare,
@@ -13,6 +12,10 @@ import {
   Clock,
   Calendar,
   Users,
+  Landmark,
+  Truck,
+  ChartNoAxesCombined,
+  MessagesSquare,
 } from 'lucide-react';
 
 interface ModuleSettingsCardProps {
@@ -24,7 +27,6 @@ interface ModuleSettingsCardProps {
 const iconMap: Record<string, React.ElementType> = {
   Info,
   Wallet,
-  Send,
   Umbrella,
   ClipboardCheck,
   CheckSquare,
@@ -32,6 +34,10 @@ const iconMap: Record<string, React.ElementType> = {
   Clock,
   Calendar,
   Users,
+  Landmark,
+  Truck,
+  ChartNoAxesCombined,
+  MessagesSquare,
 };
 
 const colorSchemes: Record<string, { bg: string; text: string; activeDot: string }> = {
@@ -46,6 +52,7 @@ const colorSchemes: Record<string, { bg: string; text: string; activeDot: string
   'attendance': { bg: 'bg-amber-50', text: 'text-amber-500', activeDot: 'bg-amber-500' },
   'shifts': { bg: 'bg-blue-50', text: 'text-blue-500', activeDot: 'bg-blue-500' },
   'presence': { bg: 'bg-sky-50', text: 'text-sky-500', activeDot: 'bg-sky-500' },
+  'chat': { bg: 'bg-rose-50', text: 'text-rose-500', activeDot: 'bg-rose-500' },
 };
 
 export function ModuleSettingsCard({ module, config, onClick }: ModuleSettingsCardProps) {

@@ -85,6 +85,17 @@ export const useStoresStore = create<StoresState & StoresActions>()(
     return { canDelete: true };
   },
     }),
-    { name: STORAGE_KEYS.STORES }
+    {
+      name: STORAGE_KEYS.STORES,
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Migrace: přidat cashBase pokud chybí
+          state.stores = state.stores.map((store) => ({
+            ...store,
+            cashBase: store.cashBase ?? 2000,
+          }));
+        }
+      },
+    }
   )
 );

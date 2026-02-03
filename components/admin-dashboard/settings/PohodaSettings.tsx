@@ -1,0 +1,810 @@
+'use client';
+
+import { useState, useRef } from 'react';
+import {
+  Database,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Download,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Server,
+  Building2,
+  User,
+  Lock,
+  Link,
+  Package,
+  ArrowLeft,
+  Upload,
+  FileSpreadsheet,
+  ShoppingCart,
+  Warehouse,
+} from 'lucide-react';
+import { usePohodaStore } from '@/features/pohoda';
+import { cn } from '@/lib/utils';
+
+export function PohodaSettings() {
+  const {
+    credentials,
+    connectionStatus,
+    sklady,
+    isTestingConnection,
+    isLoadingSklady,
+    isExporting,
+    isUploading,
+    isGenerating,
+    generateProgress,
+    generateError,
+    isGeneratingVsechnySklady,
+    generateVsechnySkladyProgress,
+    generateVsechnySkladyError,
+    lastUploadedFile,
+    pohodaView,
+    setCredentials,
+    setConnectionStatus,
+    setSklady,
+    setIsTestingConnection,
+    setIsLoadingSklady,
+    setIsExporting,
+    setIsUploading,
+    setIsGenerating,
+    setGenerateProgress,
+    setGenerateError,
+    setIsGeneratingVsechnySklady,
+    setGenerateVsechnySkladyProgress,
+    setGenerateVsechnySkladyError,
+    setLastUploadedFile,
+    setPohodaView,
+  } = usePohodaStore();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedSklad, setSelectedSklad] = useState<string>('all');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Test pripojeni k mServeru
+  const testConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus({ error: null });
+
+    try {
+      const response = await fetch('/api/pohoda/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setConnectionStatus({
+          isConnected: true,
+          lastCheck: new Date().toISOString(),
+          companyName: data.companyName || null,
+          error: null,
+        });
+        // Po uspesnem pripojeni nacist sklady
+        await loadSklady();
+      } else {
+        setConnectionStatus({
+          isConnected: false,
+          lastCheck: new Date().toISOString(),
+          companyName: null,
+          error: data.error || 'Pripojeni selhalo',
+        });
+      }
+    } catch {
+      setConnectionStatus({
+        isConnected: false,
+        lastCheck: new Date().toISOString(),
+        companyName: null,
+        error: 'Chyba pri komunikaci se serverem',
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  // Nacist seznam skladu
+  const loadSklady = async () => {
+    setIsLoadingSklady(true);
+
+    try {
+      const response = await fetch('/api/pohoda/sklady/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.sklady) {
+        setSklady(data.sklady);
+      }
+    } catch (error) {
+      console.error('Chyba pri nacitani skladu:', error);
+    } finally {
+      setIsLoadingSklady(false);
+    }
+  };
+
+  // Stahnout Excel export
+  const downloadExcel = async () => {
+    setIsExporting(true);
+
+    try {
+      const response = await fetch('/api/pohoda/sklady/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...credentials,
+          skladId: selectedSklad === 'all' ? null : selectedSklad,
+        }),
+      });
+
+      // Zkontrolovat content-type - pokud je JSON, je to chyba
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Export selhal');
+      }
+
+      if (!response.ok) {
+        throw new Error('Export selhal');
+      }
+
+      // Stahnout jako soubor
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pohoda-sklady-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error('Chyba pri exportu:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Neznama chyba';
+      alert(`Export se nezdaril: ${errorMessage}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Upload souboru do /export
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/pohoda/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setLastUploadedFile(data.filename);
+        setUploadError(null);
+      } else {
+        setUploadError(data.error || 'Nahravani selhalo');
+        setLastUploadedFile(null);
+      }
+    } catch {
+      setUploadError('Chyba pri nahravani souboru');
+      setLastUploadedFile(null);
+    } finally {
+      setIsUploading(false);
+      // Reset file input - zmena key vynuti znovu-renderovani inputu
+      setFileInputKey((prev) => prev + 1);
+    }
+  };
+
+  // Generovat vsechny sklady
+  const generateVsechnySklady = async () => {
+    setIsGeneratingVsechnySklady(true);
+    setGenerateVsechnySkladyProgress('Stahovani dat ze skladu...');
+    setGenerateVsechnySkladyError(null);
+
+    try {
+      const response = await fetch('/api/pohoda/vsechny-sklady', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Generovani selhalo');
+      }
+
+      setGenerateVsechnySkladyProgress('Stahovani souboru...');
+
+      // Stahnout jako soubor
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vsechny-sklady-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      setGenerateVsechnySkladyProgress(null);
+    } catch (error) {
+      console.error('Chyba pri generovani vsech skladu:', error);
+      setGenerateVsechnySkladyError(
+        error instanceof Error ? error.message : 'Neznama chyba'
+      );
+      setGenerateVsechnySkladyProgress(null);
+    } finally {
+      setIsGeneratingVsechnySklady(false);
+    }
+  };
+
+  // Generovat objednavku
+  const generateOrder = async () => {
+    setIsGenerating(true);
+    setGenerateProgress('Nacitani podkladu...');
+    setGenerateError(null);
+
+    try {
+      setGenerateProgress('Stahovani dat ze skladu...');
+
+      const response = await fetch('/api/pohoda/generate-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Generovani selhalo');
+      }
+
+      setGenerateProgress('Stahovani souboru...');
+
+      // Stahnout jako soubor
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `objednavka-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      setGenerateProgress(null);
+    } catch (error) {
+      console.error('Chyba pri generovani objednavky:', error);
+      setGenerateError(
+        error instanceof Error ? error.message : 'Neznama chyba'
+      );
+      setGenerateProgress(null);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const isFormValid =
+    credentials.url &&
+    credentials.username &&
+    credentials.password &&
+    credentials.ico;
+
+  // Detail view
+  if (pohodaView === 'detail') {
+    return (
+      <div className="space-y-6">
+        {/* Hlavicka s tlacitkem zpet */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setPohodaView('settings')}
+            className="p-3 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all active:scale-[0.98]"
+          >
+            <ArrowLeft className="w-6 h-6 text-slate-600" />
+          </button>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">
+              Pohoda - Detail
+            </h2>
+            <p className="text-sm text-slate-500">
+              Podrobne informace o pripojeni
+            </p>
+          </div>
+        </div>
+
+        {/* Upload sekce */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Upload className="w-5 h-5 text-slate-400" />
+            Nahrat soubor
+          </h3>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Nahrajte Excel soubor (.xlsx, .xls) nebo CSV do slozky export.
+            </p>
+
+            {/* Skryty file input */}
+            <input
+              key={fileInputKey}
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {/* Tlacitko pro upload */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+                isUploading
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+              )}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Nahravani...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Nahrat soubor
+                </>
+              )}
+            </button>
+
+            {/* Status uploadu */}
+            {lastUploadedFile && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Soubor uspesne nahran
+                  </p>
+                  <p className="text-xs text-green-600">{lastUploadedFile}</p>
+                </div>
+              </div>
+            )}
+
+            {uploadError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <p className="text-sm font-medium text-red-800">{uploadError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Objednat vsem sekce */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-slate-400" />
+            Objednat vsem
+          </h3>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Vygeneruje objednavku na zaklade souboru Podklady.xlsx a
+              aktualnich stavu skladu z mServeru.
+            </p>
+
+            {/* Tlacitko pro generovani */}
+            <button
+              onClick={generateOrder}
+              disabled={isGenerating || !connectionStatus.isConnected}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+                isGenerating || !connectionStatus.isConnected
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
+              )}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generuji...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Vygenerovat
+                </>
+              )}
+            </button>
+
+            {/* Progress indikator */}
+            {generateProgress && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <p className="text-sm font-medium text-blue-800">
+                  {generateProgress}
+                </p>
+              </div>
+            )}
+
+            {/* Error */}
+            {generateError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <p className="text-sm font-medium text-red-800">
+                  {generateError}
+                </p>
+              </div>
+            )}
+
+            {/* Info pokud neni pripojeno */}
+            {!connectionStatus.isConnected && (
+              <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <XCircle className="w-5 h-5 text-orange-600" />
+                <p className="text-sm font-medium text-orange-800">
+                  Pro generovani je nutne pripojeni k mServeru
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Vsechny sklady sekce */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Warehouse className="w-5 h-5 text-slate-400" />
+            Vsechny sklady
+          </h3>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Stahne aktualni stavy vsech skladu z mServeru a zobrazi je v jedne
+              tabulce. Radky = kody produktu, sloupce = jednotlive sklady s
+              mnozstvim.
+            </p>
+
+            {/* Tlacitko pro generovani */}
+            <button
+              onClick={generateVsechnySklady}
+              disabled={isGeneratingVsechnySklady || !connectionStatus.isConnected}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+                isGeneratingVsechnySklady || !connectionStatus.isConnected
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-[0.98]'
+              )}
+            >
+              {isGeneratingVsechnySklady ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generuji...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Vygenerovat
+                </>
+              )}
+            </button>
+
+            {/* Progress indikator */}
+            {generateVsechnySkladyProgress && (
+              <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                <p className="text-sm font-medium text-purple-800">
+                  {generateVsechnySkladyProgress}
+                </p>
+              </div>
+            )}
+
+            {/* Error */}
+            {generateVsechnySkladyError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <p className="text-sm font-medium text-red-800">
+                  {generateVsechnySkladyError}
+                </p>
+              </div>
+            )}
+
+            {/* Info pokud neni pripojeno */}
+            {!connectionStatus.isConnected && (
+              <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <XCircle className="w-5 h-5 text-orange-600" />
+                <p className="text-sm font-medium text-orange-800">
+                  Pro generovani je nutne pripojeni k mServeru
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Hlavicka */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setPohodaView('detail')}
+          className="p-3 bg-blue-100 rounded-xl hover:bg-blue-200 transition-all active:scale-[0.98] cursor-pointer"
+        >
+          <Database className="w-6 h-6 text-blue-600" />
+        </button>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">
+            Pohoda mServer
+          </h2>
+          <p className="text-sm text-slate-500">
+            Pripojeni k ekonomickemu systemu Pohoda
+          </p>
+        </div>
+      </div>
+
+      {/* Status pripojeni */}
+      <div
+        className={cn(
+          'p-4 rounded-xl border',
+          connectionStatus.isConnected
+            ? 'bg-green-50 border-green-200'
+            : 'bg-slate-50 border-slate-200'
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {connectionStatus.isConnected ? (
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            ) : (
+              <XCircle className="w-5 h-5 text-slate-400" />
+            )}
+            <div>
+              <p
+                className={cn(
+                  'font-medium',
+                  connectionStatus.isConnected
+                    ? 'text-green-800'
+                    : 'text-slate-600'
+                )}
+              >
+                {connectionStatus.isConnected ? 'Pripojeno' : 'Nepripojeno'}
+              </p>
+              {connectionStatus.companyName && (
+                <p className="text-sm text-green-600">
+                  Firma: {connectionStatus.companyName}
+                </p>
+              )}
+              {connectionStatus.error && (
+                <p className="text-sm text-red-600">{connectionStatus.error}</p>
+              )}
+              {connectionStatus.lastCheck && (
+                <p className="text-xs text-slate-500">
+                  Posledni kontrola:{' '}
+                  {new Date(connectionStatus.lastCheck).toLocaleString('cs-CZ')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formular pro prihlasovaci udaje */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <Server className="w-5 h-5 text-slate-400" />
+          Prihlasovaci udaje
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* URL */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              <Link className="w-4 h-4 inline mr-1.5" />
+              URL mServeru
+            </label>
+            <input
+              type="text"
+              value={credentials.url}
+              onChange={(e) => setCredentials({ url: e.target.value })}
+              placeholder="http://server:4444"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-blue-300 transition-all"
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              Napr. http://2HSER.ipodnik.com:4444
+            </p>
+          </div>
+
+          {/* ICO */}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              <Building2 className="w-4 h-4 inline mr-1.5" />
+              ICO firmy
+            </label>
+            <input
+              type="text"
+              value={credentials.ico}
+              onChange={(e) => setCredentials({ ico: e.target.value })}
+              placeholder="12345678"
+              maxLength={8}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-blue-300 transition-all"
+            />
+          </div>
+
+          {/* Uzivatel */}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              <User className="w-4 h-4 inline mr-1.5" />
+              Uzivatelske jmeno
+            </label>
+            <input
+              type="text"
+              value={credentials.username}
+              onChange={(e) => setCredentials({ username: e.target.value })}
+              placeholder="api_user"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-blue-300 transition-all"
+            />
+          </div>
+
+          {/* Heslo */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              <Lock className="w-4 h-4 inline mr-1.5" />
+              Heslo
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={credentials.password}
+                onChange={(e) => setCredentials({ password: e.target.value })}
+                placeholder="••••••••"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 pr-12 text-base font-medium outline-none focus:border-blue-300 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Tlacitko Test spojeni */}
+        <div className="mt-6">
+          <button
+            onClick={testConnection}
+            disabled={!isFormValid || isTestingConnection}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+              isFormValid && !isTestingConnection
+                ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+                : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+            )}
+          >
+            {isTestingConnection ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Testuji spojeni...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Otestovat spojeni
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Export skladu - zobrazi se pouze po pripojeni */}
+      {connectionStatus.isConnected && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in fade-in duration-300">
+          <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5 text-slate-400" />
+            Export skladu
+          </h3>
+
+          <div className="space-y-4">
+            {/* Vyber skladu */}
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                Vyberte sklad
+              </label>
+              <div className="flex gap-3">
+                <select
+                  value={selectedSklad}
+                  onChange={(e) => setSelectedSklad(e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-blue-300 transition-all"
+                  disabled={isLoadingSklady}
+                >
+                  <option value="all">Vsechny sklady</option>
+                  {sklady.map((sklad) => (
+                    <option key={sklad.id} value={sklad.ids}>
+                      {sklad.name || sklad.ids}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={loadSklady}
+                  disabled={isLoadingSklady}
+                  className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                  title="Obnovit seznam skladu"
+                >
+                  {isLoadingSklady ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                  ) : (
+                    <RefreshCw className="w-5 h-5 text-slate-500" />
+                  )}
+                </button>
+              </div>
+              {sklady.length > 0 && (
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Nalezeno {sklady.length} skladu
+                </p>
+              )}
+            </div>
+
+            {/* Tlacitko stahnout */}
+            <button
+              onClick={downloadExcel}
+              disabled={isExporting}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+                isExporting
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
+              )}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Exportuji...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Stahnout jako Excel
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Info box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+        <h4 className="font-semibold text-blue-900 mb-2">
+          Jak nastavit Pohoda mServer?
+        </h4>
+        <ol className="text-sm text-blue-800 space-y-1.5 list-decimal list-inside">
+          <li>V Pohode vytvorte uzivatele s opravnenim pro mServer</li>
+          <li>Pridelte mu prava k agendam: Sklady, Faktury, Objednavky</li>
+          <li>Zkontrolujte, ze mServer bezi (iPodnik, port 4444)</li>
+          <li>Vyplnte udaje vyse a otestujte spojeni</li>
+        </ol>
+      </div>
+    </div>
+  );
+}

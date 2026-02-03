@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'SYSTEM.PRO - Enterprise v5.2',
-  description: 'Enterprise management system',
+  title: 'Vapestyle.cz',
+  description: 'Systém pro řízení maloobchodních operací',
 };
 
 export default function RootLayout({

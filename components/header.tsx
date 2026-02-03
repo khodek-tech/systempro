@@ -10,6 +10,9 @@ import { useAdminStore } from '@/stores/admin-store';
 import { useUsersStore } from '@/stores/users-store';
 import { useModulesStore } from '@/stores/modules-store';
 import { useManualStore } from '@/stores/manual-store';
+import { useAbsenceStore } from '@/stores/absence-store';
+import { useTasksStore } from '@/stores/tasks-store';
+import { useChatStore } from '@/stores/chat-store';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -43,7 +46,11 @@ export function Header() {
     checkOutUser,
   } = useAttendanceStore();
 
-  const { goToSettings } = useAdminStore();
+  const { goToSettings, goToMain } = useAdminStore();
+  const { closeAbsenceView, closeApprovalView } = useAbsenceStore();
+  const { closeTasksView } = useTasksStore();
+  const { closeChatView } = useChatStore();
+  const { closeManualView } = useManualStore();
   const usersHydrated = useUsersStore((state) => state._hydrated);
 
   const allUsers = getAllActiveUsers();
@@ -80,12 +87,30 @@ export function Header() {
     return result;
   };
 
+  // Navigate to home/main view when logo is clicked
+  const handleLogoClick = () => {
+    // Close all fullscreen views
+    closeManualView();
+    closeChatView();
+    closeTasksView();
+    closeAbsenceView();
+    closeApprovalView();
+    // Reset admin view to main
+    goToMain();
+  };
+
   return (
     <header className="h-20 bg-white/95 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 z-50">
       <div className="flex items-center space-x-6">
-        <div className="text-2xl font-bold tracking-tight text-slate-800">
-          SYSTEM<span className="text-blue-600">.PRO</span>
-        </div>
+        <button
+          onClick={handleLogoClick}
+          className="text-2xl font-bold tracking-tight flex items-baseline hover:opacity-80 transition-opacity"
+          aria-label="Přejít na hlavní stránku"
+        >
+          <span className="text-slate-800">Vape</span>
+          <span className="text-[#8BC34A]">style</span>
+          <span className="text-[#8BC34A] text-base font-semibold">.cz</span>
+        </button>
         <div className="h-8 w-px bg-slate-200" />
 
         {/* User Selector Dropdown */}

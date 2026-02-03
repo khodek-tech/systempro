@@ -36,6 +36,7 @@ export function StoreFormModal({ open, onClose, store }: StoreFormModalProps) {
   // Initialize from props - component remounts with new key when store changes
   const [name, setName] = useState(store?.name ?? '');
   const [address, setAddress] = useState(store?.address ?? '');
+  const [cashBase, setCashBase] = useState(store?.cashBase ?? 2000);
 
   // Opening hours state
   const [sameAllWeek, setSameAllWeek] = useState(store?.openingHours?.sameAllWeek ?? true);
@@ -88,9 +89,9 @@ export function StoreFormModal({ open, onClose, store }: StoreFormModalProps) {
         };
 
     if (isEditing && store) {
-      updateStore(store.id, { name: name.trim(), address: address.trim(), openingHours });
+      updateStore(store.id, { name: name.trim(), address: address.trim(), cashBase, openingHours });
     } else {
-      addStore({ name: name.trim(), address: address.trim(), active: true, openingHours });
+      addStore({ name: name.trim(), address: address.trim(), active: true, cashBase, openingHours });
     }
 
     onClose();
@@ -136,6 +137,23 @@ export function StoreFormModal({ open, onClose, store }: StoreFormModalProps) {
               placeholder="např. Václavské náměstí 1, Praha 1"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-orange-300"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-500 mb-2">
+              Provozní základna kasy (Kč)
+            </label>
+            <input
+              type="number"
+              value={cashBase}
+              onChange={(e) => setCashBase(Number(e.target.value) || 0)}
+              min={0}
+              step={100}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-orange-300"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Výchozí hodnota pokladny zobrazená prodavačům v modulu Stav pokladny
+            </p>
           </div>
 
           {/* Opening Hours Section */}

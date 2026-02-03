@@ -98,26 +98,34 @@ export const usePresenceStore = create<PresenceActions>()(() => ({
   },
 }));
 
-// Helper function to check if user has a shift today
+// Helper function to check if user should be working RIGHT NOW
 function checkUserHasShiftToday(userId: string, date: Date): boolean {
   const user = useUsersStore.getState().getUserById(userId);
   if (!user) return false;
 
-  // If user has a store assigned, check shifts
-  if (user.storeIds.length > 0) {
-    const storeId = user.storeIds[0];
-    const isWorkDay = useShiftsStore.getState().isWorkDayForUser(userId, storeId, date);
-    return isWorkDay;
-  }
+  const storeId = user.storeIds.length > 0 ? user.storeIds[0] : null;
 
-  // If user has working hours defined, check if today is a work day
-  if (user.workingHours) {
-    const isWorkDay = useShiftsStore.getState().isWorkDayForUser(userId, null, date);
-    return isWorkDay;
-  }
+  // Check if it's a work day at all
+  const hasStoreOrWorkingHours = storeId || user.workingHours;
+  if (!hasStoreOrWorkingHours) return false;
 
-  // Fallback: if user has stores assigned, assume they might work today
-  return user.storeIds.length > 0;
+  const isWorkDay = useShiftsStore.getState().isWorkDayForUser(userId, storeId, date);
+  if (!isWorkDay) return false;
+
+  // Check if current time is within working hours
+  const openingHours = useShiftsStore.getState().getEffectiveWorkingHours(
+    userId,
+    storeId,
+    date.getDay()
+  );
+
+  if (!openingHours || openingHours.closed) return false;
+
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  // Compare times as strings (works for HH:mm format)
+  return currentTime >= openingHours.open && currentTime <= openingHours.close;
 }
 
 // Helper function to determine presence status for a user

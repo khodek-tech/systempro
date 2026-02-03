@@ -8,7 +8,7 @@ import { StoreFormModal } from './StoreFormModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { Store } from '@/types';
 
-type SortField = 'name' | 'address' | null;
+type SortField = 'name' | 'address' | 'cashBase' | null;
 type SortDirection = 'asc' | 'desc';
 
 export function StoresSettings() {
@@ -34,7 +34,10 @@ export function StoresSettings() {
     return [...stores].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
-      const comparison = aValue.localeCompare(bValue, 'cs');
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      const comparison = String(aValue).localeCompare(String(bValue), 'cs');
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [stores, sortField, sortDirection]);
@@ -125,6 +128,20 @@ export function StoresSettings() {
               <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Stav
               </th>
+              <th className="text-right px-4 py-3">
+                <button
+                  onClick={() => handleSort('cashBase')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 cursor-pointer transition-all ml-auto"
+                >
+                  Stav pokladny
+                  {sortField === 'cashBase' &&
+                    (sortDirection === 'asc' ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    ))}
+                </button>
+              </th>
               <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Akce
               </th>
@@ -146,6 +163,9 @@ export function StoresSettings() {
                       <ToggleLeft className="w-8 h-8 text-slate-300" />
                     )}
                   </button>
+                </td>
+                <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">
+                  {(store.cashBase ?? 0).toLocaleString('cs-CZ')} Kč
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">

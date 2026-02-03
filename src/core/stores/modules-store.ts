@@ -269,6 +269,15 @@ export const useModulesStore = create<ModulesState & ModulesActions>()(
             return cfg;
           });
 
+          // Migrace: aktualizovat ikony modulů podle DEFAULT_MODULE_DEFINITIONS
+          state.definitions = state.definitions.map((def) => {
+            const defaultDef = DEFAULT_MODULE_DEFINITIONS.find((d) => d.id === def.id);
+            if (defaultDef && def.icon !== defaultDef.icon) {
+              return { ...def, icon: defaultDef.icon };
+            }
+            return def;
+          });
+
         }
       },
     }

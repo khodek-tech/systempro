@@ -423,12 +423,13 @@ export const useTasksStore = create<TasksState & TasksActions>()(
 
         return tasks
           .filter((t) => {
-            // Tasks assigned to me OR delegated to me
+            // Tasks assigned to me OR delegated to me OR pending my approval
             const isAssigned = isUserAssignedToTask(userId, t);
             const isDelegatedToMe = t.delegatedTo === userId;
             const isDelegatedByMe = t.delegatedBy === userId && t.status === 'pending-review';
+            const isPendingMyApproval = t.createdBy === userId && t.status === 'pending-approval';
 
-            if (!isAssigned && !isDelegatedToMe && !isDelegatedByMe) return false;
+            if (!isAssigned && !isDelegatedToMe && !isDelegatedByMe && !isPendingMyApproval) return false;
 
             // Hide approved tasks from "Moje úkoly" - show only in "Všechny"
             if (t.status === 'approved') return false;

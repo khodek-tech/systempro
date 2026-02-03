@@ -35,8 +35,8 @@ export const ROLE_NAMES: Record<string, string> = {
 // Role intro content
 export const ROLE_INTROS: Record<string, { title: string; intro: string; workflow: string[]; principles: string[]; contact: string }> = {
   'role-1': {
-    title: 'Práce s aplikací SYSTEM.PRO',
-    intro: 'Vítejte v aplikaci SYSTEM.PRO. Jako prodavač máte přístup k funkcím pro správu pokladny, evidenci tržeb a odvodů, hlášení absencí a komunikaci s kolegy.',
+    title: 'Práce s aplikací Vapestyle.cz',
+    intro: 'Vítejte v aplikaci Vapestyle.cz. Jako prodavač máte přístup k funkcím pro správu pokladny, evidenci tržeb a odvodů, hlášení absencí a komunikaci s kolegy.',
     workflow: [
       'Příchod - Přihlaste se do systému a potvrďte příchod na směnu pomocí modulu Docházka v záhlaví.',
       'Během dne - Evidujte tržby v modulu Tržby. Sledujte stav pokladny a provádějte odvody dle potřeby.',
@@ -50,7 +50,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Vedoucí velkoobchodu nebo Administrátor',
   },
   'role-2': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako administrátor máte přehled o klíčových ukazatelích firmy, schvalujete absence vedoucích pracovníků a koordinujete úkoly napříč týmy.',
     workflow: [
       'Ráno - Zkontrolujte KPI dashboard pro přehled o tržbách a docházce.',
@@ -65,7 +65,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Majitel firmy',
   },
   'role-3': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako skladník máte přístup k evidenci docházky, hlášení absencí, úkolům a skupinovému chatu pro komunikaci s kolegy.',
     workflow: [
       'Příchod - Přihlaste příchod na směnu pomocí modulu Docházka.',
@@ -80,7 +80,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Vedoucí skladu',
   },
   'role-4': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako vedoucí skladu řídíte tým skladníků a obsluhy e-shopu. Schvalujete jejich absence, přidělujete úkoly a sledujete jejich přítomnost.',
     workflow: [
       'Ráno - Zkontrolujte přítomnost svého týmu a stav úkolů.',
@@ -95,7 +95,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Administrátor',
   },
   'role-5': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako obsluha e-shopu máte přístup k evidenci docházky, hlášení absencí, úkolům a chatu pro koordinaci s kolegy.',
     workflow: [
       'Příchod - Přihlaste příchod na směnu.',
@@ -110,7 +110,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Vedoucí skladu',
   },
   'role-6': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako obchodník máte flexibilní pracovní dobu. Hlásíte absence, plníte úkoly a komunikujete s kolegy přes chat.',
     workflow: [
       'Plánování - Sledujte své směny a plánujte návštěvy klientů.',
@@ -125,7 +125,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Vedoucí velkoobchodu',
   },
   'role-7': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako vedoucí velkoobchodu řídíte prodavače a obchodníky. Schvalujete jejich absence, plánujete směny a sledujete jejich výkon.',
     workflow: [
       'Ráno - Zkontrolujte přítomnost týmu a plánované směny.',
@@ -140,7 +140,7 @@ export const ROLE_INTROS: Record<string, { title: string; intro: string; workflo
     contact: 'Administrátor',
   },
   'role-8': {
-    title: 'Práce s aplikací SYSTEM.PRO',
+    title: 'Práce s aplikací Vapestyle.cz',
     intro: 'Jako majitel máte přehled o celé firmě. Sledujete KPI ukazatele, schvalujete absence vedoucích a máte přístup ke všem důležitým informacím.',
     workflow: [
       'Přehled - Kontrolujte KPI dashboard pro rychlý přehled o firmě.',
@@ -175,19 +175,21 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
     ],
   },
   'sales': {
-    description: 'Evidence denních tržeb z prodeje.',
-    purpose: 'Modul Tržby slouží k evidenci všech příjmů z prodeje. Zapisujete sem hotovostní i bezhotovostní platby.',
+    description: 'Evidence denní tržby zaměstnance.',
+    purpose: 'Modul Tržby slouží k zápisu vaší celkové denní tržby. Na konci směny při uzavření pokladny zapíšete jednu hodnotu - celkovou tržbu za váš pracovní den.',
     howToUse: [
-      'Klikněte na tlačítko "Přidat tržbu" pro vytvoření nového záznamu.',
-      'Vyplňte částku a vyberte typ platby (hotovost/karta).',
+      'Na konci směny, po uzavření pokladny, otevřete modul Tržby.',
+      'Klikněte na "Zapsat tržbu".',
+      'Zadejte celkovou částku vaší denní tržby.',
       'Potvrďte záznam.',
     ],
     faq: [
+      { q: 'Kolik záznamů mám za den vytvořit?', a: 'Jeden záznam za směnu. Pokud pracujete půl dne a kolega druhou polovinu, každý zapíše svou tržbu.' },
       { q: 'Mohu opravit chybně zadanou tržbu?', a: 'Ano, klikněte na záznam a upravte ho. Změny jsou evidovány v historii.' },
-      { q: 'Jak zadat vratku?', a: 'Zadejte tržbu se zápornou částkou.' },
     ],
     tips: [
-      'Evidujte tržby průběžně, ne na konci dne.',
+      'Tržbu zapisujte vždy na konci směny při uzavření pokladny.',
+      'Zkontrolujte částku před potvrzením.',
     ],
   },
   'collect': {
@@ -200,7 +202,6 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
       'Přiložte fotografii potvrzení (volitelné).',
     ],
     faq: [
-      { q: 'Musím fotografovat každý odvod?', a: 'Fotografie je doporučena, ale ne povinná.' },
       { q: 'Co když jsem odvedl jinou částku než jsem zapsal?', a: 'Kontaktujte administrátora pro opravu záznamu.' },
     ],
     tips: [
@@ -316,7 +317,7 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
   },
   'shifts': {
     description: 'Plánování a přehled směn.',
-    purpose: 'Modul Směny zobrazuje váš rozpis směn. Vidíte kdy máte pracovat a můžete si prohlédnout směny kolegů.',
+    purpose: 'Modul Směny zobrazuje váš rozpis směn. Vidíte kdy máte pracovat.',
     howToUse: [
       'V kartě vidíte vaši příští směnu.',
       'Klikněte pro zobrazení kalendáře směn.',
@@ -357,7 +358,6 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
     ],
     faq: [
       { q: 'Mohu vytvořit novou skupinu?', a: 'Skupiny vytváří administrátor v nastavení modulu.' },
-      { q: 'Jak zjistím, kdo je ve skupině?', a: 'Seznam členů vidíte v detailu skupiny.' },
       { q: 'Mohu smazat zprávu?', a: 'Aktuálně nelze mazat odeslané zprávy.' },
     ],
     tips: [

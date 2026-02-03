@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageCircle } from 'lucide-react';
+import { MessagesSquare } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -30,7 +30,7 @@ export function ChatModule() {
       >
         <div className="absolute inset-0 blur-3xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full bg-rose-50" />
         <div className="relative text-rose-500 transition-transform duration-500 group-hover:scale-110">
-          <MessageCircle className="w-[72px] h-[72px]" strokeWidth={1.2} />
+          <MessagesSquare className="w-[72px] h-[72px]" strokeWidth={1.2} />
         </div>
       </div>
       <div className="flex flex-col items-center space-y-3 z-10">

@@ -3,7 +3,7 @@ import { AttendanceRecord } from '@/shared/types';
 import { mockData } from '@/lib/mock-data';
 
 type AdminSubView = 'main' | 'reports' | 'settings';
-type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules';
+type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda';
 
 interface AdminState {
   subView: AdminSubView;
