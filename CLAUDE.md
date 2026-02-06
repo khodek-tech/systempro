@@ -1,5 +1,12 @@
 # Pravidla pro vývoj
 
+## Testovaci pristup (Administrator)
+
+- **E-mail:** `khodek@vapestyle.cz`
+- **Heslo:** `hodek`
+
+---
+
 ## Kvalita kódu
 - **Zero tolerance pro ESLint chyby a varování** - `npm run lint` musí projít bez jakýchkoliv chyb nebo varování
 - Před commitem vždy spustit `npm run lint`

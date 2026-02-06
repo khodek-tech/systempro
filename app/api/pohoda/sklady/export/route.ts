@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 import ExcelJS from 'exceljs';
+import { requireAuth } from '@/lib/supabase/api-auth';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -207,6 +208,12 @@ async function createExcel(
 }
 
 export async function POST(request: NextRequest) {
+  // Ověření přihlášení
+  const { user, error: authError } = await requireAuth()
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json();
     const { url, username, password, ico, skladId } = body;

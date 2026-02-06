@@ -32,7 +32,7 @@ export function AttendanceModule({
   const showKasaConfirmation = activeRole?.type === 'prodavac';
 
   return (
-    <div className="hidden md:flex items-center space-x-6">
+    <div className="hidden md:flex items-center space-x-6 shrink-0">
       {/* Kasa & Odvody badge - only for Prodavač */}
       {showKasaConfirmation && (
         <button
@@ -41,7 +41,7 @@ export function AttendanceModule({
           aria-checked={kasaConfirmed}
           aria-label={kasaConfirmed ? 'Kasa a odvody potvrzeny' : 'Potvrdit kasu a odvody'}
           className={cn(
-            'flex items-center space-x-2.5 px-5 py-2.5 rounded-full border transition-all',
+            'flex items-center space-x-2.5 px-5 py-2.5 rounded-full border transition-all whitespace-nowrap',
             kasaConfirmed
               ? 'bg-green-50 border-green-100'
               : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100'

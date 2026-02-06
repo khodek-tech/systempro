@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ChevronDown, Settings, User, HelpCircle } from 'lucide-react';
+import { ChevronDown, Settings, User, HelpCircle, LogOut } from 'lucide-react';
+import { signOut } from '@/app/actions/auth';
 import { AttendanceModule } from './attendance-module';
 import { LiveClock } from './live-clock';
 import { useAuthStore } from '@/stores/auth-store';
@@ -101,7 +102,7 @@ export function Header() {
 
   return (
     <header className="h-20 bg-white/95 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 z-50">
-      <div className="flex items-center space-x-6">
+      <div className="flex items-center space-x-4">
         <button
           onClick={handleLogoClick}
           className="text-2xl font-bold tracking-tight flex items-baseline hover:opacity-80 transition-opacity"
@@ -221,6 +222,7 @@ export function Header() {
             </button>
           </>
         )}
+
       </div>
 
       {/* Attendance Module (only for roles with attendance module assigned) */}
@@ -235,7 +237,24 @@ export function Header() {
         />
       )}
 
-      <LiveClock />
+      <div className="flex items-center space-x-4">
+        <LiveClock />
+        {/* Logout Button */}
+        {_hydrated && (
+          <>
+            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="p-2.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                aria-label="Odhlasit se"
+              >
+                <LogOut className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </form>
+          </>
+        )}
+      </div>
     </header>
   );
 }

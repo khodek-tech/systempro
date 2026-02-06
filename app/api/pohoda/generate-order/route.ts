@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 import iconv from 'iconv-lite';
+import { requireAuth } from '@/lib/supabase/api-auth';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -369,6 +370,12 @@ async function createOutputExcel(
 }
 
 export async function POST(request: NextRequest) {
+  // Ověření přihlášení
+  const { user, error: authError } = await requireAuth()
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json();
     const { url, username, password, ico } = body;

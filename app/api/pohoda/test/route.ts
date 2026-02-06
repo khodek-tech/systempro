@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
+import { requireAuth } from '@/lib/supabase/api-auth';
 
 // Pomocna funkce pro vytvoreni autentizacni hlavicky
 function createAuthHeader(username: string, password: string): string {
@@ -11,6 +12,12 @@ function createAuthHeader(username: string, password: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Ověření přihlášení
+  const { user, error: authError } = await requireAuth()
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json();
     const { url, username, password, ico } = body;
