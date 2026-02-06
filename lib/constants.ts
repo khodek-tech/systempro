@@ -80,16 +80,23 @@ export const FILTER_ALL = 'all';
 // ============================================================================
 
 /**
- * Zustand persist storage keys
+ * Zustand persist storage keys (only auth still uses localStorage persist)
  */
 export const STORAGE_KEYS = {
   AUTH: 'systempro-auth',
-  USERS: 'systempro-users',
-  ROLES: 'systempro-roles',
-  STORES: 'systempro-stores',
-  MODULES: 'systempro-modules',
-  ABSENCE: 'systempro-absence',
-  SHIFTS: 'systempro-shifts',
-  TASKS: 'systempro-tasks',
-  CHAT: 'systempro-chat',
 } as const;
+
+/**
+ * Legacy localStorage keys to clean up on first load.
+ * These stores no longer use persist - data comes from Supabase.
+ */
+export const LEGACY_STORAGE_KEYS = [
+  'systempro-users',
+  'systempro-roles',
+  'systempro-stores',
+  'systempro-modules',
+  'systempro-absence',
+  'systempro-shifts',
+  'systempro-tasks',
+  'systempro-chat',
+] as const;

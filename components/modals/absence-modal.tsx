@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { AbsenceType } from '@/types';
 import { absenceTypes } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
@@ -34,15 +35,15 @@ export function AbsenceModal({ open, onOpenChange }: AbsenceModalProps) {
     resetForm,
   } = useAbsenceStore();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!currentUser) return;
 
-    const result = submitAbsenceRequest(currentUser.id);
+    const result = await submitAbsenceRequest(currentUser.id);
     if (result.success) {
-      alert('Žádost odeslána!');
+      toast.success('Žádost odeslána!');
       onOpenChange(false);
     } else if (result.error) {
-      alert(`⚠️ ${result.error}`);
+      toast.error(result.error);
     }
   };
 

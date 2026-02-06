@@ -12,13 +12,15 @@ import { VedouciVelkoobchodView } from '@/components/views/vedouci-velkoobchod-v
 import { MajitelView } from '@/components/views/majitel-view';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAttendanceStore } from '@/stores/attendance-store';
+import { useInitializeData } from '@/lib/supabase/init';
 
 export default function Home() {
   const { getActiveRoleType, _hydrated } = useAuthStore();
   const { workplaceType } = useAttendanceStore();
+  const { ready } = useInitializeData();
 
-  // Loading state během hydratace - zabrání hydratačnímu mismatch
-  if (!_hydrated) {
+  // Loading state during hydration and data loading
+  if (!_hydrated || !ready) {
     return (
       <>
         <Header />

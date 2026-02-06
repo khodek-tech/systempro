@@ -22,6 +22,7 @@ import {
   ShoppingCart,
   Warehouse,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePohodaStore } from '@/features/pohoda';
 import { cn } from '@/lib/utils';
 
@@ -169,7 +170,7 @@ export function PohodaSettings() {
     } catch (error) {
       console.error('Chyba pri exportu:', error);
       const errorMessage = error instanceof Error ? error.message : 'Neznama chyba';
-      alert(`Export se nezdaril: ${errorMessage}`);
+      toast.error(`Export se nezdaril: ${errorMessage}`);
     } finally {
       setIsExporting(false);
     }

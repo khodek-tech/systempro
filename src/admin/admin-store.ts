@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AttendanceRecord } from '@/shared/types';
-import { mockData } from '@/lib/mock-data';
+import { createClient } from '@/lib/supabase/client';
+import { mapDbToAttendanceRecord } from '@/lib/supabase/mappers';
 
 type AdminSubView = 'main' | 'reports' | 'settings';
 type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda';
@@ -12,6 +13,9 @@ interface AdminState {
   storeFilter: string;
   monthFilter: string;
   yearFilter: string;
+  attendanceRecords: AttendanceRecord[];
+  _loaded: boolean;
+  _loading: boolean;
 }
 
 interface KpiData {
@@ -21,6 +25,9 @@ interface KpiData {
 }
 
 interface AdminActions {
+  // Fetch
+  fetchAttendanceRecords: () => Promise<void>;
+
   // Navigation
   setSubView: (view: AdminSubView) => void;
   goToMain: () => void;
@@ -49,6 +56,22 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   storeFilter: 'all',
   monthFilter: 'all',
   yearFilter: 'all',
+  attendanceRecords: [],
+  _loaded: false,
+  _loading: false,
+
+  // Fetch
+  fetchAttendanceRecords: async () => {
+    set({ _loading: true });
+    const supabase = createClient();
+    const { data, error } = await supabase.from('dochazka').select('*');
+    if (!error && data) {
+      set({ attendanceRecords: data.map(mapDbToAttendanceRecord), _loaded: true, _loading: false });
+    } else {
+      console.error('Failed to fetch attendance records:', error);
+      set({ _loading: false });
+    }
+  },
 
   // Navigation
   setSubView: (view) => set({ subView: view }),
@@ -71,9 +94,9 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
 
   // Computed data
   getFilteredData: () => {
-    const { storeFilter, monthFilter, yearFilter } = get();
+    const { storeFilter, monthFilter, yearFilter, attendanceRecords } = get();
 
-    return mockData.filter((d) => {
+    return attendanceRecords.filter((d) => {
       const parts = d.date.split('. ');
       const m = parts[1];
       const y = parts[2];
@@ -106,8 +129,9 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   },
 
   getVisibleStores: () => {
-    const { storeFilter } = get();
-    const allStores = ['Praha 1', 'Brno', 'Ostrava'];
+    const { storeFilter, attendanceRecords } = get();
+    // Get unique store names from actual data
+    const allStores = [...new Set(attendanceRecords.map((r) => r.store).filter(Boolean))];
 
     if (storeFilter === 'all') return allStores;
     return allStores.filter((s) => s.toLowerCase().includes(storeFilter));

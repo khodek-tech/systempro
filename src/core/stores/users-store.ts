@@ -1,21 +1,24 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { User } from '@/shared/types';
-import { MOCK_USERS } from '@/lib/mock-data';
+import { createClient } from '@/lib/supabase/client';
+import { mapDbToUser, mapUserToDb } from '@/lib/supabase/mappers';
 import { getRoles } from './store-helpers';
-import { STORAGE_KEYS } from '@/lib/constants';
 
 interface UsersState {
   users: User[];
-  _hydrated: boolean;
+  _loaded: boolean;
+  _loading: boolean;
 }
 
 interface UsersActions {
+  // Fetch
+  fetchUsers: () => Promise<void>;
+
   // CRUD
-  addUser: (user: Omit<User, 'id'>) => { success: boolean; error?: string };
-  updateUser: (id: string, updates: Partial<Omit<User, 'id'>>) => { success: boolean; error?: string };
-  toggleUserActive: (id: string) => void;
-  deleteUser: (id: string) => { success: boolean; error?: string };
+  addUser: (user: Omit<User, 'id'>) => Promise<{ success: boolean; error?: string }>;
+  updateUser: (id: string, updates: Partial<Omit<User, 'id'>>) => Promise<{ success: boolean; error?: string }>;
+  toggleUserActive: (id: string) => Promise<void>;
+  deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
 
   // Computed
   getActiveUsers: () => User[];
@@ -24,15 +27,27 @@ interface UsersActions {
   validateUser: (user: Partial<User>, excludeUserId?: string) => { valid: boolean; error?: string };
 }
 
-export const useUsersStore = create<UsersState & UsersActions>()(
-  persist(
-    (set, get) => ({
+export const useUsersStore = create<UsersState & UsersActions>()((set, get) => ({
   // Initial state
-  users: MOCK_USERS,
-  _hydrated: false,
+  users: [],
+  _loaded: false,
+  _loading: false,
+
+  // Fetch
+  fetchUsers: async () => {
+    set({ _loading: true });
+    const supabase = createClient();
+    const { data, error } = await supabase.from('zamestnanci').select('*');
+    if (!error && data) {
+      set({ users: data.map(mapDbToUser), _loaded: true, _loading: false });
+    } else {
+      console.error('Failed to fetch users:', error);
+      set({ _loading: false });
+    }
+  },
 
   // CRUD
-  addUser: (userData) => {
+  addUser: async (userData) => {
     const validation = get().validateUser(userData);
     if (!validation.valid) {
       return { success: false, error: validation.error };
@@ -55,10 +70,15 @@ export const useUsersStore = create<UsersState & UsersActions>()(
       }
     }
 
-    const newUser: User = {
-      ...sanitizedData,
-      id: `user-${crypto.randomUUID()}`,
-    } as User;
+    const newId = `user-${crypto.randomUUID()}`;
+    const newUser: User = { ...sanitizedData, id: newId } as User;
+    const dbData = mapUserToDb(newUser);
+
+    const supabase = createClient();
+    const { error } = await supabase.from('zamestnanci').insert(dbData);
+    if (error) {
+      return { success: false, error: error.message };
+    }
 
     set((state) => ({
       users: [...state.users, newUser],
@@ -67,7 +87,7 @@ export const useUsersStore = create<UsersState & UsersActions>()(
     return { success: true };
   },
 
-  updateUser: (id, updates) => {
+  updateUser: async (id, updates) => {
     const currentUser = get().getUserById(id);
     if (!currentUser) {
       return { success: false, error: 'Uživatel nenalezen' };
@@ -98,6 +118,15 @@ export const useUsersStore = create<UsersState & UsersActions>()(
       }
     }
 
+    const dbData = mapUserToDb({ ...sanitizedUpdates, id });
+    delete dbData.id;
+
+    const supabase = createClient();
+    const { error } = await supabase.from('zamestnanci').update(dbData).eq('id', id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
     set((state) => ({
       users: state.users.map((user) => (user.id === id ? { ...user, ...sanitizedUpdates } : user)),
     }));
@@ -105,18 +134,35 @@ export const useUsersStore = create<UsersState & UsersActions>()(
     return { success: true };
   },
 
-  toggleUserActive: (id) => {
+  toggleUserActive: async (id) => {
+    const user = get().getUserById(id);
+    if (!user) return;
+
+    const newActive = !user.active;
+    const supabase = createClient();
+    const { error } = await supabase.from('zamestnanci').update({ aktivni: newActive }).eq('id', id);
+    if (error) {
+      console.error('Failed to toggle user active:', error);
+      return;
+    }
+
     set((state) => ({
-      users: state.users.map((user) =>
-        user.id === id ? { ...user, active: !user.active } : user
+      users: state.users.map((u) =>
+        u.id === id ? { ...u, active: newActive } : u
       ),
     }));
   },
 
-  deleteUser: (id) => {
+  deleteUser: async (id) => {
     const user = get().getUserById(id);
     if (!user) {
       return { success: false, error: 'Uživatel nenalezen' };
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.from('zamestnanci').delete().eq('id', id);
+    if (error) {
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
@@ -173,17 +219,4 @@ export const useUsersStore = create<UsersState & UsersActions>()(
 
     return { valid: true };
   },
-    }),
-    {
-      name: STORAGE_KEYS.USERS,
-      partialize: (state) => ({
-        users: state.users,
-      }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state._hydrated = true;
-        }
-      },
-    }
-  )
-);
+}));

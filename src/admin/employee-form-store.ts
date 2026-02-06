@@ -60,7 +60,7 @@ interface EmployeeFormActions {
   ) => void;
 
   // Submit
-  submitForm: (onSuccess: () => void) => void;
+  submitForm: (onSuccess: () => void) => Promise<void>;
 
   // Computed
   isEditing: () => boolean;
@@ -205,7 +205,7 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
   },
 
   // Submit form
-  submitForm: (onSuccess) => {
+  submitForm: async (onSuccess) => {
     const state = get();
     set({ error: null });
 
@@ -224,13 +224,13 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
     const { addUser, updateUser } = useUsersStore.getState();
 
     if (state.editingUser) {
-      const result = updateUser(state.editingUser.id, userData);
+      const result = await updateUser(state.editingUser.id, userData);
       if (!result.success) {
         set({ error: result.error || 'Nepodařilo se aktualizovat zaměstnance' });
         return;
       }
     } else {
-      const result = addUser(userData);
+      const result = await addUser(userData);
       if (!result.success) {
         set({ error: result.error || 'Nepodařilo se přidat zaměstnance' });
         return;

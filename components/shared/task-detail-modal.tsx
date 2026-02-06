@@ -123,30 +123,30 @@ export function TaskDetailModal() {
   );
 
   // Handlers
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError(null);
-    const result = submitForApproval(task.id, currentUser.id);
+    const result = await submitForApproval(task.id, currentUser.id);
     if (!result.success) {
       setError(result.error || 'Chyba při odesílání ke schválení');
     }
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     setError(null);
-    const result = approveTask(task.id, currentUser.id);
+    const result = await approveTask(task.id, currentUser.id);
     if (!result.success) {
       setError(result.error || 'Chyba při schvalování úkolu');
     }
   };
 
-  const handleReturn = () => {
+  const handleReturn = async () => {
     if (!showReturnInput) {
       setShowReturnInput(true);
       return;
     }
 
     setError(null);
-    const result = returnTask(task.id, currentUser.id, returnReason);
+    const result = await returnTask(task.id, currentUser.id, returnReason);
     if (!result.success) {
       setError(result.error || 'Chyba při vracení úkolu');
     } else {
@@ -156,14 +156,14 @@ export function TaskDetailModal() {
   };
 
   // Delegation handlers
-  const handleDelegate = () => {
+  const handleDelegate = async () => {
     if (!selectedDelegatee) {
       setError('Vyberte osobu pro delegování');
       return;
     }
 
     setError(null);
-    const result = delegateTask(task.id, currentUser.id, selectedDelegatee);
+    const result = await delegateTask(task.id, currentUser.id, selectedDelegatee);
     if (!result.success) {
       setError(result.error || 'Chyba při delegování úkolu');
     } else {
@@ -172,30 +172,30 @@ export function TaskDetailModal() {
     }
   };
 
-  const handleReturnToDelegator = () => {
+  const handleReturnToDelegator = async () => {
     setError(null);
-    const result = returnToDelegator(task.id, currentUser.id);
+    const result = await returnToDelegator(task.id, currentUser.id);
     if (!result.success) {
       setError(result.error || 'Chyba při vracení úkolu delegujícímu');
     }
   };
 
-  const handleApproveDelegation = () => {
+  const handleApproveDelegation = async () => {
     setError(null);
-    const result = approveDelegation(task.id, currentUser.id);
+    const result = await approveDelegation(task.id, currentUser.id);
     if (!result.success) {
       setError(result.error || 'Chyba při schvalování delegace');
     }
   };
 
-  const handleReturnToDelegatee = () => {
+  const handleReturnToDelegatee = async () => {
     if (!showReturnToDelegateeInput) {
       setShowReturnToDelegateeInput(true);
       return;
     }
 
     setError(null);
-    const result = returnToDelegatee(task.id, currentUser.id, returnReason);
+    const result = await returnToDelegatee(task.id, currentUser.id, returnReason);
     if (!result.success) {
       setError(result.error || 'Chyba při vracení úkolu delegovanému');
     } else {

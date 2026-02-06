@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const inter = Inter({
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="cs">
       <body className={`${inter.className} bg-dashboard h-screen flex flex-col overflow-hidden text-slate-900`}>
         {children}
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   );

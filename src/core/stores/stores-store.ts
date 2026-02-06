@@ -1,20 +1,24 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { Store } from '@/shared/types';
-import { MOCK_STORES } from '@/lib/mock-data';
+import { createClient } from '@/lib/supabase/client';
+import { mapDbToStore, mapStoreToDb } from '@/lib/supabase/mappers';
 import { useUsersStore } from './users-store';
-import { STORAGE_KEYS } from '@/lib/constants';
 
 interface StoresState {
   stores: Store[];
+  _loaded: boolean;
+  _loading: boolean;
 }
 
 interface StoresActions {
+  // Fetch
+  fetchStores: () => Promise<void>;
+
   // CRUD
-  addStore: (store: Omit<Store, 'id'>) => void;
-  updateStore: (id: string, updates: Partial<Omit<Store, 'id'>>) => void;
-  toggleStoreActive: (id: string) => void;
-  deleteStore: (id: string) => { success: boolean; error?: string };
+  addStore: (store: Omit<Store, 'id'>) => Promise<void>;
+  updateStore: (id: string, updates: Partial<Omit<Store, 'id'>>) => Promise<void>;
+  toggleStoreActive: (id: string) => Promise<void>;
+  deleteStore: (id: string) => Promise<{ success: boolean; error?: string }>;
 
   // Computed
   getActiveStores: () => Store[];
@@ -22,42 +26,90 @@ interface StoresActions {
   canDeleteStore: (id: string) => { canDelete: boolean; reason?: string };
 }
 
-export const useStoresStore = create<StoresState & StoresActions>()(
-  persist(
-    (set, get) => ({
+export const useStoresStore = create<StoresState & StoresActions>()((set, get) => ({
   // Initial state
-  stores: MOCK_STORES,
+  stores: [],
+  _loaded: false,
+  _loading: false,
+
+  // Fetch
+  fetchStores: async () => {
+    set({ _loading: true });
+    const supabase = createClient();
+    const { data, error } = await supabase.from('prodejny').select('*');
+    if (!error && data) {
+      set({ stores: data.map(mapDbToStore), _loaded: true, _loading: false });
+    } else {
+      console.error('Failed to fetch stores:', error);
+      set({ _loading: false });
+    }
+  },
 
   // CRUD
-  addStore: (storeData) => {
-    const newStore: Store = {
-      ...storeData,
-      id: `store-${crypto.randomUUID()}`,
-    };
+  addStore: async (storeData) => {
+    const newId = `store-${crypto.randomUUID()}`;
+    const newStore: Store = { ...storeData, id: newId };
+    const dbData = mapStoreToDb(newStore);
+
+    const supabase = createClient();
+    const { error } = await supabase.from('prodejny').insert(dbData);
+    if (error) {
+      console.error('Failed to add store:', error);
+      return;
+    }
+
     set((state) => ({
       stores: [...state.stores, newStore],
     }));
   },
 
-  updateStore: (id, updates) => {
+  updateStore: async (id, updates) => {
+    const dbData = mapStoreToDb({ ...updates, id });
+    delete dbData.id;
+
+    const supabase = createClient();
+    const { error } = await supabase.from('prodejny').update(dbData).eq('id', id);
+    if (error) {
+      console.error('Failed to update store:', error);
+      return;
+    }
+
     set((state) => ({
       stores: state.stores.map((store) => (store.id === id ? { ...store, ...updates } : store)),
     }));
   },
 
-  toggleStoreActive: (id) => {
+  toggleStoreActive: async (id) => {
+    const store = get().getStoreById(id);
+    if (!store) return;
+
+    const newActive = !store.active;
+    const supabase = createClient();
+    const { error } = await supabase.from('prodejny').update({ aktivni: newActive }).eq('id', id);
+    if (error) {
+      console.error('Failed to toggle store active:', error);
+      return;
+    }
+
     set((state) => ({
-      stores: state.stores.map((store) =>
-        store.id === id ? { ...store, active: !store.active } : store
+      stores: state.stores.map((s) =>
+        s.id === id ? { ...s, active: newActive } : s
       ),
     }));
   },
 
-  deleteStore: (id) => {
+  deleteStore: async (id) => {
     const check = get().canDeleteStore(id);
     if (!check.canDelete) {
       return { success: false, error: check.reason };
     }
+
+    const supabase = createClient();
+    const { error } = await supabase.from('prodejny').delete().eq('id', id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
     set((state) => ({
       stores: state.stores.filter((s) => s.id !== id),
     }));
@@ -84,18 +136,4 @@ export const useStoresStore = create<StoresState & StoresActions>()(
     }
     return { canDelete: true };
   },
-    }),
-    {
-      name: STORAGE_KEYS.STORES,
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Migrace: přidat cashBase pokud chybí
-          state.stores = state.stores.map((store) => ({
-            ...store,
-            cashBase: store.cashBase ?? 2000,
-          }));
-        }
-      },
-    }
-  )
-);
+}));

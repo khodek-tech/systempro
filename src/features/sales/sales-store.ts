@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ExtraRow, SalesFormData } from '@/shared/types';
+import { createClient } from '@/lib/supabase/client';
 
 const createEmptyRow = (): ExtraRow => ({
   id: crypto.randomUUID(),
@@ -10,9 +11,14 @@ const createEmptyRow = (): ExtraRow => ({
 interface SalesState {
   cashToCollect: number;
   formData: SalesFormData;
+  _loaded: boolean;
+  _loading: boolean;
 }
 
 interface SalesActions {
+  // Fetch
+  fetchCashToCollect: (storeId: string) => Promise<void>;
+
   // Computed
   calculateTotal: () => number;
   getCollectionPeriod: () => string;
@@ -39,13 +45,37 @@ interface SalesActions {
 
 export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
   // Initial state
-  cashToCollect: 28500,
+  cashToCollect: 0,
   formData: {
     cash: 0,
     card: 0,
     partner: 0,
     incomes: [],
     expenses: [],
+  },
+  _loaded: false,
+  _loading: false,
+
+  // Fetch uncollected cash from dochazka table
+  fetchCashToCollect: async (storeId: string) => {
+    set({ _loading: true });
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('dochazka')
+      .select('hotovost, pohyby, vybrano')
+      .eq('id_pracoviste', storeId)
+      .or('vybrano.eq.false,vybrano.is.null');
+
+    if (!error && data) {
+      let total = 0;
+      data.forEach((row) => {
+        total += (row.hotovost ?? 0) + (parseInt(row.pohyby) || 0);
+      });
+      set({ cashToCollect: total, _loaded: true, _loading: false });
+    } else {
+      console.error('Failed to fetch cash to collect:', error);
+      set({ _loading: false });
+    }
   },
 
   // Computed

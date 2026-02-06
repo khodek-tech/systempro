@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStoresStore } from '@/stores/stores-store';
@@ -62,17 +63,21 @@ export function StoresSettings() {
   const handleDelete = (store: Store) => {
     const check = canDeleteStore(store.id);
     if (!check.canDelete) {
-      alert(check.reason);
+      toast.error(check.reason);
       return;
     }
     setDeleteModalStore(store);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteModalStore) {
-      const result = deleteStore(deleteModalStore.id);
-      if (!result.success) {
-        alert(result.error);
+      try {
+        const result = await deleteStore(deleteModalStore.id);
+        if (!result.success) {
+          toast.error(result.error);
+        }
+      } catch {
+        toast.error('Nepodařilo se smazat prodejnu.');
       }
       setDeleteModalStore(null);
     }
@@ -154,7 +159,13 @@ export function StoresSettings() {
                 <td className="px-4 py-3 text-sm text-slate-600">{store.address}</td>
                 <td className="px-4 py-3 text-center">
                   <button
-                    onClick={() => toggleStoreActive(store.id)}
+                    onClick={async () => {
+                      try {
+                        await toggleStoreActive(store.id);
+                      } catch {
+                        toast.error('Nepodařilo se změnit stav prodejny.');
+                      }
+                    }}
                     className="inline-flex items-center justify-center"
                   >
                     {store.active ? (

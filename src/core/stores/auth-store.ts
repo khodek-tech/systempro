@@ -267,6 +267,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         if (state) {
           state._hydrated = true;
 
+          // Refresh currentUser from DB data if available
+          if (state.currentUser) {
+            const freshUser = getUsers().find((u) => u.id === state.currentUser!.id);
+            if (freshUser) {
+              state.currentUser = freshUser;
+            }
+          }
+
           // If no user is set, default to first active user
           if (!state.currentUser) {
             const users = getUsers();

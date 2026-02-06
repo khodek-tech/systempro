@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { AbsenceType } from '@/types';
 import { absenceTypes } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
@@ -26,14 +27,15 @@ export function AbsenceRequestForm() {
     resetForm,
   } = useAbsenceStore();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!currentUser) return;
 
-    const result = submitAbsenceRequest(currentUser.id);
+    const result = await submitAbsenceRequest(currentUser.id);
     if (result.success) {
+      toast.success('Žádost odeslána!');
       setIsExpanded(false);
     } else if (result.error) {
-      alert(`${result.error}`);
+      toast.error(result.error);
     }
   };
 

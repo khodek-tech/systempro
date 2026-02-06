@@ -1,285 +1,265 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { ModuleDefinition, ModuleConfig } from '@/shared/types';
 import { DEFAULT_MODULE_DEFINITIONS, DEFAULT_MODULE_CONFIGS } from '@/config/default-modules';
-import { STORAGE_KEYS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
+import { mapDbToModuleDefinition, mapDbToModuleConfig, mapModuleConfigToDb } from '@/lib/supabase/mappers';
 
 interface ModulesState {
   definitions: ModuleDefinition[];
   configs: ModuleConfig[];
+  _loaded: boolean;
+  _loading: boolean;
 }
 
 interface ModulesActions {
-  updateModuleConfig: (moduleId: string, config: Partial<ModuleConfig>) => void;
-  toggleRoleAccess: (moduleId: string, roleId: string) => void;
-  setModuleColumn: (moduleId: string, column: 'left' | 'right' | 'full' | 'top' | 'sidebar') => void;
-  toggleModuleEnabled: (moduleId: string) => void;
+  fetchModules: () => Promise<void>;
+  updateModuleConfig: (moduleId: string, config: Partial<ModuleConfig>) => Promise<void>;
+  toggleRoleAccess: (moduleId: string, roleId: string) => Promise<void>;
+  setModuleColumn: (moduleId: string, column: 'left' | 'right' | 'full' | 'top' | 'sidebar') => Promise<void>;
+  toggleModuleEnabled: (moduleId: string) => Promise<void>;
   getModulesForRole: (roleId: string) => (ModuleDefinition & ModuleConfig)[];
   getModuleDefinition: (moduleId: string) => ModuleDefinition | undefined;
   getModuleConfig: (moduleId: string) => ModuleConfig | undefined;
-  toggleSubordinateRole: (moduleId: string, approverRoleId: string, subordinateRoleId: string) => void;
+  toggleSubordinateRole: (moduleId: string, approverRoleId: string, subordinateRoleId: string) => Promise<void>;
   getSubordinatesForApprover: (moduleId: string, approverRoleId: string) => string[];
-  toggleViewableRole: (moduleId: string, viewerRoleId: string, visibleRoleId: string) => void;
+  toggleViewableRole: (moduleId: string, viewerRoleId: string, visibleRoleId: string) => Promise<void>;
   getVisibleRolesForViewer: (moduleId: string, viewerRoleId: string) => string[];
 }
 
-export const useModulesStore = create<ModulesState & ModulesActions>()(
-  persist(
-    (set, get) => ({
-      // Initial state
-      definitions: DEFAULT_MODULE_DEFINITIONS,
-      configs: DEFAULT_MODULE_CONFIGS,
+export const useModulesStore = create<ModulesState & ModulesActions>()((set, get) => ({
+  // Initial state - use defaults as fallback
+  definitions: DEFAULT_MODULE_DEFINITIONS,
+  configs: DEFAULT_MODULE_CONFIGS,
+  _loaded: false,
+  _loading: false,
 
-      // Actions
-      updateModuleConfig: (moduleId, config) => {
-        set((state) => ({
-          configs: state.configs.map((c) =>
-            c.moduleId === moduleId ? { ...c, ...config } : c
-          ),
-        }));
-      },
+  fetchModules: async () => {
+    set({ _loading: true });
+    const supabase = createClient();
 
-      toggleRoleAccess: (moduleId, roleId) => {
-        set((state) => ({
-          configs: state.configs.map((c) => {
-            if (c.moduleId !== moduleId) return c;
+    const [defsResult, configsResult] = await Promise.all([
+      supabase.from('definice_modulu').select('*'),
+      supabase.from('konfigurace_modulu').select('*'),
+    ]);
 
-            const hasRole = c.roleIds.includes(roleId);
-            return {
-              ...c,
-              roleIds: hasRole
-                ? c.roleIds.filter((id) => id !== roleId)
-                : [...c.roleIds, roleId],
-            };
-          }),
-        }));
-      },
+    if (!defsResult.error && defsResult.data && !configsResult.error && configsResult.data) {
+      let definitions = defsResult.data.map(mapDbToModuleDefinition);
+      let configs = configsResult.data.map(mapDbToModuleConfig);
 
-      setModuleColumn: (moduleId, column) => {
-        set((state) => ({
-          configs: state.configs.map((c) =>
-            c.moduleId === moduleId ? { ...c, column } : c
-          ),
-        }));
-      },
+      // Synchronize missing definitions from defaults
+      const missingDefs = DEFAULT_MODULE_DEFINITIONS.filter(
+        (def) => !definitions.find((d) => d.id === def.id)
+      );
+      if (missingDefs.length > 0) {
+        definitions = [...definitions, ...missingDefs];
+      }
 
-      toggleModuleEnabled: (moduleId) => {
-        set((state) => ({
-          configs: state.configs.map((c) =>
-            c.moduleId === moduleId ? { ...c, enabled: !c.enabled } : c
-          ),
-        }));
-      },
+      // Synchronize missing configs from defaults
+      const missingConfigs = DEFAULT_MODULE_CONFIGS.filter(
+        (cfg) => !configs.find((c) => c.moduleId === cfg.moduleId)
+      );
+      if (missingConfigs.length > 0) {
+        configs = [...configs, ...missingConfigs];
+      }
 
-      getModulesForRole: (roleId) => {
-        const { definitions, configs } = get();
-
-        return configs
-          .filter((c) => c.enabled && c.roleIds.includes(roleId))
-          .sort((a, b) => a.order - b.order)
-          .map((config) => {
-            const definition = definitions.find((d) => d.id === config.moduleId);
-            if (!definition) return null;
-            return { ...definition, ...config };
-          })
-          .filter((m): m is ModuleDefinition & ModuleConfig => m !== null);
-      },
-
-      getModuleDefinition: (moduleId) => {
-        return get().definitions.find((d) => d.id === moduleId);
-      },
-
-      getModuleConfig: (moduleId) => {
-        return get().configs.find((c) => c.moduleId === moduleId);
-      },
-
-      toggleSubordinateRole: (moduleId, approverRoleId, subordinateRoleId) => {
-        set((state) => ({
-          configs: state.configs.map((c) => {
-            if (c.moduleId !== moduleId) return c;
-
-            const mappings = c.approvalMappings || [];
-            const approverMapping = mappings.find((m) => m.approverRoleId === approverRoleId);
-
-            if (!approverMapping) {
-              return {
-                ...c,
-                approvalMappings: [
-                  ...mappings,
-                  { approverRoleId, subordinateRoleIds: [subordinateRoleId] },
-                ],
-              };
-            }
-
-            const hasSubordinate = approverMapping.subordinateRoleIds.includes(subordinateRoleId);
-            const updatedMappings = mappings.map((m) => {
-              if (m.approverRoleId !== approverRoleId) return m;
-              return {
-                ...m,
-                subordinateRoleIds: hasSubordinate
-                  ? m.subordinateRoleIds.filter((id) => id !== subordinateRoleId)
-                  : [...m.subordinateRoleIds, subordinateRoleId],
-              };
-            });
-
-            return { ...c, approvalMappings: updatedMappings };
-          }),
-        }));
-      },
-
-      getSubordinatesForApprover: (moduleId, approverRoleId) => {
-        const config = get().configs.find((c) => c.moduleId === moduleId);
-        if (!config?.approvalMappings) return [];
-
-        const mapping = config.approvalMappings.find((m) => m.approverRoleId === approverRoleId);
-        return mapping?.subordinateRoleIds || [];
-      },
-
-      toggleViewableRole: (moduleId, viewerRoleId, visibleRoleId) => {
-        set((state) => ({
-          configs: state.configs.map((c) => {
-            if (c.moduleId !== moduleId) return c;
-
-            const mappings = c.viewMappings || [];
-            const viewerMapping = mappings.find((m) => m.viewerRoleId === viewerRoleId);
-
-            if (!viewerMapping) {
-              return {
-                ...c,
-                viewMappings: [
-                  ...mappings,
-                  { viewerRoleId, visibleRoleIds: [visibleRoleId] },
-                ],
-              };
-            }
-
-            const hasVisible = viewerMapping.visibleRoleIds.includes(visibleRoleId);
-            const updatedMappings = mappings.map((m) => {
-              if (m.viewerRoleId !== viewerRoleId) return m;
-              return {
-                ...m,
-                visibleRoleIds: hasVisible
-                  ? m.visibleRoleIds.filter((id) => id !== visibleRoleId)
-                  : [...m.visibleRoleIds, visibleRoleId],
-              };
-            });
-
-            return { ...c, viewMappings: updatedMappings };
-          }),
-        }));
-      },
-
-      getVisibleRolesForViewer: (moduleId, viewerRoleId) => {
-        const config = get().configs.find((c) => c.moduleId === moduleId);
-        if (!config?.viewMappings) return [];
-
-        const mapping = config.viewMappings.find((m) => m.viewerRoleId === viewerRoleId);
-        return mapping?.visibleRoleIds || [];
-      },
-    }),
-    {
-      name: STORAGE_KEYS.MODULES,
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Synchronizace nových definic modulů
-          const missingDefs = DEFAULT_MODULE_DEFINITIONS.filter(
-            (def) => !state.definitions.find((d) => d.id === def.id)
-          );
-          if (missingDefs.length > 0) {
-            state.definitions = [...state.definitions, ...missingDefs];
-          }
-
-          // Synchronizace nových konfigurací modulů
-          const missingConfigs = DEFAULT_MODULE_CONFIGS.filter(
-            (cfg) => !state.configs.find((c) => c.moduleId === cfg.moduleId)
-          );
-          if (missingConfigs.length > 0) {
-            state.configs = [...state.configs, ...missingConfigs];
-          }
-
-          // Migrace: změnit kpi-dashboard z 'full' na 'top'
-          state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'kpi-dashboard' && cfg.column === 'full') {
-              return { ...cfg, column: 'top' as const };
-            }
-            return cfg;
-          });
-
-          // Migrace: přidat approvalMappings do absence-approval pokud chybí
-          state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'absence-approval' && !cfg.approvalMappings) {
-              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
-                (c) => c.moduleId === 'absence-approval'
-              );
-              return {
-                ...cfg,
-                approvalMappings: defaultConfig?.approvalMappings || [],
-              };
-            }
-            return cfg;
-          });
-
-          // Migrace: přidat viewMappings do shifts pokud chybí
-          state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'shifts' && !cfg.viewMappings) {
-              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
-                (c) => c.moduleId === 'shifts'
-              );
-              return {
-                ...cfg,
-                viewMappings: defaultConfig?.viewMappings || [],
-              };
-            }
-            return cfg;
-          });
-
-          // Migrace: přidat viewMappings do presence pokud chybí
-          state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'presence' && !cfg.viewMappings) {
-              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
-                (c) => c.moduleId === 'presence'
-              );
-              return {
-                ...cfg,
-                viewMappings: defaultConfig?.viewMappings || [],
-              };
-            }
-            return cfg;
-          });
-
-          // Migrace: změnit presence z 'left' na 'sidebar'
-          state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'presence' && cfg.column === 'left') {
-              return { ...cfg, column: 'sidebar' as const };
-            }
-            return cfg;
-          });
-
-          // Migrace: přidat viewMappings do tasks pokud chybí
-          state.configs = state.configs.map((cfg) => {
-            if (cfg.moduleId === 'tasks' && !cfg.viewMappings) {
-              const defaultConfig = DEFAULT_MODULE_CONFIGS.find(
-                (c) => c.moduleId === 'tasks'
-              );
-              return {
-                ...cfg,
-                viewMappings: defaultConfig?.viewMappings || [],
-              };
-            }
-            return cfg;
-          });
-
-          // Migrace: aktualizovat ikony modulů podle DEFAULT_MODULE_DEFINITIONS
-          state.definitions = state.definitions.map((def) => {
-            const defaultDef = DEFAULT_MODULE_DEFINITIONS.find((d) => d.id === def.id);
-            if (defaultDef && def.icon !== defaultDef.icon) {
-              return { ...def, icon: defaultDef.icon };
-            }
-            return def;
-          });
-
-        }
-      },
+      set({ definitions, configs, _loaded: true, _loading: false });
+    } else {
+      console.error('Failed to fetch modules:', defsResult.error, configsResult.error);
+      set({ _loading: false });
     }
-  )
-);
+  },
+
+  // Actions
+  updateModuleConfig: async (moduleId, config) => {
+    const dbData = mapModuleConfigToDb({ ...config, moduleId });
+
+    const supabase = createClient();
+    const { error } = await supabase.from('konfigurace_modulu').update(dbData).eq('id_modulu', moduleId);
+    if (error) {
+      console.error('Failed to update module config:', error);
+      return;
+    }
+
+    set((state) => ({
+      configs: state.configs.map((c) =>
+        c.moduleId === moduleId ? { ...c, ...config } : c
+      ),
+    }));
+  },
+
+  toggleRoleAccess: async (moduleId, roleId) => {
+    const config = get().configs.find((c) => c.moduleId === moduleId);
+    if (!config) return;
+
+    const hasRole = config.roleIds.includes(roleId);
+    const newRoleIds = hasRole
+      ? config.roleIds.filter((id) => id !== roleId)
+      : [...config.roleIds, roleId];
+
+    const supabase = createClient();
+    const { error } = await supabase.from('konfigurace_modulu').update({ id_roli: newRoleIds }).eq('id_modulu', moduleId);
+    if (error) {
+      console.error('Failed to toggle role access:', error);
+      return;
+    }
+
+    set((state) => ({
+      configs: state.configs.map((c) => {
+        if (c.moduleId !== moduleId) return c;
+        return { ...c, roleIds: newRoleIds };
+      }),
+    }));
+  },
+
+  setModuleColumn: async (moduleId, column) => {
+    const supabase = createClient();
+    const { error } = await supabase.from('konfigurace_modulu').update({ sloupec: column }).eq('id_modulu', moduleId);
+    if (error) {
+      console.error('Failed to set module column:', error);
+      return;
+    }
+
+    set((state) => ({
+      configs: state.configs.map((c) =>
+        c.moduleId === moduleId ? { ...c, column } : c
+      ),
+    }));
+  },
+
+  toggleModuleEnabled: async (moduleId) => {
+    const config = get().configs.find((c) => c.moduleId === moduleId);
+    if (!config) return;
+
+    const newEnabled = !config.enabled;
+    const supabase = createClient();
+    const { error } = await supabase.from('konfigurace_modulu').update({ aktivni: newEnabled }).eq('id_modulu', moduleId);
+    if (error) {
+      console.error('Failed to toggle module enabled:', error);
+      return;
+    }
+
+    set((state) => ({
+      configs: state.configs.map((c) =>
+        c.moduleId === moduleId ? { ...c, enabled: newEnabled } : c
+      ),
+    }));
+  },
+
+  getModulesForRole: (roleId) => {
+    const { definitions, configs } = get();
+
+    return configs
+      .filter((c) => c.enabled && c.roleIds.includes(roleId))
+      .sort((a, b) => a.order - b.order)
+      .map((config) => {
+        const definition = definitions.find((d) => d.id === config.moduleId);
+        if (!definition) return null;
+        return { ...definition, ...config };
+      })
+      .filter((m): m is ModuleDefinition & ModuleConfig => m !== null);
+  },
+
+  getModuleDefinition: (moduleId) => {
+    return get().definitions.find((d) => d.id === moduleId);
+  },
+
+  getModuleConfig: (moduleId) => {
+    return get().configs.find((c) => c.moduleId === moduleId);
+  },
+
+  toggleSubordinateRole: async (moduleId, approverRoleId, subordinateRoleId) => {
+    const config = get().configs.find((c) => c.moduleId === moduleId);
+    if (!config) return;
+
+    const mappings = config.approvalMappings || [];
+    const approverMapping = mappings.find((m) => m.approverRoleId === approverRoleId);
+
+    let updatedMappings;
+    if (!approverMapping) {
+      updatedMappings = [
+        ...mappings,
+        { approverRoleId, subordinateRoleIds: [subordinateRoleId] },
+      ];
+    } else {
+      const hasSubordinate = approverMapping.subordinateRoleIds.includes(subordinateRoleId);
+      updatedMappings = mappings.map((m) => {
+        if (m.approverRoleId !== approverRoleId) return m;
+        return {
+          ...m,
+          subordinateRoleIds: hasSubordinate
+            ? m.subordinateRoleIds.filter((id) => id !== subordinateRoleId)
+            : [...m.subordinateRoleIds, subordinateRoleId],
+        };
+      });
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.from('konfigurace_modulu').update({ mapovani_schvalovani: updatedMappings }).eq('id_modulu', moduleId);
+    if (error) {
+      console.error('Failed to toggle subordinate role:', error);
+      return;
+    }
+
+    set((state) => ({
+      configs: state.configs.map((c) =>
+        c.moduleId === moduleId ? { ...c, approvalMappings: updatedMappings } : c
+      ),
+    }));
+  },
+
+  getSubordinatesForApprover: (moduleId, approverRoleId) => {
+    const config = get().configs.find((c) => c.moduleId === moduleId);
+    if (!config?.approvalMappings) return [];
+
+    const mapping = config.approvalMappings.find((m) => m.approverRoleId === approverRoleId);
+    return mapping?.subordinateRoleIds || [];
+  },
+
+  toggleViewableRole: async (moduleId, viewerRoleId, visibleRoleId) => {
+    const config = get().configs.find((c) => c.moduleId === moduleId);
+    if (!config) return;
+
+    const mappings = config.viewMappings || [];
+    const viewerMapping = mappings.find((m) => m.viewerRoleId === viewerRoleId);
+
+    let updatedMappings;
+    if (!viewerMapping) {
+      updatedMappings = [
+        ...mappings,
+        { viewerRoleId, visibleRoleIds: [visibleRoleId] },
+      ];
+    } else {
+      const hasVisible = viewerMapping.visibleRoleIds.includes(visibleRoleId);
+      updatedMappings = mappings.map((m) => {
+        if (m.viewerRoleId !== viewerRoleId) return m;
+        return {
+          ...m,
+          visibleRoleIds: hasVisible
+            ? m.visibleRoleIds.filter((id) => id !== visibleRoleId)
+            : [...m.visibleRoleIds, visibleRoleId],
+        };
+      });
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.from('konfigurace_modulu').update({ mapovani_zobrazeni: updatedMappings }).eq('id_modulu', moduleId);
+    if (error) {
+      console.error('Failed to toggle viewable role:', error);
+      return;
+    }
+
+    set((state) => ({
+      configs: state.configs.map((c) =>
+        c.moduleId === moduleId ? { ...c, viewMappings: updatedMappings } : c
+      ),
+    }));
+  },
+
+  getVisibleRolesForViewer: (moduleId, viewerRoleId) => {
+    const config = get().configs.find((c) => c.moduleId === moduleId);
+    if (!config?.viewMappings) return [];
+
+    const mapping = config.viewMappings.find((m) => m.viewerRoleId === viewerRoleId);
+    return mapping?.visibleRoleIds || [];
+  },
+}));

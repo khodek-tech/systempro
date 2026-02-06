@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { Circle, CircleCheck, Play, Square } from 'lucide-react';
 import { Role } from '@/types';
 import { cn } from '@/lib/utils';
@@ -24,7 +25,7 @@ export function AttendanceModule({
   const handleAttendanceClick = () => {
     const result = onToggleAttendance();
     if (!result.success && result.error) {
-      alert(`CHYBA: ${result.error}`);
+      toast.error(result.error);
     }
   };
 

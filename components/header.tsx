@@ -52,10 +52,10 @@ export function Header() {
   const { closeTasksView } = useTasksStore();
   const { closeChatView } = useChatStore();
   const { closeManualView } = useManualStore();
-  const usersHydrated = useUsersStore((state) => state._hydrated);
+  const usersLoaded = useUsersStore((state) => state._loaded);
 
   const allUsers = getAllActiveUsers();
-  const isFullyHydrated = _hydrated && usersHydrated;
+  const isFullyHydrated = _hydrated && usersLoaded;
   const availableStores = getAvailableStores();
   const availableRoles = getAvailableRoles();
   const activeRole = getActiveRole();

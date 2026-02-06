@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
@@ -45,11 +46,15 @@ export function EmployeesSettings() {
     setDeleteModalUser(user);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteModalUser) {
-      const result = deleteUser(deleteModalUser.id);
-      if (!result.success) {
-        alert(result.error);
+      try {
+        const result = await deleteUser(deleteModalUser.id);
+        if (!result.success) {
+          toast.error(result.error);
+        }
+      } catch {
+        toast.error('Nepodařilo se smazat zaměstnance.');
       }
       setDeleteModalUser(null);
     }
@@ -203,7 +208,13 @@ export function EmployeesSettings() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button
-                    onClick={() => toggleUserActive(user.id)}
+                    onClick={async () => {
+                      try {
+                        await toggleUserActive(user.id);
+                      } catch {
+                        toast.error('Nepodařilo se změnit stav zaměstnance.');
+                      }
+                    }}
                     className="inline-flex items-center justify-center"
                   >
                     {user.active ? (

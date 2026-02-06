@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import {
   Plus,
   Pencil,
@@ -65,28 +66,36 @@ export function RolesSettings() {
     setEditingRole(null);
   };
 
-  const handleToggle = (role: Role) => {
+  const handleToggle = async (role: Role) => {
     if (!canDeactivateRole(role.id)) {
-      alert('Role Administrátor nemůže být deaktivována.');
+      toast.warning('Role Administrátor nemůže být deaktivována.');
       return;
     }
-    toggleRoleActive(role.id);
+    try {
+      await toggleRoleActive(role.id);
+    } catch {
+      toast.error('Nepodařilo se změnit stav role.');
+    }
   };
 
   const handleDelete = (role: Role) => {
     const check = canDeleteRole(role.id);
     if (!check.canDelete) {
-      alert(check.reason);
+      toast.error(check.reason);
       return;
     }
     setDeleteModalRole(role);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteModalRole) {
-      const result = deleteRole(deleteModalRole.id);
-      if (!result.success) {
-        alert(result.error);
+      try {
+        const result = await deleteRole(deleteModalRole.id);
+        if (!result.success) {
+          toast.error(result.error);
+        }
+      } catch {
+        toast.error('Nepodařilo se smazat roli.');
       }
       setDeleteModalRole(null);
     }

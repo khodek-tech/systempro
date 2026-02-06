@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCollectStore } from '@/stores/collect-store';
@@ -30,11 +31,11 @@ export function CollectModal({
   const handleSubmit = () => {
     const result = onSubmit(driverName);
     if (result.success) {
-      alert('✅ Hotovost odevzdána.');
+      toast.success('Hotovost odevzdána.');
       resetForm();
       onOpenChange(false);
     } else if (result.error) {
-      alert(`⚠️ ${result.error}`);
+      toast.error(result.error);
     }
   };
 

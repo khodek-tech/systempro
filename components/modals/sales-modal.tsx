@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -49,10 +50,10 @@ export function SalesModal({
   const handleSubmit = () => {
     const result = onSubmit();
     if (result.valid) {
-      alert('✅ Výkaz uložen.');
+      toast.success('Výkaz uložen.');
       onOpenChange(false);
     } else if (result.error) {
-      alert(`⚠️ ${result.error}`);
+      toast.error(result.error);
     }
   };
 
