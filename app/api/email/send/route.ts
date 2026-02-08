@@ -30,11 +30,23 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Check send permission
+    // Resolve employee ID from auth user
+    const { data: employee } = await supabase
+      .from('zamestnanci')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (!employee) {
+      return NextResponse.json({ success: false, error: 'Employee not found' }, { status: 403 });
+    }
+
+    // Check send permission for this employee
     const { data: access } = await supabase
       .from('emailovy_pristup')
       .select('muze_odesilat')
       .eq('id_uctu', accountId)
+      .eq('id_zamestnance', employee.id)
       .single();
 
     if (!access?.muze_odesilat) {
