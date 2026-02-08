@@ -24,6 +24,7 @@ interface TasksState {
   statusFilter: TaskStatus | 'all';
   priorityFilter: TaskPriority | 'all';
   _realtimeChannel: RealtimeChannel | null;
+  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface TasksActions {
@@ -83,6 +84,10 @@ interface TasksActions {
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
 
+  // Auto-sync
+  startAutoSync: () => void;
+  stopAutoSync: () => void;
+
   // Repeating tasks
   checkAndCreateRepeatingTasks: () => Promise<void>;
 }
@@ -113,6 +118,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   statusFilter: 'all',
   priorityFilter: 'all',
   _realtimeChannel: null,
+  _autoSyncInterval: null,
 
   // Fetch
   fetchTasks: async () => {
@@ -778,6 +784,26 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   unsubscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
     set({ _realtimeChannel: null });
+  },
+
+  // Auto-sync
+  startAutoSync: () => {
+    const existing = get()._autoSyncInterval;
+    if (existing) clearInterval(existing);
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        get().fetchTasks();
+      }
+    }, 30_000);
+
+    set({ _autoSyncInterval: interval });
+  },
+
+  stopAutoSync: () => {
+    const interval = get()._autoSyncInterval;
+    if (interval) clearInterval(interval);
+    set({ _autoSyncInterval: null });
   },
 
   // Repeating tasks
