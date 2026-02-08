@@ -51,59 +51,57 @@ export function EmailDetail() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       {/* Header */}
-      <div className="border-b border-slate-200 p-5 space-y-3">
+      <div className="border-b border-slate-200 p-5">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-bold text-slate-800 flex-1">
-            {message.subject || '(bez předmětu)'}
-          </h2>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => toggleFlagged(message.id)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-              title={message.flagged ? 'Odoznačit' : 'Označit hvězdičkou'}
-            >
-              <Star className={`w-4 h-4 ${message.flagged ? 'text-amber-400 fill-amber-400' : 'text-slate-400'}`} />
-            </button>
-            <button
-              onClick={() => markAsUnread(message.id)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-              title="Označit jako nepřečtené"
-            >
-              {message.read ? <MailOpen className="w-4 h-4 text-slate-400" /> : <Mail className="w-4 h-4 text-sky-500" />}
-            </button>
-            <button
-              onClick={() => deleteMessage(message.id)}
-              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-              title="Smazat"
-            >
-              <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
-            </button>
-          </div>
-        </div>
-
-        {/* Sender info */}
-        <div className="space-y-1 text-sm">
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-slate-500 w-12">Od:</span>
-            <span className="text-slate-700">{formatEmailAddress(message.from)}</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-slate-500 w-12">Komu:</span>
-            <span className="text-slate-700">
-              {message.to.map(formatEmailAddress).join(', ')}
-            </span>
-          </div>
-          {message.cc && message.cc.length > 0 && (
+          <div className="flex-1 space-y-1 text-sm">
             <div className="flex items-baseline gap-2">
-              <span className="font-semibold text-slate-500 w-12">Kopie:</span>
+              <span className="font-semibold text-slate-500 w-12">Od:</span>
+              <span className="text-slate-700">{formatEmailAddress(message.from)}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-semibold text-slate-500 w-12">Komu:</span>
               <span className="text-slate-700">
-                {message.cc.map(formatEmailAddress).join(', ')}
+                {message.to.map(formatEmailAddress).join(', ')}
               </span>
             </div>
-          )}
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-slate-500 w-12">Datum:</span>
-            <span className="text-slate-700">{formatEmailDate(message.date)}</span>
+            {message.cc && message.cc.length > 0 && (
+              <div className="flex items-baseline gap-2">
+                <span className="font-semibold text-slate-500 w-12">Kopie:</span>
+                <span className="text-slate-700">
+                  {message.cc.map(formatEmailAddress).join(', ')}
+                </span>
+              </div>
+            )}
+            <div className="flex items-baseline gap-2">
+              <span className="font-semibold text-slate-500 w-12">Předm.:</span>
+              <span className="font-bold text-slate-800">{message.subject || '(bez předmětu)'}</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => toggleFlagged(message.id)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                title={message.flagged ? 'Odoznačit' : 'Označit hvězdičkou'}
+              >
+                <Star className={`w-4 h-4 ${message.flagged ? 'text-amber-400 fill-amber-400' : 'text-slate-400'}`} />
+              </button>
+              <button
+                onClick={() => markAsUnread(message.id)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Označit jako nepřečtené"
+              >
+                {message.read ? <MailOpen className="w-4 h-4 text-slate-400" /> : <Mail className="w-4 h-4 text-sky-500" />}
+              </button>
+              <button
+                onClick={() => deleteMessage(message.id)}
+                className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                title="Smazat"
+              >
+                <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+              </button>
+            </div>
+            <span className="text-xs text-slate-500">{formatEmailDate(message.date)}</span>
           </div>
         </div>
       </div>

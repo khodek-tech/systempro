@@ -13,7 +13,7 @@ import { EmailComposer } from '@/components/email/EmailComposer';
 export function EmailFullView() {
   const {
     closeEmailView, selectedAccountId, selectedFolderId, selectedMessageId, selectMessage,
-    openComposer, triggerSync, triggerBackfill, getAccountsForUser,
+    openComposer, composerOpen, triggerSync, triggerBackfill, getAccountsForUser,
   } = useEmailStore();
   const { currentUser } = useAuthStore();
   const [syncing, setSyncing] = useState(false);
@@ -201,7 +201,7 @@ export function EmailFullView() {
       )}
 
       {/* Composer modal */}
-      <EmailComposer />
+      {composerOpen && <EmailComposer />}
     </main>
   );
 }

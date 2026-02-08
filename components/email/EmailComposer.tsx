@@ -3,35 +3,32 @@
 import { useState, useRef } from 'react';
 import { X, Send, Paperclip, Loader2 } from 'lucide-react';
 import { useEmailStore } from '@/stores/email-store';
+import { stripHtmlToText } from '@/features/email/email-helpers';
 import type { EmailAddress, EmailComposeData } from '@/shared/types';
 import { toast } from 'sonner';
 
 export function EmailComposer() {
   const {
-    composerOpen, composerMode, composerReplyTo, selectedAccountId,
+    composerMode, composerReplyTo, selectedAccountId,
     closeComposer, sendEmail, accounts,
   } = useEmailStore();
 
-  const [to, setTo] = useState('');
-  const [cc, setCc] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const computeInitialValues = () => {
+    if (!composerReplyTo) return { to: '', cc: '', subject: '', body: '' };
 
-  // Initialize fields based on mode
-  const initFields = () => {
-    if (!composerReplyTo) return;
+    const quoted = composerReplyTo.bodyText || stripHtmlToText(composerReplyTo.bodyHtml) || '';
+    const senderName = composerReplyTo.from.name || composerReplyTo.from.address;
+    const dateStr = new Date(composerReplyTo.date).toLocaleString('cs-CZ');
 
     switch (composerMode) {
       case 'reply':
-        setTo(composerReplyTo.from.address);
-        setSubject(composerReplyTo.subject.startsWith('Re:') ? composerReplyTo.subject : `Re: ${composerReplyTo.subject}`);
-        setBody(`\n\n--- Původní zpráva ---\nOd: ${composerReplyTo.from.name || composerReplyTo.from.address}\nDatum: ${new Date(composerReplyTo.date).toLocaleString('cs-CZ')}\n\n${composerReplyTo.bodyText || ''}`);
-        break;
+        return {
+          to: composerReplyTo.from.address,
+          cc: '',
+          subject: /^Re:/i.test(composerReplyTo.subject) ? composerReplyTo.subject : `Re: ${composerReplyTo.subject}`,
+          body: `\n\n--- Původní zpráva ---\nOd: ${senderName}\nDatum: ${dateStr}\n\n${quoted}`,
+        };
       case 'replyAll': {
-        setTo(composerReplyTo.from.address);
         const ccAddrs = [
           ...(composerReplyTo.to || []).map((a) => a.address),
           ...(composerReplyTo.cc || []).map((a) => a.address),
@@ -39,26 +36,33 @@ export function EmailComposer() {
           const account = accounts.find((a) => a.id === selectedAccountId);
           return addr !== account?.email;
         });
-        setCc(ccAddrs.join(', '));
-        setSubject(composerReplyTo.subject.startsWith('Re:') ? composerReplyTo.subject : `Re: ${composerReplyTo.subject}`);
-        setBody(`\n\n--- Původní zpráva ---\nOd: ${composerReplyTo.from.name || composerReplyTo.from.address}\nDatum: ${new Date(composerReplyTo.date).toLocaleString('cs-CZ')}\n\n${composerReplyTo.bodyText || ''}`);
-        break;
+        return {
+          to: composerReplyTo.from.address,
+          cc: ccAddrs.join(', '),
+          subject: /^Re:/i.test(composerReplyTo.subject) ? composerReplyTo.subject : `Re: ${composerReplyTo.subject}`,
+          body: `\n\n--- Původní zpráva ---\nOd: ${senderName}\nDatum: ${dateStr}\n\n${quoted}`,
+        };
       }
       case 'forward':
-        setSubject(composerReplyTo.subject.startsWith('Fwd:') ? composerReplyTo.subject : `Fwd: ${composerReplyTo.subject}`);
-        setBody(`\n\n--- Přeposlaná zpráva ---\nOd: ${composerReplyTo.from.name || composerReplyTo.from.address}\nKomu: ${composerReplyTo.to.map((a) => a.address).join(', ')}\nDatum: ${new Date(composerReplyTo.date).toLocaleString('cs-CZ')}\nPředmět: ${composerReplyTo.subject}\n\n${composerReplyTo.bodyText || ''}`);
-        break;
+        return {
+          to: '',
+          cc: '',
+          subject: /^Fwd:/i.test(composerReplyTo.subject) ? composerReplyTo.subject : `Fwd: ${composerReplyTo.subject}`,
+          body: `\n\n--- Přeposlaná zpráva ---\nOd: ${senderName}\nKomu: ${composerReplyTo.to.map((a) => a.address).join(', ')}\nDatum: ${dateStr}\nPředmět: ${composerReplyTo.subject}\n\n${quoted}`,
+        };
+      default:
+        return { to: '', cc: '', subject: '', body: '' };
     }
   };
 
-  // Init on open
-  useState(() => {
-    if (composerOpen && composerReplyTo) {
-      initFields();
-    }
-  });
-
-  if (!composerOpen) return null;
+  const initial = computeInitialValues();
+  const [to, setTo] = useState(initial.to);
+  const [cc, setCc] = useState(initial.cc);
+  const [subject, setSubject] = useState(initial.subject);
+  const [body, setBody] = useState(initial.body);
+  const [sending, setSending] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseAddresses = (str: string): EmailAddress[] => {
     return str.split(',').map((s) => s.trim()).filter(Boolean).map((addr) => {
@@ -117,7 +121,7 @@ export function EmailComposer() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">

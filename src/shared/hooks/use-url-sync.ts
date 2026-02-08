@@ -7,6 +7,7 @@ import { useChatStore } from '@/stores/chat-store';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useShiftsStore } from '@/stores/shifts-store';
+import { usePresenceStore } from '@/stores/presence-store';
 import { useAdminStore } from '@/stores/admin-store';
 
 /**
@@ -20,6 +21,7 @@ function deriveUrlFromState(): string {
   const { tasksViewMode } = useTasksStore.getState();
   const { approvalViewMode, absenceViewMode } = useAbsenceStore.getState();
   const { shiftsViewMode } = useShiftsStore.getState();
+  const { presenceViewMode } = usePresenceStore.getState();
   const { subView, settingsTab } = useAdminStore.getState();
 
   if (manualViewMode === 'view') return '/manual';
@@ -29,6 +31,7 @@ function deriveUrlFromState(): string {
   if (approvalViewMode === 'view') return '/approval';
   if (absenceViewMode === 'view') return '/absence';
   if (shiftsViewMode === 'view') return '/shifts';
+  if (presenceViewMode === 'view') return '/presence';
 
   if (subView === 'reports') return '/reports';
   if (subView === 'settings') {
@@ -50,6 +53,7 @@ function applySlugToStores(slug: string[]) {
   const tasks = useTasksStore.getState();
   const absence = useAbsenceStore.getState();
   const shifts = useShiftsStore.getState();
+  const presence = usePresenceStore.getState();
   const admin = useAdminStore.getState();
 
   // Close all fullscreen views first
@@ -60,6 +64,7 @@ function applySlugToStores(slug: string[]) {
   absence.closeAbsenceView();
   absence.closeApprovalView();
   shifts.closeShiftsView();
+  presence.closePresenceView();
   admin.goToMain();
 
   const [first, second] = slug;
@@ -85,6 +90,9 @@ function applySlugToStores(slug: string[]) {
       break;
     case 'manual':
       manual.openManualView();
+      break;
+    case 'presence':
+      presence.openPresenceView();
       break;
     case 'reports':
       admin.goToReports();
@@ -140,6 +148,7 @@ export function useUrlSync(slug: string[], ready: boolean) {
       useTasksStore.subscribe(updateUrl),
       useAbsenceStore.subscribe(updateUrl),
       useShiftsStore.subscribe(updateUrl),
+      usePresenceStore.subscribe(updateUrl),
       useAdminStore.subscribe(updateUrl),
     ];
 

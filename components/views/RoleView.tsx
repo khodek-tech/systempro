@@ -8,6 +8,7 @@ import { ShiftsFullView } from '@/components/views/shifts-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
 import { ChatFullView } from '@/components/views/chat-full-view';
 import { EmailFullView } from '@/components/views/email-full-view';
+import { PresenceFullView } from '@/components/views/presence-full-view';
 import { ManualFullView } from '@/components/views/manual-full-view';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useShiftsStore } from '@/stores/shifts-store';
@@ -15,6 +16,7 @@ import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
 import { useEmailStore } from '@/stores/email-store';
 import { useManualStore } from '@/stores/manual-store';
+import { usePresenceStore } from '@/stores/presence-store';
 
 interface RoleViewProps {
   /**
@@ -41,6 +43,10 @@ interface RoleViewProps {
    * Whether to show fullscreen email view when emailViewMode === 'view'
    */
   showEmailFullView?: boolean;
+  /**
+   * Whether to show fullscreen presence view when presenceViewMode === 'view'
+   */
+  showPresenceFullView?: boolean;
   /**
    * Optional custom content to render instead of ModuleRenderer
    */
@@ -79,6 +85,7 @@ export function RoleView({
   showTasksFullView = false,
   showChatFullView = false,
   showEmailFullView = false,
+  showPresenceFullView = false,
   customContent,
   isWarehouse = false,
   className = '',
@@ -89,6 +96,7 @@ export function RoleView({
   const { chatViewMode } = useChatStore();
   const { emailViewMode } = useEmailStore();
   const { manualViewMode } = useManualStore();
+  const { presenceViewMode } = usePresenceStore();
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
@@ -123,6 +131,11 @@ export function RoleView({
   // Fullscreen shifts view
   if (showShiftsFullView && shiftsViewMode === 'view') {
     return <ShiftsFullView />;
+  }
+
+  // Fullscreen presence view
+  if (showPresenceFullView && presenceViewMode === 'view') {
+    return <PresenceFullView />;
   }
 
   // Custom content or default ModuleRenderer

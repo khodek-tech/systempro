@@ -173,6 +173,21 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         messagesHasMore: (count ?? 0) > offset + PAGE_SIZE,
         _messagesLoading: false,
       });
+
+      // Correct folder unread count from actual DB data
+      const { count: unreadCount } = await supabase
+        .from('emailove_zpravy')
+        .select('id', { count: 'exact', head: true })
+        .eq('id_slozky', folderId)
+        .eq('precteno', false);
+      if (unreadCount !== null) {
+        set({
+          folders: get().folders.map((f) =>
+            f.id === folderId ? { ...f, unreadCount } : f
+          ),
+        });
+        await supabase.from('emailove_slozky').update({ pocet_neprectenych: unreadCount }).eq('id', folderId);
+      }
     } else {
       console.error('Failed to fetch messages:', error);
       set({ _messagesLoading: false });
@@ -287,18 +302,23 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .eq('id', messageId);
 
     if (!error) {
-      set({
-        messages: get().messages.map((m) =>
-          m.id === messageId ? { ...m, read: true } : m
-        ),
-      });
-      // Update folder unread count
       const msg = get().messages.find((m) => m.id === messageId);
       if (msg) {
+        // Recount unread from DB and persist to folder
+        const { count } = await supabase
+          .from('emailove_zpravy')
+          .select('id', { count: 'exact', head: true })
+          .eq('id_slozky', msg.folderId)
+          .eq('precteno', false);
+        const newCount = count ?? 0;
+        await supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId);
         set({
-          folders: get().folders.map((f) =>
-            f.id === msg.folderId ? { ...f, unreadCount: Math.max(0, f.unreadCount - 1) } : f
-          ),
+          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: true } : m),
+          folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
+        });
+      } else {
+        set({
+          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: true } : m),
         });
       }
     }
@@ -312,17 +332,23 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .eq('id', messageId);
 
     if (!error) {
-      set({
-        messages: get().messages.map((m) =>
-          m.id === messageId ? { ...m, read: false } : m
-        ),
-      });
       const msg = get().messages.find((m) => m.id === messageId);
       if (msg) {
+        // Recount unread from DB and persist to folder
+        const { count } = await supabase
+          .from('emailove_zpravy')
+          .select('id', { count: 'exact', head: true })
+          .eq('id_slozky', msg.folderId)
+          .eq('precteno', false);
+        const newCount = count ?? 0;
+        await supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId);
         set({
-          folders: get().folders.map((f) =>
-            f.id === msg.folderId ? { ...f, unreadCount: f.unreadCount + 1 } : f
-          ),
+          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: false } : m),
+          folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
+        });
+      } else {
+        set({
+          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: false } : m),
         });
       }
     }

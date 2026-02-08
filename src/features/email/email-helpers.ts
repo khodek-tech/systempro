@@ -113,6 +113,25 @@ export function sanitizeEmailHtml(html: string): string {
 }
 
 /**
+ * Strip HTML tags and decode entities to get plain text.
+ */
+export function stripHtmlToText(html: string | null): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
  * Folder type to icon name mapping (lucide-react).
  */
 export function getFolderIcon(type: string): string {

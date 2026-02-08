@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Header } from '@/components/header';
-import { PresenceSidebar } from '@/components/PresenceSidebar';
 import { ProdavacView } from '@/components/views/prodavac-view';
 import { AdminView } from '@/components/views/admin-view';
 import { SkladnikView } from '@/components/views/skladnik-view';
@@ -101,7 +100,6 @@ export function HomePage({ slug }: HomePageProps) {
     <div className="min-h-screen flex flex-col">
       <Header />
       <div className="flex-1 flex overflow-hidden">
-        <PresenceSidebar />
         {renderView()}
       </div>
       <Toaster richColors position="top-center" />

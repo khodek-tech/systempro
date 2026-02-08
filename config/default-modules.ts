@@ -195,7 +195,7 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     moduleId: 'presence',
     roleIds: ['role-4', 'role-7', 'role-2', 'role-8'],
     order: 3,
-    column: 'sidebar',
+    column: 'left',
     enabled: true,
     viewMappings: [
       { viewerRoleId: 'role-4', visibleRoleIds: ['role-3', 'role-5'] },

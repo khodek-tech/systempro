@@ -13,6 +13,7 @@ import { ApprovalFullView } from '@/components/views/approval-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
 import { ChatFullView } from '@/components/views/chat-full-view';
 import { EmailFullView } from '@/components/views/email-full-view';
+import { PresenceFullView } from '@/components/views/presence-full-view';
 import { ManualFullView } from '@/components/views/manual-full-view';
 import { adminStores, months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
@@ -21,6 +22,7 @@ import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
 import { useEmailStore } from '@/stores/email-store';
 import { useManualStore } from '@/stores/manual-store';
+import { usePresenceStore } from '@/stores/presence-store';
 
 export function AdminView() {
   const {
@@ -41,6 +43,7 @@ export function AdminView() {
   const { chatViewMode } = useChatStore();
   const { emailViewMode } = useEmailStore();
   const { manualViewMode } = useManualStore();
+  const { presenceViewMode } = usePresenceStore();
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
@@ -69,6 +72,11 @@ export function AdminView() {
   // Fullscreen approval view nahrazuje celý obsah
   if (approvalViewMode === 'view') {
     return <ApprovalFullView />;
+  }
+
+  // Fullscreen presence view
+  if (presenceViewMode === 'view') {
+    return <PresenceFullView />;
   }
 
   // Main dashboard view

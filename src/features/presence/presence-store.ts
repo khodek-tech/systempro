@@ -7,12 +7,21 @@ import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { useAbsenceStore } from '@/features/absence/absence-store';
 import { useShiftsStore } from '@/features/shifts/shifts-store';
 
+interface PresenceState {
+  presenceViewMode: 'card' | 'view';
+}
+
 interface PresenceActions {
   getTodayPresence: (viewerRoleId: string) => PresenceRecord[];
   getPresenceStatus: (userId: string) => PresenceStatus;
+  openPresenceView: () => void;
+  closePresenceView: () => void;
 }
 
-export const usePresenceStore = create<PresenceActions>()(() => ({
+export const usePresenceStore = create<PresenceState & PresenceActions>()((set) => ({
+  presenceViewMode: 'card',
+  openPresenceView: () => set({ presenceViewMode: 'view' }),
+  closePresenceView: () => set({ presenceViewMode: 'card' }),
   getTodayPresence: (viewerRoleId: string): PresenceRecord[] => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
