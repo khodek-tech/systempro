@@ -178,24 +178,13 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
   // Password
   resetPassword: async (userId) => {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      return { success: false, error: 'Není přihlášen žádný uživatel' };
-    }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ userId }),
+    const { data, error: fnError } = await supabase.functions.invoke('reset-password', {
+      body: { userId },
     });
 
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-      return { success: false, error: result.error || 'Nepodařilo se resetovat heslo' };
+    if (fnError || !data?.success) {
+      return { success: false, error: data?.error || fnError?.message || 'Nepodařilo se resetovat heslo' };
     }
 
     set((state) => ({

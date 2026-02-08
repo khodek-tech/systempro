@@ -2,7 +2,7 @@
 
 ## Testovaci pristup (Administrator)
 
-- **E-mail:** `khodek@vapestyle.cz`
+- **Uživatel:** `khodek`
 - **Heslo:** `hodek`
 
 ---

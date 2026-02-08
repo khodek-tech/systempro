@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export function LoginForm() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -17,6 +17,17 @@ export function LoginForm() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    // Resolve username → email via RPC
+    const { data: email } = await supabase.rpc('get_email_by_username', {
+      p_username: username,
+    })
+
+    if (!email) {
+      setError('Neplatne prihlasovaci udaje')
+      setLoading(false)
+      return
+    }
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -49,12 +60,13 @@ export function LoginForm() {
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-1">
-            E-mail
+            Uživatel
           </label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 outline-none focus:border-blue-300"
             required
           />

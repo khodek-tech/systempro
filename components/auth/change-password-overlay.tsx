@@ -21,8 +21,8 @@ export function ChangePasswordOverlay({ authId }: ChangePasswordOverlayProps) {
     setError(null);
 
     // Validation
-    if (newPassword.length < 4) {
-      setError('Heslo musí mít alespoň 4 znaky.');
+    if (newPassword.length < 6) {
+      setError('Heslo musí mít alespoň 6 znaků.');
       return;
     }
 
@@ -31,8 +31,8 @@ export function ChangePasswordOverlay({ authId }: ChangePasswordOverlayProps) {
       return;
     }
 
-    if (newPassword === '1234') {
-      setError('Nové heslo nesmí být "1234". Zvolte jiné heslo.');
+    if (newPassword === '123456') {
+      setError('Nové heslo nesmí být "123456". Zvolte jiné heslo.');
       return;
     }
 
@@ -118,7 +118,7 @@ export function ChangePasswordOverlay({ authId }: ChangePasswordOverlayProps) {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 outline-none focus:border-orange-300"
-              placeholder="Minimálně 4 znaky"
+              placeholder="Minimálně 6 znaků"
               required
               autoFocus
             />
