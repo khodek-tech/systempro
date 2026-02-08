@@ -55,6 +55,8 @@ export function mapDbToUser(row: any): User {
     active: row.aktivni ?? true,
     startsWithShortWeek: row.zacina_kratkym_tydnem ?? undefined,
     workingHours: row.pracovni_hodiny ?? undefined,
+    authId: row.auth_id ?? undefined,
+    mustChangePassword: row.vychozi_heslo ?? false,
   };
 }
 
@@ -69,6 +71,7 @@ export function mapUserToDb(user: Partial<User> & { id: string }): Record<string
   if (user.active !== undefined) row.aktivni = user.active;
   if (user.startsWithShortWeek !== undefined) row.zacina_kratkym_tydnem = user.startsWithShortWeek;
   if (user.workingHours !== undefined) row.pracovni_hodiny = user.workingHours || null;
+  if (user.mustChangePassword !== undefined) row.vychozi_heslo = user.mustChangePassword;
   return row;
 }
 

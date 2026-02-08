@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Header } from '@/components/header';
 import { PresenceSidebar } from '@/components/PresenceSidebar';
 import { ProdavacView } from '@/components/views/prodavac-view';
@@ -10,15 +11,35 @@ import { ObsluhaEshopView } from '@/components/views/obsluha-eshop-view';
 import { ObchodnikView } from '@/components/views/obchodnik-view';
 import { VedouciVelkoobchodView } from '@/components/views/vedouci-velkoobchod-view';
 import { MajitelView } from '@/components/views/majitel-view';
+import { ChangePasswordOverlay } from '@/components/auth/change-password-overlay';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAttendanceStore } from '@/stores/attendance-store';
+import { useUsersStore } from '@/stores/users-store';
 import { useInitializeData } from '@/lib/supabase/init';
+import { createClient } from '@/lib/supabase/client';
+import { useUrlSync } from '@/shared/hooks/use-url-sync';
 
-export default function Home() {
+interface HomePageProps {
+  slug: string[];
+}
+
+export function HomePage({ slug }: HomePageProps) {
   const { getActiveRoleType, _hydrated } = useAuthStore();
   const { workplaceType } = useAttendanceStore();
   const { ready } = useInitializeData();
+  const { getUserByAuthId } = useUsersStore();
+  const [authId, setAuthId] = useState<string | null>(null);
+
+  useUrlSync(slug, ready);
+
+  useEffect(() => {
+    if (!ready) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setAuthId(user.id);
+    });
+  }, [ready]);
 
   // Loading state during hydration and data loading
   if (!_hydrated || !ready) {
@@ -32,15 +53,20 @@ export default function Home() {
     );
   }
 
+  // Check if the logged-in user must change password
+  const matchedUser = authId ? getUserByAuthId(authId) : null;
+  const mustChangePassword = matchedUser?.mustChangePassword === true;
+
   const roleType = getActiveRoleType();
 
   // Determine which view to render based on active role
   const renderView = () => {
     switch (roleType) {
-      case 'prodavac':
+      case 'prodavac': {
         // For prodavac, check if they're at a warehouse (no sales tracking)
         const isWarehouse = workplaceType === 'role';
         return <ProdavacView isWarehouse={isWarehouse} />;
+      }
 
       case 'administrator':
         return <AdminView />;
@@ -76,6 +102,7 @@ export default function Home() {
         {renderView()}
       </div>
       <Toaster richColors position="top-center" />
+      {mustChangePassword && authId && <ChangePasswordOverlay authId={authId} />}
     </div>
   );
 }

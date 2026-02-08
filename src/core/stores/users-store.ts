@@ -20,9 +20,13 @@ interface UsersActions {
   toggleUserActive: (id: string) => Promise<void>;
   deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
 
+  // Password
+  resetPassword: (userId: string) => Promise<{ success: boolean; error?: string }>;
+
   // Computed
   getActiveUsers: () => User[];
   getUserById: (id: string) => User | undefined;
+  getUserByAuthId: (authId: string) => User | undefined;
   isUsernameAvailable: (username: string, excludeUserId?: string) => boolean;
   validateUser: (user: Partial<User>, excludeUserId?: string) => { valid: boolean; error?: string };
 }
@@ -171,6 +175,38 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
     return { success: true };
   },
 
+  // Password
+  resetPassword: async (userId) => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      return { success: false, error: 'Není přihlášen žádný uživatel' };
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      return { success: false, error: result.error || 'Nepodařilo se resetovat heslo' };
+    }
+
+    set((state) => ({
+      users: state.users.map((u) =>
+        u.id === userId ? { ...u, mustChangePassword: true } : u
+      ),
+    }));
+
+    return { success: true };
+  },
+
   // Computed
   getActiveUsers: () => {
     return get().users.filter((u) => u.active);
@@ -178,6 +214,10 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
 
   getUserById: (id) => {
     return get().users.find((u) => u.id === id);
+  },
+
+  getUserByAuthId: (authId) => {
+    return get().users.find((u) => u.authId === authId);
   },
 
   isUsernameAvailable: (username, excludeUserId) => {

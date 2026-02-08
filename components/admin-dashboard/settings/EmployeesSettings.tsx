@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, KeyRound, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
 import { useRolesStore } from '@/stores/roles-store';
@@ -15,7 +15,7 @@ type SortField = 'fullName' | 'username' | 'role' | 'store' | null;
 type SortDirection = 'asc' | 'desc';
 
 export function EmployeesSettings() {
-  const { users, toggleUserActive, deleteUser } = useUsersStore();
+  const { users, toggleUserActive, deleteUser, resetPassword } = useUsersStore();
   const { getRoleById } = useRolesStore();
   const { getStoreById } = useStoresStore();
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,6 +24,8 @@ export function EmployeesSettings() {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [deleteModalUser, setDeleteModalUser] = useState<User | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const handleAdd = () => {
     setEditingUser(null);
@@ -57,6 +59,24 @@ export function EmployeesSettings() {
         toast.error('Nepodařilo se smazat zaměstnance.');
       }
       setDeleteModalUser(null);
+    }
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (resetPasswordUser) {
+      setResettingPassword(true);
+      try {
+        const result = await resetPassword(resetPasswordUser.id);
+        if (result.success) {
+          toast.success(`Heslo uživatele ${resetPasswordUser.fullName} bylo resetováno.`);
+        } else {
+          toast.error(result.error || 'Nepodařilo se resetovat heslo.');
+        }
+      } catch {
+        toast.error('Nepodařilo se resetovat heslo.');
+      }
+      setResettingPassword(false);
+      setResetPasswordUser(null);
     }
   };
 
@@ -235,6 +255,13 @@ export function EmployeesSettings() {
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <button
+                      onClick={() => setResetPasswordUser(user)}
+                      className="bg-orange-50 text-orange-600 p-2 rounded-lg hover:bg-orange-100 transition-colors"
+                      title="Resetovat heslo"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(user)}
                       className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
                     >
@@ -260,6 +287,47 @@ export function EmployeesSettings() {
         itemName={deleteModalUser?.fullName || ''}
         warningMessage="Všechna data o zaměstnanci budou permanentně smazána."
       />
+
+      {/* Reset password confirmation modal */}
+      {resetPasswordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !resettingPassword && setResetPasswordUser(null)} />
+          <div className="relative bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-lg">
+            <h2 className="text-xl font-bold text-slate-800 text-center mb-4">Resetovat heslo</h2>
+
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-orange-700 font-medium">
+                    Opravdu chcete resetovat heslo uživatele &quot;{resetPasswordUser.fullName}&quot;?
+                  </p>
+                  <p className="text-orange-600 text-sm mt-1">
+                    Heslo bude nastaveno na výchozí hodnotu a uživatel bude muset při příštím přihlášení zadat nové heslo.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setResetPasswordUser(null)}
+                disabled={resettingPassword}
+                className="flex-1 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 transition-all"
+              >
+                Zrušit
+              </Button>
+              <Button
+                onClick={handleConfirmResetPassword}
+                disabled={resettingPassword}
+                className="flex-1 bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-600 active:scale-[0.98] transition-all"
+              >
+                {resettingPassword ? 'Resetuji...' : 'Resetovat heslo'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

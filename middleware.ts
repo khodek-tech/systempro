@@ -34,7 +34,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const url = request.nextUrl.clone()
+    const redirectTo = request.nextUrl.pathname
     url.pathname = '/login'
+    if (redirectTo !== '/') {
+      url.searchParams.set('redirectTo', redirectTo)
+    }
     return NextResponse.redirect(url)
   }
 

@@ -65,4 +65,6 @@ export interface User {
   active: boolean;
   startsWithShortWeek?: boolean;
   workingHours?: StoreOpeningHours;  // Vlastní pracovní doba zaměstnance
+  authId?: string;
+  mustChangePassword?: boolean;
 }
