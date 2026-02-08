@@ -766,6 +766,10 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       )
       .subscribe((status, err) => {
         console.log('[tasks-realtime]', status, err ?? '');
+        // Re-fetch tasks after reconnect to catch missed events
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchTasks();
+        }
       });
 
     set({ _realtimeChannel: channel });

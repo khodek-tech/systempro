@@ -947,6 +947,20 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       )
       .subscribe((status, err) => {
         console.log('[email-realtime]', status, err ?? '');
+        // Re-fetch data after reconnect to catch missed events
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          const { selectedAccountId, selectedFolderId } = get();
+          if (selectedAccountId && selectedFolderId) {
+            get().fetchMessages(selectedAccountId, selectedFolderId);
+          }
+          // Refresh folders (unread counts etc.)
+          const supabaseRefresh = createClient();
+          supabaseRefresh.from('emailove_slozky').select('*').order('poradi').then(({ data }) => {
+            if (data) {
+              set({ folders: data.map(mapDbToEmailFolder) });
+            }
+          });
+        }
       });
 
     set({ _realtimeChannel: channel });

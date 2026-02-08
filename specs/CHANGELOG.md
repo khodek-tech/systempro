@@ -2,6 +2,19 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.4.1] - 2026-02-08
+
+### Opraveno
+
+#### Reconnect-refresh pro Realtime subscriptions
+- Všechny tři Realtime kanály (chat, email, tasks) nyní automaticky re-fetchují data po reconnectu
+- Řeší ztrátu zpráv při dočasném výpadku WebSocket spojení (CHANNEL_ERROR → SUBSCRIBED)
+- `chat-store.ts`: merge nových zpráv + refresh read statusů po reconnectu
+- `email-store.ts`: refresh zpráv a složek po reconnectu
+- `tasks-store.ts`: re-fetch úkolů po reconnectu
+
+---
+
 ## [1.4.0] - 2026-02-08
 
 ### Přidáno

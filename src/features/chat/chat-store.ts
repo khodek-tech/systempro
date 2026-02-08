@@ -401,6 +401,28 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       )
       .subscribe((status, err) => {
         console.log('[chat-realtime]', status, err ?? '');
+        // Re-fetch data after reconnect to catch missed events
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          const supabaseRefresh = createClient();
+          Promise.all([
+            supabaseRefresh.from('chat_zpravy').select('*'),
+            supabaseRefresh.from('chat_stav_precteni').select('*'),
+          ]).then(([msgsResult, readResult]) => {
+            if (!msgsResult.error && msgsResult.data) {
+              const freshMessages = msgsResult.data.map(mapDbToChatMessage);
+              const current = get().messages;
+              // Merge: keep local messages, add any missing from DB
+              const currentIds = new Set(current.map((m) => m.id));
+              const newMessages = freshMessages.filter((m) => !currentIds.has(m.id));
+              if (newMessages.length > 0) {
+                set({ messages: [...current, ...newMessages] });
+              }
+            }
+            if (!readResult.error && readResult.data) {
+              set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
+            }
+          });
+        }
       });
 
     set({ _realtimeChannel: channel });
