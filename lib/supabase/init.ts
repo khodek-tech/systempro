@@ -8,6 +8,7 @@ import { useModulesStore } from '@/core/stores/modules-store';
 import { useAbsenceStore } from '@/features/absence/absence-store';
 import { useTasksStore } from '@/features/tasks/tasks-store';
 import { useChatStore } from '@/features/chat/chat-store';
+import { useEmailStore } from '@/features/email/email-store';
 import { useAdminStore } from '@/admin/admin-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
 
@@ -42,6 +43,7 @@ async function initializeStores() {
     useAbsenceStore.getState().fetchAbsenceRequests(),
     useTasksStore.getState().fetchTasks(),
     useChatStore.getState().fetchChatData(),
+    useEmailStore.getState().fetchEmailData(),
     useAdminStore.getState().fetchAttendanceRecords(),
   ]);
 }

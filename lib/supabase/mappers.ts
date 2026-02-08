@@ -24,6 +24,13 @@ import type {
   TaskRepeat,
   TaskAssigneeType,
   StoreOpeningHours,
+  EmailAccount,
+  EmailAccountAccess,
+  EmailFolder,
+  EmailFolderType,
+  EmailMessage,
+  EmailRule,
+  EmailSyncLog,
 } from '@/shared/types';
 
 // =============================================================================
@@ -394,4 +401,203 @@ export function mapModuleConfigToDb(config: Partial<ModuleConfig> & { moduleId: 
   if (config.approvalMappings !== undefined) row.mapovani_schvalovani = config.approvalMappings || null;
   if (config.viewMappings !== undefined) row.mapovani_zobrazeni = config.viewMappings || null;
   return row;
+}
+
+// =============================================================================
+// EMAIL ACCOUNTS (emailove_ucty)
+// =============================================================================
+
+export function mapDbToEmailAccount(row: any): EmailAccount {
+  return {
+    id: row.id,
+    name: row.nazev,
+    email: row.email,
+    imapServer: row.imap_server,
+    imapPort: row.imap_port ?? 993,
+    smtpServer: row.smtp_server,
+    smtpPort: row.smtp_port ?? 465,
+    username: row.uzivatelske_jmeno,
+    active: row.aktivni ?? true,
+    lastSync: row.posledni_sync ?? null,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapEmailAccountToDb(account: Partial<EmailAccount> & { id: string }): Record<string, any> {
+  const row: Record<string, any> = { id: account.id };
+  if (account.name !== undefined) row.nazev = account.name;
+  if (account.email !== undefined) row.email = account.email;
+  if (account.imapServer !== undefined) row.imap_server = account.imapServer;
+  if (account.imapPort !== undefined) row.imap_port = account.imapPort;
+  if (account.smtpServer !== undefined) row.smtp_server = account.smtpServer;
+  if (account.smtpPort !== undefined) row.smtp_port = account.smtpPort;
+  if (account.username !== undefined) row.uzivatelske_jmeno = account.username;
+  if (account.active !== undefined) row.aktivni = account.active;
+  if (account.lastSync !== undefined) row.posledni_sync = account.lastSync;
+  if (account.updatedAt !== undefined) row.aktualizovano = account.updatedAt;
+  return row;
+}
+
+// =============================================================================
+// EMAIL ACCESS (emailovy_pristup)
+// =============================================================================
+
+export function mapDbToEmailAccess(row: any): EmailAccountAccess {
+  return {
+    accountId: row.id_uctu,
+    employeeId: row.id_zamestnance,
+    canSend: row.muze_odesilat ?? true,
+    canDelete: row.muze_mazat ?? false,
+    createdAt: row.vytvoreno,
+  };
+}
+
+export function mapEmailAccessToDb(access: EmailAccountAccess): Record<string, any> {
+  return {
+    id_uctu: access.accountId,
+    id_zamestnance: access.employeeId,
+    muze_odesilat: access.canSend,
+    muze_mazat: access.canDelete,
+  };
+}
+
+// =============================================================================
+// EMAIL FOLDERS (emailove_slozky)
+// =============================================================================
+
+export function mapDbToEmailFolder(row: any): EmailFolder {
+  return {
+    id: row.id,
+    accountId: row.id_uctu,
+    name: row.nazev,
+    imapPath: row.imap_cesta,
+    type: row.typ as EmailFolderType,
+    messageCount: row.pocet_zprav ?? 0,
+    unreadCount: row.pocet_neprectenych ?? 0,
+    lastUid: row.posledni_uid ?? 0,
+    order: row.poradi ?? 0,
+    createdAt: row.vytvoreno,
+  };
+}
+
+export function mapEmailFolderToDb(folder: Partial<EmailFolder> & { id: string }): Record<string, any> {
+  const row: Record<string, any> = { id: folder.id };
+  if (folder.accountId !== undefined) row.id_uctu = folder.accountId;
+  if (folder.name !== undefined) row.nazev = folder.name;
+  if (folder.imapPath !== undefined) row.imap_cesta = folder.imapPath;
+  if (folder.type !== undefined) row.typ = folder.type;
+  if (folder.messageCount !== undefined) row.pocet_zprav = folder.messageCount;
+  if (folder.unreadCount !== undefined) row.pocet_neprectenych = folder.unreadCount;
+  if (folder.lastUid !== undefined) row.posledni_uid = folder.lastUid;
+  if (folder.order !== undefined) row.poradi = folder.order;
+  return row;
+}
+
+// =============================================================================
+// EMAIL MESSAGES (emailove_zpravy)
+// =============================================================================
+
+export function mapDbToEmailMessage(row: any): EmailMessage {
+  return {
+    id: row.id,
+    accountId: row.id_uctu,
+    folderId: row.id_slozky,
+    imapUid: row.imap_uid,
+    rfcMessageId: row.id_zpravy_rfc ?? null,
+    subject: row.predmet ?? '',
+    from: row.odesilatel ?? { address: '' },
+    to: row.prijemci ?? [],
+    cc: row.kopie ?? null,
+    bcc: row.skryta_kopie ?? null,
+    date: row.datum,
+    preview: row.nahled ?? '',
+    bodyText: row.telo_text ?? null,
+    bodyHtml: row.telo_html ?? null,
+    read: row.precteno ?? false,
+    flagged: row.oznaceno ?? false,
+    hasAttachments: row.ma_prilohy ?? false,
+    attachmentsMeta: row.metadata_priloh ?? [],
+    inReplyTo: row.odpoved_na ?? null,
+    threadId: row.vlakno_id ?? null,
+    size: row.velikost ?? 0,
+    syncedAt: row.synchronizovano,
+  };
+}
+
+export function mapEmailMessageToDb(msg: Partial<EmailMessage> & { id: string }): Record<string, any> {
+  const row: Record<string, any> = { id: msg.id };
+  if (msg.accountId !== undefined) row.id_uctu = msg.accountId;
+  if (msg.folderId !== undefined) row.id_slozky = msg.folderId;
+  if (msg.imapUid !== undefined) row.imap_uid = msg.imapUid;
+  if (msg.rfcMessageId !== undefined) row.id_zpravy_rfc = msg.rfcMessageId;
+  if (msg.subject !== undefined) row.predmet = msg.subject;
+  if (msg.from !== undefined) row.odesilatel = msg.from;
+  if (msg.to !== undefined) row.prijemci = msg.to;
+  if (msg.cc !== undefined) row.kopie = msg.cc;
+  if (msg.bcc !== undefined) row.skryta_kopie = msg.bcc;
+  if (msg.date !== undefined) row.datum = msg.date;
+  if (msg.preview !== undefined) row.nahled = msg.preview;
+  if (msg.bodyText !== undefined) row.telo_text = msg.bodyText;
+  if (msg.bodyHtml !== undefined) row.telo_html = msg.bodyHtml;
+  if (msg.read !== undefined) row.precteno = msg.read;
+  if (msg.flagged !== undefined) row.oznaceno = msg.flagged;
+  if (msg.hasAttachments !== undefined) row.ma_prilohy = msg.hasAttachments;
+  if (msg.attachmentsMeta !== undefined) row.metadata_priloh = msg.attachmentsMeta;
+  if (msg.inReplyTo !== undefined) row.odpoved_na = msg.inReplyTo;
+  if (msg.threadId !== undefined) row.vlakno_id = msg.threadId;
+  if (msg.size !== undefined) row.velikost = msg.size;
+  return row;
+}
+
+// =============================================================================
+// EMAIL RULES (emailova_pravidla)
+// =============================================================================
+
+export function mapDbToEmailRule(row: any): EmailRule {
+  return {
+    id: row.id,
+    accountId: row.id_uctu,
+    name: row.nazev,
+    active: row.aktivni ?? true,
+    order: row.poradi ?? 0,
+    conditions: row.podminky ?? { match: 'all', rules: [] },
+    actions: row.akce ?? [],
+    stopFurther: row.zastavit_dalsi ?? false,
+    createdBy: row.vytvoril,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapEmailRuleToDb(rule: Partial<EmailRule> & { id: string }): Record<string, any> {
+  const row: Record<string, any> = { id: rule.id };
+  if (rule.accountId !== undefined) row.id_uctu = rule.accountId;
+  if (rule.name !== undefined) row.nazev = rule.name;
+  if (rule.active !== undefined) row.aktivni = rule.active;
+  if (rule.order !== undefined) row.poradi = rule.order;
+  if (rule.conditions !== undefined) row.podminky = rule.conditions;
+  if (rule.actions !== undefined) row.akce = rule.actions;
+  if (rule.stopFurther !== undefined) row.zastavit_dalsi = rule.stopFurther;
+  if (rule.createdBy !== undefined) row.vytvoril = rule.createdBy;
+  return row;
+}
+
+// =============================================================================
+// EMAIL SYNC LOG (emailovy_log)
+// =============================================================================
+
+export function mapDbToEmailSyncLog(row: any): EmailSyncLog {
+  return {
+    id: row.id,
+    accountId: row.id_uctu,
+    status: row.stav,
+    message: row.zprava ?? null,
+    newCount: row.pocet_novych ?? 0,
+    durationMs: row.trvani_ms ?? 0,
+    totalMessages: row.celkem_zprav ?? 0,
+    processed: row.zpracovano ?? 0,
+    currentFolder: row.aktualni_slozka ?? null,
+    createdAt: row.vytvoreno,
+  };
 }

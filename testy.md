@@ -20,6 +20,7 @@
 11. [KPI Dashboard](#11-kpi-dashboard)
 12. [Reporty](#12-reporty)
 13. [Nápověda (Manual)](#13-nápověda-manual)
+14. [E-mail](#14-e-mail)
 
 ---
 
@@ -27,14 +28,14 @@
 
 | Role | ID | Přístup k modulům |
 |------|-----|-------------------|
-| Prodavač | role-1 | cash-info, sales, collect, absence-report, tasks, attendance, shifts, chat |
-| Administrátor | role-2 | absence-approval, tasks, kpi-dashboard, reports, presence, chat |
-| Skladník | role-3 | absence-report, tasks, attendance, shifts, chat |
-| Vedoucí skladu | role-4 | absence-report, absence-approval, tasks, attendance, presence, chat |
-| Obsluha e-shopu | role-5 | absence-report, tasks, attendance, shifts, chat |
-| Obchodník | role-6 | absence-report, tasks, attendance, shifts, chat |
-| Vedoucí velkoobchodu | role-7 | absence-report, absence-approval, tasks, attendance, presence, chat |
-| Majitel | role-8 | absence-approval, tasks, kpi-dashboard, presence, chat |
+| Prodavač | role-1 | cash-info, sales, collect, absence-report, tasks, attendance, shifts, chat, email |
+| Administrátor | role-2 | absence-approval, tasks, kpi-dashboard, reports, presence, chat, email |
+| Skladník | role-3 | absence-report, tasks, attendance, shifts, chat, email |
+| Vedoucí skladu | role-4 | absence-report, absence-approval, tasks, attendance, presence, chat, email |
+| Obsluha e-shopu | role-5 | absence-report, tasks, attendance, shifts, chat, email |
+| Obchodník | role-6 | absence-report, tasks, attendance, shifts, chat, email |
+| Vedoucí velkoobchodu | role-7 | absence-report, absence-approval, tasks, attendance, presence, chat, email |
+| Majitel | role-8 | absence-approval, tasks, kpi-dashboard, presence, chat, email |
 
 ---
 
@@ -552,4 +553,70 @@
 
 ---
 
-*Poslední aktualizace: 2026-01-31*
+## 14. E-mail
+
+> Spec: `/specs/modules/email.spec.yaml`
+
+### SC-EMAIL-01: Admin přidá e-mailový účet
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Admin otevře Nastavení → E-mail | Zobrazí se seznam účtů |
+| 2 | Klikne "Přidat účet" | Otevře se formulář |
+| 3 | Vyplní IMAP/SMTP údaje | Pole se vyplní |
+| 4 | Klikne "Test připojení" | IMAP i SMTP zelené checkmarky |
+| 5 | Uloží účet | Účet se objeví v seznamu, heslo šifrováno |
+
+### SC-EMAIL-02: Admin přiřadí přístup zaměstnanci
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Admin otevře detail účtu | Zobrazí se rozšířené info |
+| 2 | Klikne "Přidat přístup" | Zobrazí se formulář |
+| 3 | Vybere zaměstnance a oprávnění | Zaměstnanec se přidá |
+| 4 | Zaměstnanec otevře E-mail | Vidí přiřazený účet |
+
+### SC-EMAIL-03: Spuštění synchronizace
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Uživatel otevře E-mail modul | Zobrazí se 3-panel layout |
+| 2 | Klikne "Sync" | Spinner se zobrazí |
+| 3 | Sync dokončena | Toast "Synchronizace dokončena", nové zprávy |
+| 4 | Složky aktualizovány | Správné počty zpráv a nepřečtených |
+
+### SC-EMAIL-04: Čtení e-mailu
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Vybere složku (Inbox) | Zobrazí se seznam zpráv |
+| 2 | Klikne na zprávu | Detail se lazy-loadne |
+| 3 | HTML body | Sanitizováno DOMPurify |
+| 4 | Zpráva přečtena | Nepřečtené počítadlo klesne |
+
+### SC-EMAIL-05: Odpověď na e-mail
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Klikne "Odpovědět" | Otevře se composer s předvyplněnými údaji |
+| 2 | Napíše odpověď | Text se zobrazí |
+| 3 | Klikne "Odeslat" | E-mail odeslán, toast, uložen do Sent |
+
+### SC-EMAIL-06: Stažení přílohy
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Klikne na přílohu v detailu | Příloha se stáhne z IMAP |
+| 2 | Soubor se otevře | Správný Content-Type a název |
+
+### SC-EMAIL-07: Persistence po refreshi
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Pracuje s e-maily | Data viditelná |
+| 2 | Stiskne F5 | Data se znovu načtou z DB |
+| 3 | Stav konzistentní | Počty odpovídají |
+
+### Edge cases
+- Bez nastavené env proměnné `EMAIL_ENCRYPTION_KEY` → chyba při ukládání účtu
+- Velká příloha → stahuje se on-demand z IMAP, ne z DB
+- Timeout IMAP připojení → chyba v sync logu
+- HTML e-mail s nebezpečným obsahem → DOMPurify sanitizace
+- Uživatel bez přístupu → nezobrazí se žádný účet
+
+---
+
+*Poslední aktualizace: 2026-02-08*

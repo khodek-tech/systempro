@@ -3,5 +3,5 @@
 import { RoleView } from './RoleView';
 
 export function ObchodnikView() {
-  return <RoleView showAbsenceFullView showTasksFullView showChatFullView />;
+  return <RoleView showAbsenceFullView showTasksFullView showChatFullView showEmailFullView />;
 }

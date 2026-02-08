@@ -75,6 +75,105 @@ async function streamToString(stream: ReadableStream | NodeJS.ReadableStream, ti
   });
 }
 
+const BATCH_SIZE_INITIAL = 100;
+const BATCH_SIZE_INCREMENTAL = 50;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClient = any;
+
+// Batch upsert messages into DB
+async function batchUpsertMessages(supabase: SupabaseClient, rows: Record<string, unknown>[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const { error, data } = await supabase.from('emailove_zpravy').upsert(rows, {
+    onConflict: 'id_uctu,id_slozky,imap_uid',
+    ignoreDuplicates: false,
+  }).select('id');
+  if (error) {
+    console.error('Batch upsert error:', error.message);
+    return 0;
+  }
+  return data?.length ?? rows.length;
+}
+
+// Process a single message: download body parts, return a DB row
+async function processMessage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  msg: any,
+  client: ImapFlow,
+  accountId: string,
+  folderDbId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const envelope = msg.envelope as any;
+    const envelopeFrom = envelope?.from;
+    const envelopeTo = envelope?.to;
+    const envelopeCc = envelope?.cc;
+
+    const parseAddr = (addr: { name?: string; address?: string; mailbox?: string; host?: string }) => ({
+      name: addr.name || undefined,
+      address: addr.address || (addr.mailbox && addr.host ? `${addr.mailbox}@${addr.host}` : 'unknown'),
+    });
+
+    const from = envelopeFrom?.[0]
+      ? parseAddr(envelopeFrom[0])
+      : { address: 'unknown' };
+
+    const to = (envelopeTo || []).map(parseAddr);
+    const cc = envelopeCc?.length ? envelopeCc.map(parseAddr) : null;
+
+    const hasAttachments = checkAttachments(msg.bodyStructure);
+    const attachmentsMeta = extractAttachmentMeta(msg.bodyStructure);
+
+    // Download only text/html parts (skip attachments)
+    let bodyText: string | null = null;
+    let bodyHtml: string | null = null;
+    const { textPart, htmlPart } = findTextParts(msg.bodyStructure);
+
+    try {
+      if (textPart) {
+        const { content } = await client.download(String(msg.uid), textPart, { uid: true });
+        if (content) bodyText = (await streamToString(content)).substring(0, 50000) || null;
+      }
+      if (htmlPart) {
+        const { content } = await client.download(String(msg.uid), htmlPart, { uid: true });
+        if (content) bodyHtml = (await streamToString(content)).substring(0, 100000) || null;
+      }
+    } catch (dlErr) {
+      console.error(`Error downloading body parts for UID ${msg.uid}:`, dlErr);
+    }
+
+    const preview = (bodyText || stripHtmlTags(bodyHtml) || '').substring(0, 200).replace(/\s+/g, ' ').trim();
+
+    const messageId = `msg-${accountId}-${folderDbId}-${msg.uid}`;
+    return {
+      id: messageId,
+      id_uctu: accountId,
+      id_slozky: folderDbId,
+      imap_uid: msg.uid,
+      id_zpravy_rfc: envelope?.messageId || null,
+      predmet: envelope?.subject || '',
+      odesilatel: from,
+      prijemci: to,
+      kopie: cc,
+      datum: envelope?.date?.toISOString() || new Date().toISOString(),
+      nahled: preview,
+      telo_text: bodyText,
+      telo_html: bodyHtml,
+      precteno: msg.flags?.has('\\Seen') ?? false,
+      oznaceno: msg.flags?.has('\\Flagged') ?? false,
+      ma_prilohy: hasAttachments,
+      metadata_priloh: attachmentsMeta,
+      odpoved_na: envelope?.inReplyTo || null,
+      vlakno_id: envelope?.messageId || null,
+      velikost: msg.size ?? 0,
+    };
+  } catch (msgErr) {
+    console.error(`Error processing UID ${msg.uid}:`, msgErr);
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError || !user) {
@@ -83,11 +182,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { accountId } = body;
+    const { accountId, mode = 'incremental' } = body;
 
     if (!accountId) {
       return NextResponse.json({ success: false, error: 'Missing accountId' }, { status: 400 });
     }
+
+    const isInitial = mode === 'initial';
+    const batchSize = isInitial ? BATCH_SIZE_INITIAL : BATCH_SIZE_INCREMENTAL;
 
     const supabase = await createClient();
     const startTime = Date.now();
@@ -95,7 +197,7 @@ export async function POST(request: NextRequest) {
     // Create sync log entry
     const { data: logEntry } = await supabase
       .from('emailovy_log')
-      .insert({ id_uctu: accountId, stav: 'running', pocet_novych: 0, trvani_ms: 0 })
+      .insert({ id_uctu: accountId, stav: 'running', pocet_novych: 0, trvani_ms: 0, celkem_zprav: 0, zpracovano: 0 })
       .select('id')
       .single();
 
@@ -145,6 +247,24 @@ export async function POST(request: NextRequest) {
       // Get folder list from server and sync
       const mailboxes = await client.list();
 
+      // For initial mode: first pass to count total messages across all folders
+      if (isInitial && logEntry?.id) {
+        let grandTotal = 0;
+        for (const mailbox of mailboxes) {
+          try {
+            const status = await client.status(mailbox.path, { messages: true });
+            grandTotal += status.messages ?? 0;
+          } catch {
+            // skip folders we can't stat
+          }
+        }
+        await supabase.from('emailovy_log').update({
+          celkem_zprav: grandTotal,
+        }).eq('id', logEntry.id);
+      }
+
+      let globalProcessed = 0;
+
       for (const mailbox of mailboxes) {
         const folderType = detectFolderType(mailbox.path, mailbox.specialUse);
 
@@ -176,9 +296,30 @@ export async function POST(request: NextRequest) {
         try {
           const status = await client.status(mailbox.path, { messages: true, unseen: true });
 
-          // Always try to fetch new messages — don't rely on uidNext from STATUS
-          // (RFC 3501: STATUS SHOULD NOT be used on the currently selected mailbox,
-          //  so uidNext can be stale and cause skipped messages)
+          // Skip empty folders in initial mode
+          if (isInitial && (status.messages ?? 0) === 0 && lastUid === 0) {
+            // Update progress — skip this folder's messages (0)
+            if (logEntry?.id) {
+              await supabase.from('emailovy_log').update({
+                zpracovano: globalProcessed,
+                aktualni_slozka: mailbox.name,
+              }).eq('id', logEntry.id);
+            }
+            // Still update folder counts
+            await supabase.from('emailove_slozky').update({
+              pocet_zprav: status.messages ?? 0,
+              pocet_neprectenych: status.unseen ?? 0,
+            }).eq('id', folderDbId);
+            continue;
+          }
+
+          // Update progress: current folder name
+          if (isInitial && logEntry?.id) {
+            await supabase.from('emailovy_log').update({
+              aktualni_slozka: mailbox.name,
+            }).eq('id', logEntry.id);
+          }
+
           const fetchRange = `${lastUid + 1}:*`;
           let highestUid = lastUid;
           let newInFolder = 0;
@@ -201,88 +342,42 @@ export async function POST(request: NextRequest) {
             console.error(`Error fetching metadata in ${mailbox.path}:`, fetchErr);
           }
 
-          // Now download text/html body parts individually (no attachments)
+          // Process messages and batch upsert
+          const pendingRows: Record<string, unknown>[] = [];
+
           for (const msg of pendingMessages) {
-            try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const envelopeFrom = (msg.envelope as any)?.from;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const envelopeTo = (msg.envelope as any)?.to;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const envelopeCc = (msg.envelope as any)?.cc;
+            const row = await processMessage(msg, client, accountId, folderDbId);
+            if (row) {
+              pendingRows.push(row);
+              if (msg.uid > highestUid) highestUid = msg.uid;
+            }
 
-              const parseAddr = (addr: { name?: string; address?: string; mailbox?: string; host?: string }) => ({
-                name: addr.name || undefined,
-                address: addr.address || (addr.mailbox && addr.host ? `${addr.mailbox}@${addr.host}` : 'unknown'),
-              });
+            // Flush batch when reaching batchSize
+            if (pendingRows.length >= batchSize) {
+              const inserted = await batchUpsertMessages(supabase, pendingRows);
+              newInFolder += inserted;
+              globalProcessed += pendingRows.length;
+              pendingRows.length = 0;
 
-              const from = envelopeFrom?.[0]
-                ? parseAddr(envelopeFrom[0])
-                : { address: 'unknown' };
-
-              const to = (envelopeTo || []).map(parseAddr);
-              const cc = envelopeCc?.length ? envelopeCc.map(parseAddr) : null;
-
-              const hasAttachments = checkAttachments(msg.bodyStructure);
-              const attachmentsMeta = extractAttachmentMeta(msg.bodyStructure);
-
-              // Download only text/html parts (skip attachments)
-              let bodyText: string | null = null;
-              let bodyHtml: string | null = null;
-              const { textPart, htmlPart } = findTextParts(msg.bodyStructure);
-
-              try {
-                if (textPart) {
-                  const { content } = await client.download(String(msg.uid), textPart, { uid: true });
-                  if (content) bodyText = (await streamToString(content)).substring(0, 50000) || null;
-                }
-                if (htmlPart) {
-                  const { content } = await client.download(String(msg.uid), htmlPart, { uid: true });
-                  if (content) bodyHtml = (await streamToString(content)).substring(0, 100000) || null;
-                }
-              } catch (dlErr) {
-                console.error(`Error downloading body parts for UID ${msg.uid}:`, dlErr);
+              // Update progress in initial mode
+              if (isInitial && logEntry?.id) {
+                await supabase.from('emailovy_log').update({
+                  zpracovano: globalProcessed,
+                }).eq('id', logEntry.id);
               }
+            }
+          }
 
-              const preview = (bodyText || stripHtmlTags(bodyHtml) || '').substring(0, 200).replace(/\s+/g, ' ').trim();
+          // Flush remaining rows
+          if (pendingRows.length > 0) {
+            const inserted = await batchUpsertMessages(supabase, pendingRows);
+            newInFolder += inserted;
+            globalProcessed += pendingRows.length;
 
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const envelope = msg.envelope as any;
-              const messageId = `msg-${accountId}-${folderDbId}-${msg.uid}`;
-              const { error: upsertError } = await supabase.from('emailove_zpravy').upsert({
-                id: messageId,
-                id_uctu: accountId,
-                id_slozky: folderDbId,
-                imap_uid: msg.uid,
-                id_zpravy_rfc: envelope?.messageId || null,
-                predmet: envelope?.subject || '',
-                odesilatel: from,
-                prijemci: to,
-                kopie: cc,
-                datum: envelope?.date?.toISOString() || new Date().toISOString(),
-                nahled: preview,
-                telo_text: bodyText,
-                telo_html: bodyHtml,
-                precteno: msg.flags?.has('\\Seen') ?? false,
-                oznaceno: msg.flags?.has('\\Flagged') ?? false,
-                ma_prilohy: hasAttachments,
-                metadata_priloh: attachmentsMeta,
-                odpoved_na: envelope?.inReplyTo || null,
-                vlakno_id: envelope?.messageId || null,
-                velikost: msg.size ?? 0,
-              }, {
-                onConflict: 'id_uctu,id_slozky,imap_uid',
-                ignoreDuplicates: false,
-              });
-
-              if (upsertError) {
-                console.error(`Upsert failed for UID ${msg.uid}:`, upsertError.message);
-              } else {
-                if (msg.uid > highestUid) highestUid = msg.uid;
-                newInFolder++;
-              }
-            } catch (msgErr) {
-              console.error(`Error processing UID ${msg.uid}:`, msgErr);
+            if (isInitial && logEntry?.id) {
+              await supabase.from('emailovy_log').update({
+                zpracovano: globalProcessed,
+              }).eq('id', logEntry.id);
             }
           }
 
@@ -322,7 +417,7 @@ export async function POST(request: NextRequest) {
     if (syncError) {
       return NextResponse.json({ success: false, error: friendlyError(syncError) });
     }
-    return NextResponse.json({ success: true, newCount: totalNew });
+    return NextResponse.json({ success: true, newCount: totalNew, logId: logEntry?.id });
   } catch (error) {
     console.error('Email sync error:', error);
     return NextResponse.json({ success: false, error: 'Sync failed' });

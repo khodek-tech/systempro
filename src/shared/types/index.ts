@@ -58,3 +58,19 @@ export type {
   ChatReadStatus,
   ChatGroup,
 } from './chat.types';
+
+// Email types
+export type {
+  EmailFolderType,
+  EmailAddress,
+  EmailAttachmentMeta,
+  EmailAccount,
+  EmailAccountAccess,
+  EmailFolder,
+  EmailMessage,
+  EmailRuleCondition,
+  EmailRuleAction,
+  EmailRule,
+  EmailSyncLog,
+  EmailComposeData,
+} from './email.types';

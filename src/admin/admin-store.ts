@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { mapDbToAttendanceRecord } from '@/lib/supabase/mappers';
 
 type AdminSubView = 'main' | 'reports' | 'settings';
-type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda';
+type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda' | 'email';
 
 interface AdminState {
   subView: AdminSubView;

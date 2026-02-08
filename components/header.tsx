@@ -14,6 +14,7 @@ import { useManualStore } from '@/stores/manual-store';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
+import { useEmailStore } from '@/stores/email-store';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -51,6 +52,7 @@ export function Header() {
   const { closeAbsenceView, closeApprovalView } = useAbsenceStore();
   const { closeTasksView } = useTasksStore();
   const { closeChatView } = useChatStore();
+  const { closeEmailView } = useEmailStore();
   const { closeManualView } = useManualStore();
   const usersLoaded = useUsersStore((state) => state._loaded);
 
@@ -92,6 +94,7 @@ export function Header() {
   const handleLogoClick = () => {
     // Close all fullscreen views
     closeManualView();
+    closeEmailView();
     closeChatView();
     closeTasksView();
     closeAbsenceView();

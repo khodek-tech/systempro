@@ -86,6 +86,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'ChatModule',
     icon: 'MessagesSquare',
   },
+  {
+    id: 'email',
+    name: 'E-mail',
+    description: 'E-mailový klient (IMAP/SMTP)',
+    component: 'EmailModule',
+    icon: 'Mail',
+  },
 ];
 
 // Default module configuration
@@ -201,6 +208,13 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     moduleId: 'chat',
     roleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7', 'role-8'],
     order: 7,
+    column: 'left',
+    enabled: true,
+  },
+  {
+    moduleId: 'email',
+    roleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7', 'role-8'],
+    order: 8,
     column: 'left',
     enabled: true,
   },

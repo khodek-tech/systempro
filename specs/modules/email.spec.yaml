@@ -1,0 +1,222 @@
+# SYSTEM.PRO - Email Module Specification
+# E-mailový klient s IMAP/SMTP integrací
+
+module:
+  id: email
+  name: E-mail
+  description: E-mailový klient pro čtení a odesílání e-mailů přes IMAP/SMTP
+  component: EmailModule
+  store: useEmailStore
+  icon: Mail
+
+access:
+  roles:
+    - role-1  # Prodavač
+    - role-2  # Administrátor
+    - role-3  # Skladník
+    - role-4  # Vedoucí skladu
+    - role-5  # Obsluha e-shopu
+    - role-6  # Obchodník
+    - role-7  # Vedoucí velkoobchodu
+    - role-8  # Majitel
+
+  admin_features:
+    # Pouze Administrátor může spravovat e-mailové účty a přístupy
+    account_management: [role-2]
+    access_management: [role-2]
+
+  per_account_permissions:
+    can_send: boolean   # Může odesílat e-maily z účtu
+    can_delete: boolean # Může mazat e-maily
+
+data_model:
+  emailAccount:
+    id: string
+    name: string          # Zobrazovaný název ("Info e-shop")
+    email: string         # E-mailová adresa
+    imapServer: string
+    imapPort: number      # default 993
+    smtpServer: string
+    smtpPort: number      # default 465
+    username: string
+    active: boolean
+    lastSync: ISO8601 | null
+    # Heslo šifrováno AES-256-GCM na serveru, NIKDY se neposílá na klienta
+
+  emailAccountAccess:
+    accountId: string
+    employeeId: string
+    canSend: boolean
+    canDelete: boolean
+
+  emailFolder:
+    id: string
+    accountId: string
+    name: string
+    imapPath: string      # Cesta na IMAP serveru
+    type: inbox | sent | drafts | trash | spam | custom
+    messageCount: number
+    unreadCount: number
+    lastUid: number       # Pro inkrementální sync
+
+  emailMessage:
+    id: string
+    accountId: string
+    folderId: string
+    imapUid: number
+    subject: string
+    from: EmailAddress
+    to: EmailAddress[]
+    cc: EmailAddress[] | null
+    date: ISO8601
+    preview: string       # Prvních ~200 znaků
+    bodyText: string | null  # Lazy loaded
+    bodyHtml: string | null  # Lazy loaded, sanitizováno DOMPurify
+    read: boolean
+    flagged: boolean
+    hasAttachments: boolean
+    attachmentsMeta: AttachmentMeta[]
+
+  emailRule:
+    id: string
+    accountId: string
+    name: string
+    conditions: { match: all|any, rules: RuleCondition[] }
+    actions: RuleAction[]
+    stopFurther: boolean
+
+  emailSyncLog:
+    id: serial
+    accountId: string
+    status: running | success | error
+    message: string | null
+    newCount: number
+    durationMs: number
+
+features:
+  - id: email-card
+    name: Dashboard karta
+    description: Modul karta na dashboardu s počtem nepřečtených e-mailů
+
+  - id: email-view
+    name: Full-page e-mail klient
+    description: |
+      Tří-panelové zobrazení (sidebar, seznam zpráv, detail).
+      Mobile: progresivní navigace s back tlačítky.
+
+  - id: email-read
+    name: Čtení e-mailů
+    description: |
+      Zobrazení e-mailu s HTML body (sanitizováno DOMPurify),
+      hlavičkami, přílohami. Lazy loading body textu.
+
+  - id: email-compose
+    name: Psaní e-mailů
+    description: |
+      Modální okno pro nový e-mail, odpověď, odpověď všem, přeposlat.
+      Podpora příloh (multipart/form-data).
+
+  - id: email-sync
+    name: Synchronizace IMAP
+    description: |
+      Manuální sync přes tlačítko. Inkrementální stahování od posledního UID.
+      Automatický sync (cron) odložen do budoucna.
+
+  - id: email-rules
+    name: E-mailová pravidla
+    description: Automatické třídění e-mailů podle podmínek (od, předmět, tělo).
+
+  - id: email-admin
+    name: Admin nastavení
+    description: |
+      Správa e-mailových účtů v Nastavení → E-mail.
+      CRUD účtů, test připojení, správa přístupů, sync log.
+
+  - id: email-attachments
+    name: Přílohy
+    description: |
+      On-demand stahování příloh z IMAP serveru (nikdy v DB).
+      Varování u neznámých odesílatelů.
+
+scenarios:
+  - id: SC-EMAIL-01
+    name: Admin přidá e-mailový účet
+    steps:
+      - Admin otevře Nastavení → E-mail
+      - Klikne "Přidat účet"
+      - Vyplní IMAP/SMTP údaje
+      - Klikne "Test připojení" → ověří IMAP i SMTP
+      - Uloží účet (heslo šifrováno AES-256-GCM)
+    expected:
+      - Účet se objeví v seznamu
+      - Heslo je uloženo šifrovaně
+
+  - id: SC-EMAIL-02
+    name: Admin přiřadí přístup zaměstnanci
+    steps:
+      - Admin otevře detail účtu
+      - Klikne "Přidat přístup"
+      - Vybere zaměstnance a nastaví oprávnění
+    expected:
+      - Zaměstnanec vidí účet v modulu E-mail
+      - Oprávnění odpovídají nastavení
+
+  - id: SC-EMAIL-03
+    name: Spuštění synchronizace
+    steps:
+      - Uživatel otevře E-mail modul
+      - Klikne tlačítko "Sync"
+    expected:
+      - IMAP připojení se naváže
+      - Nové zprávy se stáhnou od posledního UID
+      - Složky se aktualizují (počty zpráv, nepřečtené)
+      - Sync log se zapíše
+
+  - id: SC-EMAIL-04
+    name: Čtení e-mailu
+    steps:
+      - Uživatel vybere složku
+      - Klikne na zprávu v seznamu
+    expected:
+      - Body se lazy-loadne
+      - HTML body se sanitizuje přes DOMPurify
+      - Zpráva se označí jako přečtená
+      - Aktualizuje se počet nepřečtených
+
+  - id: SC-EMAIL-05
+    name: Odpověď na e-mail
+    steps:
+      - Uživatel klikne "Odpovědět" v detailu zprávy
+      - Vyplní text odpovědi
+      - Klikne "Odeslat"
+    expected:
+      - E-mail se odešle přes SMTP
+      - Uloží se do složky Sent
+      - Zachová se In-Reply-To hlavička
+
+  - id: SC-EMAIL-06
+    name: Stažení přílohy
+    steps:
+      - Uživatel klikne na přílohu v detailu zprávy
+    expected:
+      - Příloha se stáhne on-demand z IMAP serveru
+      - Otevře se v novém okně prohlížeče
+
+  - id: SC-EMAIL-07
+    name: Persistence po refreshi
+    steps:
+      - Uživatel pracuje s e-maily
+      - Stiskne F5 (refresh)
+    expected:
+      - Data se znovu načtou z DB
+      - Stav je konzistentní
+
+edge_cases:
+  - Šifrování hesla — EMAIL_ENCRYPTION_KEY musí být nastavena
+  - Velké přílohy — stahují se on-demand, nikdy v DB
+  - Timeout IMAP připojení — zachytit a zalogovat
+  - Duplicitní zprávy — UNIQUE constraint na (id_uctu, id_slozky, imap_uid)
+  - HTML body s nebezpečným obsahem — sanitizace DOMPurify
+  - Uživatel bez přístupu k účtu — nezobrazí se v modulu
+  - Prázdná složka — zobrazí se "Žádné zprávy"
+  - Cron job — ODLOŽEN do budoucna, sync pouze manuální

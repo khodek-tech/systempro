@@ -10,6 +10,7 @@ import { ObsluhaEshopView } from '@/components/views/obsluha-eshop-view';
 import { ObchodnikView } from '@/components/views/obchodnik-view';
 import { VedouciVelkoobchodView } from '@/components/views/vedouci-velkoobchod-view';
 import { MajitelView } from '@/components/views/majitel-view';
+import { Toaster } from 'sonner';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAttendanceStore } from '@/stores/attendance-store';
 import { useInitializeData } from '@/lib/supabase/init';
@@ -74,6 +75,7 @@ export default function Home() {
         <PresenceSidebar />
         {renderView()}
       </div>
+      <Toaster richColors position="top-center" />
     </div>
   );
 }

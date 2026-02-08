@@ -2,6 +2,49 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.2.0] - 2026-02-08
+
+### Přidáno
+
+#### Nový modul
+- `/specs/modules/email.spec.yaml` - E-mailový klient (IMAP/SMTP)
+
+#### Popis
+Modul E-mail poskytuje plnohodnotný e-mailový klient s IMAP/SMTP integrací.
+Obsahuje:
+- Dashboard kartu s počtem nepřečtených zpráv
+- Full-page tří-panelové zobrazení (sidebar, seznam, detail)
+- Čtení e-mailů s HTML sanitizací (DOMPurify)
+- Odesílání (odpověď, přeposlat, nový) s přílohami
+- Inkrementální IMAP synchronizaci
+- E-mailová pravidla pro automatické třídění
+- Admin nastavení: správa účtů, přístupů, sync log
+- AES-256-GCM šifrování hesel
+- On-demand stahování příloh z IMAP
+
+#### Databáze
+- 6 nových tabulek: `emailove_ucty`, `emailovy_pristup`, `emailove_slozky`,
+  `emailove_zpravy`, `emailova_pravidla`, `emailovy_log`
+- Všechny s RLS enabled
+
+#### API Routes
+- `POST /api/email/sync` - IMAP synchronizace
+- `POST /api/email/send` - SMTP odesílání
+- `POST /api/email/test-connection` - Test IMAP/SMTP
+- `GET /api/email/attachment` - Download přílohy z IMAP
+- `POST|PUT /api/email/accounts` - CRUD e-mailových účtů
+
+### Změněno
+- Header: přidáno zavírání email view při kliknutí na logo
+- AdminView: přidána podpora pro email full view
+- RoleView: přidán prop `showEmailFullView`
+- Všechny role views: přidán `showEmailFullView`
+- AdminSettingsView: přidán tab "E-mail"
+- admin-store: rozšířen SettingsTab o 'email'
+- lib/supabase/init.ts: přidán fetchEmailData do Phase 3
+
+---
+
 ## [1.1.0] - 2026-01-31
 
 ### Přidáno

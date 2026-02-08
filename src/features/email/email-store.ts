@@ -74,6 +74,8 @@ interface EmailActions {
   // API routes (server-side IMAP/SMTP)
   sendEmail: (data: EmailComposeData) => Promise<{ success: boolean; error?: string }>;
   triggerSync: (accountId: string) => Promise<{ success: boolean; error?: string }>;
+  triggerInitialSync: (accountId: string) => Promise<{ success: boolean; error?: string; logId?: number }>;
+  triggerBackfill: (accountId: string, folderId?: string) => Promise<{ success: boolean; processed?: number; remaining?: number; error?: string }>;
 
   // Rules
   createRule: (rule: Omit<EmailRule, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -473,12 +475,16 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   },
 
   triggerSync: async (accountId) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
     try {
       const res = await fetch('/api/email/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId }),
+        body: JSON.stringify({ accountId, mode: 'incremental' }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const json = await res.json();
       if (json.success) {
         // Refetch data after sync
@@ -490,6 +496,57 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       }
       return { success: json.success, error: json.error };
     } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { success: false, error: 'Synchronizace trvala příliš dlouho' };
+      }
+      return { success: false, error: String(err) };
+    }
+  },
+
+  triggerInitialSync: async (accountId) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600000);
+    try {
+      const res = await fetch('/api/email/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, mode: 'initial' }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const json = await res.json();
+      if (json.success) {
+        await get().fetchEmailData();
+      }
+      return { success: json.success, error: json.error, logId: json.logId };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { success: false, error: 'Synchronizace trvala příliš dlouho (timeout 10 min)' };
+      }
+      return { success: false, error: String(err) };
+    }
+  },
+
+  triggerBackfill: async (accountId, folderId?) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    try {
+      const res = await fetch('/api/email/backfill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, folderId }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const json = await res.json();
+      return { success: json.success, processed: json.processed, remaining: json.remaining, error: json.error };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { success: false, error: 'Synchronizace trvala příliš dlouho' };
+      }
       return { success: false, error: String(err) };
     }
   },
