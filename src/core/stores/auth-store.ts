@@ -13,6 +13,7 @@ const getStores = () => useStoresStore.getState().stores;
 
 interface AuthState {
   currentUser: User | null;
+  loggedInUser: User | null;
   activeRoleId: string | null;
   activeStoreId: string | null;
   _hydrated: boolean;
@@ -21,6 +22,7 @@ interface AuthState {
 interface AuthActions {
   // Actions
   setCurrentUser: (user: User | null) => void;
+  setLoggedInUser: (authId: string) => void;
   setActiveRole: (roleId: string) => void;
   setActiveStore: (storeId: string) => void;
   switchToUser: (userId: string) => void;
@@ -39,6 +41,7 @@ interface AuthActions {
   needsStoreSelection: () => boolean;
   getActiveRoleType: () => RoleType | null;
   canReportAbsence: () => boolean;
+  isLoggedInAdmin: () => boolean;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -46,6 +49,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     (set, get) => ({
   // Initial state
   currentUser: null,
+  loggedInUser: null,
   activeRoleId: null,
   activeStoreId: null,
   _hydrated: false,
@@ -67,6 +71,25 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         currentUser: null,
         activeRoleId: null,
         activeStoreId: null,
+      });
+    }
+  },
+
+  setLoggedInUser: (authId) => {
+    const user = getUsers().find((u) => u.authId === authId);
+    if (!user) return;
+
+    set({ loggedInUser: user });
+
+    // Non-admin users are locked to their own dashboard
+    const isAdmin = user.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
+    if (!isAdmin) {
+      const defaultRoleId = user.defaultRoleId ?? user.roleIds[0] ?? null;
+      const defaultStoreId = user.defaultStoreId ?? user.storeIds[0] ?? null;
+      set({
+        currentUser: user,
+        activeRoleId: defaultRoleId,
+        activeStoreId: defaultStoreId,
       });
     }
   },
@@ -254,6 +277,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const roleType = get().getActiveRoleType();
     if (!roleType) return false;
     return !ROLES_WITHOUT_ABSENCE.includes(roleType);
+  },
+
+  isLoggedInAdmin: () => {
+    const { loggedInUser } = get();
+    if (!loggedInUser) return false;
+    return loggedInUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
   },
     }),
     {

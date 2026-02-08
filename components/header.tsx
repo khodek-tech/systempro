@@ -33,6 +33,8 @@ export function Header() {
     handleStoreChange,
     handleRoleChange,
     syncWorkplaceWithRole,
+    isLoggedInAdmin,
+    loggedInUser,
   } = useAuthStore();
 
   const { getModulesForRole } = useModulesStore();
@@ -117,25 +119,34 @@ export function Header() {
         </button>
         <div className="h-8 w-px bg-slate-200" />
 
-        {/* User Selector Dropdown */}
+        {/* User Selector Dropdown (admin only) or static name */}
         {isFullyHydrated ? (
-          <div className="relative group">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" aria-hidden="true" />
-            <label htmlFor="user-selector" className="sr-only">Vybrat uživatele</label>
-            <select
-              id="user-selector"
-              value={currentUser?.id || ''}
-              onChange={(e) => handleUserChange(e.target.value, setWorkplace)}
-              className="appearance-none bg-slate-100 pl-9 pr-10 py-2.5 rounded-xl text-base font-semibold text-slate-800 outline-none cursor-pointer hover:bg-slate-200 transition-colors"
-            >
-              {allUsers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.fullName}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" aria-hidden="true" />
-          </div>
+          isLoggedInAdmin() ? (
+            <div className="relative group">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" aria-hidden="true" />
+              <label htmlFor="user-selector" className="sr-only">Vybrat uživatele</label>
+              <select
+                id="user-selector"
+                value={currentUser?.id || ''}
+                onChange={(e) => handleUserChange(e.target.value, setWorkplace)}
+                className="appearance-none bg-slate-100 pl-9 pr-10 py-2.5 rounded-xl text-base font-semibold text-slate-800 outline-none cursor-pointer hover:bg-slate-200 transition-colors"
+              >
+                {allUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" aria-hidden="true" />
+            </div>
+          ) : (
+            <div className="flex items-center bg-slate-100 pl-3 pr-4 py-2.5 rounded-xl">
+              <User className="w-4 h-4 text-slate-500 mr-2" aria-hidden="true" />
+              <span className="text-base font-semibold text-slate-800">
+                {loggedInUser?.fullName || currentUser?.fullName || ''}
+              </span>
+            </div>
+          )
         ) : (
           <div className="bg-slate-100 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-400" aria-live="polite">
             Načítání...

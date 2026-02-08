@@ -25,7 +25,7 @@ interface HomePageProps {
 }
 
 export function HomePage({ slug }: HomePageProps) {
-  const { getActiveRoleType, _hydrated } = useAuthStore();
+  const { getActiveRoleType, _hydrated, setLoggedInUser } = useAuthStore();
   const { workplaceType } = useAttendanceStore();
   const { ready } = useInitializeData();
   const { getUserByAuthId } = useUsersStore();
@@ -37,9 +37,12 @@ export function HomePage({ slug }: HomePageProps) {
     if (!ready) return;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setAuthId(user.id);
+      if (user) {
+        setAuthId(user.id);
+        setLoggedInUser(user.id);
+      }
     });
-  }, [ready]);
+  }, [ready, setLoggedInUser]);
 
   // Loading state during hydration and data loading
   if (!_hydrated || !ready) {
