@@ -3,7 +3,7 @@
 ## Testovaci pristup (Administrator)
 
 - **Uživatel:** `khodek`
-- **Heslo:** `hodek`
+- **Heslo:** `9990000200870`
 
 ---
 
