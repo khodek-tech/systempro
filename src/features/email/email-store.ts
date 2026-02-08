@@ -217,7 +217,16 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (!error && data) {
-      const mapped = data.map((row) => mapDbToEmailMessage({ ...row, telo_text: null, telo_html: null }));
+      const existingMessages = get().messages;
+      const mapped = data.map((row) => {
+        const msg = mapDbToEmailMessage({ ...row, telo_text: null, telo_html: null });
+        // Preserve already-loaded body so auto-sync doesn't wipe it
+        const existing = existingMessages.find((m) => m.id === msg.id);
+        if (existing && (existing.bodyText !== null || existing.bodyHtml !== null)) {
+          return { ...msg, bodyText: existing.bodyText, bodyHtml: existing.bodyHtml };
+        }
+        return msg;
+      });
       set({
         messages: page === 0 ? mapped : [...get().messages, ...mapped],
         messagesPage: page,
