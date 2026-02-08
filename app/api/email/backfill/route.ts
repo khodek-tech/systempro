@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
               bodyStructure: true,
             });
 
-            if (fetched?.bodyStructure) {
+            if (fetched && fetched.bodyStructure) {
               const { textPart, htmlPart } = findTextParts(fetched.bodyStructure);
               let text: string | null = null;
               let html: string | null = null;
