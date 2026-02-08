@@ -2,6 +2,27 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.4.0] - 2026-02-08
+
+### Přidáno
+
+#### Realtime synchronizace pro Úkoly
+- Tabulky `ukoly` a `komentare_ukolu` přidány do `supabase_realtime` publikace
+- `tasks-store.ts`: nové metody `subscribeRealtime()` a `unsubscribeRealtime()`
+- Poslouchá INSERT/UPDATE/DELETE na `ukoly` a INSERT na `komentare_ukolu`
+- `lib/supabase/init.ts`: registrace tasks Realtime subscriptions a cleanup
+
+#### Vylepšení Realtime pro Email a Chat
+- `emailove_zpravy` a `emailove_slozky`: REPLICA IDENTITY FULL pro spolehlivé filtrované subscriptions
+- `chat-store.ts`: přidán UPDATE listener pro `chat_zpravy` (editace zpráv)
+- `chat-store.ts` a `email-store.ts`: status logging callbacky na `.subscribe()`
+
+### Změněno
+- `/specs/modules/tasks.spec.yaml`: přidána feature `task_realtime`; scénáře TASK-006 až TASK-008
+- `/testy.md`: aktualizována sekce Úkoly o realtime testy
+
+---
+
 ## [1.3.0] - 2026-02-08
 
 ### Přidáno

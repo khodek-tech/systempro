@@ -109,6 +109,33 @@
 | TASK-E003 | Úkol bez assignee | Zobrazí se ve "Všechny" |
 | TASK-E004 | Dvojí delegace | Chyba: "Úkol je již delegován" |
 
+### Realtime synchronizace
+
+#### TASK-006: Realtime — nový úkol
+
+**Přístup:** Dva uživatelé ve dvou oknech prohlížeče
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít dvě okna se dvěma různými uživateli | Oba přihlášeni |
+| 2 | Uživatel A: vytvořit úkol přiřazený uživateli B | Úkol vytvořen |
+| 3 | Uživatel B: zkontrolovat seznam úkolů | Nový úkol se zobrazí bez reloadu |
+| 4 | Zkontrolovat konzoli | `[tasks-realtime] SUBSCRIBED` log |
+
+#### TASK-007: Realtime — změna stavu
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Uživatel B: kliknout "Začít práci" na úkolu | Stav se změní |
+| 2 | Uživatel A: zkontrolovat stav úkolu | Stav aktualizován okamžitě |
+
+#### TASK-008: Realtime — nový komentář
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Uživatel A: přidat komentář k úkolu | Komentář odeslán |
+| 2 | Uživatel B: zkontrolovat detail úkolu | Komentář se zobrazí bez reloadu |
+
 ---
 
 ## 2. Chat

@@ -359,6 +359,23 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       .on(
         'postgres_changes',
         {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_zpravy',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const updated = mapDbToChatMessage(payload.new);
+          set({
+            messages: get().messages.map((m) =>
+              m.id === updated.id ? { ...m, ...updated } : m,
+            ),
+          });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
           event: '*',
           schema: 'public',
           table: 'chat_stav_precteni',
@@ -382,7 +399,9 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
           }
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('[chat-realtime]', status, err ?? '');
+      });
 
     set({ _realtimeChannel: channel });
   },

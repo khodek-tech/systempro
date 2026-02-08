@@ -936,7 +936,9 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
           });
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('[email-realtime]', status, err ?? '');
+      });
 
     set({ _realtimeChannel: channel });
   },

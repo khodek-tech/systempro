@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Task, TaskStatus, TaskPriority, TaskComment, TaskAttachment, ViewRoleMapping } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToTask, mapDbToTaskComment, mapTaskToDb, mapTaskCommentToDb } from '@/lib/supabase/mappers';
@@ -22,6 +23,7 @@ interface TasksState {
   editingTaskId: string | null;
   statusFilter: TaskStatus | 'all';
   priorityFilter: TaskPriority | 'all';
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface TasksActions {
@@ -77,6 +79,10 @@ interface TasksActions {
   setStatusFilter: (status: TaskStatus | 'all') => void;
   setPriorityFilter: (priority: TaskPriority | 'all') => void;
 
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
+
   // Repeating tasks
   checkAndCreateRepeatingTasks: () => Promise<void>;
 }
@@ -106,6 +112,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   editingTaskId: null,
   statusFilter: 'all',
   priorityFilter: 'all',
+  _realtimeChannel: null,
 
   // Fetch
   fetchTasks: async () => {
@@ -695,6 +702,79 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   // Filter actions
   setStatusFilter: (status) => set({ statusFilter: status }),
   setPriorityFilter: (priority) => set({ priorityFilter: priority }),
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('tasks-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ukoly',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const comments = get().tasks.find((t) => t.id === payload.new.id)?.comments ?? [];
+            const newTask = mapDbToTask(payload.new, comments);
+            const exists = get().tasks.some((t) => t.id === newTask.id);
+            if (!exists) {
+              set({ tasks: [...get().tasks, newTask] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const existingTask = get().tasks.find((t) => t.id === payload.new.id);
+            const comments = existingTask?.comments ?? [];
+            const updated = mapDbToTask(payload.new, comments);
+            set({
+              tasks: get().tasks.map((t) =>
+                t.id === updated.id ? { ...t, ...updated, comments: t.comments } : t,
+              ),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({ tasks: get().tasks.filter((t) => t.id !== oldId) });
+            }
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'komentare_ukolu',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const newComment = mapDbToTaskComment(payload.new);
+          set({
+            tasks: get().tasks.map((t) => {
+              if (t.id !== newComment.taskId) return t;
+              const exists = t.comments.some((c) => c.id === newComment.id);
+              if (exists) return t;
+              return { ...t, comments: [...t.comments, newComment] };
+            }),
+          });
+        },
+      )
+      .subscribe((status, err) => {
+        console.log('[tasks-realtime]', status, err ?? '');
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
+  },
 
   // Repeating tasks
   checkAndCreateRepeatingTasks: async () => {

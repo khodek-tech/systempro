@@ -122,6 +122,19 @@ features:
       - "Všechny" - viditelné podle viewMappings
       - Schválené úkoly jen v "Všechny"
 
+  - id: task_realtime
+    name: Realtime synchronizace
+    description: Cross-user real-time synchronizace úkolů přes Supabase Realtime
+    acceptance_criteria:
+      - Tabulky ukoly a komentare_ukolu jsou v supabase_realtime publikaci
+      - subscribeRealtime() poslouchá INSERT/UPDATE/DELETE na ukoly
+      - subscribeRealtime() poslouchá INSERT na komentare_ukolu
+      - Nový úkol od uživatele A se okamžitě zobrazí uživateli B
+      - Změna stavu úkolu se propaguje všem klientům
+      - Nový komentář se okamžitě zobrazí ostatním
+      - unsubscribeRealtime() se volá při cleanup
+      - Subscription loguje status do konzole [tasks-realtime]
+
 notifications:
   badge:
     type: count
@@ -259,3 +272,39 @@ edge_cases:
     description: Pokus o delegaci již delegovaného úkolu
     expected: >
       Systém vrátí chybu "Úkol je již delegován".
+
+scenarios_realtime:
+  - id: TASK-006
+    name: Realtime synchronizace nového úkolu
+    preconditions:
+      - Dva uživatelé přihlášeni ve dvou oknech
+      - Oba mají přístup k modulu Úkoly
+    steps:
+      - Uživatel A vytvoří nový úkol přiřazený uživateli B
+      - Uživatel B vidí nový úkol bez nutnosti reloadu
+    expected:
+      - Úkol se okamžitě zobrazí v seznamu uživatele B
+      - Badge se aktualizuje
+
+  - id: TASK-007
+    name: Realtime synchronizace změny stavu
+    preconditions:
+      - Existuje úkol přiřazený uživateli B, vytvořený uživatelem A
+      - Oba jsou přihlášeni
+    steps:
+      - Uživatel B změní stav úkolu (Začít/Odeslat ke schválení)
+      - Uživatel A vidí změnu stavu okamžitě
+    expected:
+      - Stav úkolu se aktualizuje v reálném čase
+      - Badge se přepočítá
+
+  - id: TASK-008
+    name: Realtime synchronizace komentáře
+    preconditions:
+      - Existuje úkol viditelný oběma uživateli
+      - Oba mají otevřený detail úkolu
+    steps:
+      - Uživatel A přidá komentář
+      - Uživatel B vidí komentář okamžitě
+    expected:
+      - Komentář se zobrazí bez reloadu
