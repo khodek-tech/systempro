@@ -4,6 +4,77 @@ import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { ImapFlow } from 'imapflow';
 
+// Translate raw IMAP errors to user-friendly Czech messages
+function friendlyError(msg: string): string {
+  if (msg.includes('Connection not available') || msg.includes('ECONNREFUSED'))
+    return 'Nepodařilo se připojit k mailovému serveru. Zkuste to za chvíli.';
+  if (msg.includes('ETIMEDOUT'))
+    return 'Připojení k mailovému serveru vypršelo.';
+  if (msg.includes('Authentication') || msg.includes('AUTHENTICATIONFAILED'))
+    return 'Chyba přihlášení k mailovému serveru. Zkontrolujte heslo.';
+  return msg;
+}
+
+// Connect with retry (1 retry after 3s)
+async function connectWithRetry(client: ImapFlow, maxRetries = 1) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await client.connect();
+      return;
+    } catch (err) {
+      if (attempt >= maxRetries) throw err;
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+}
+
+// Walk MIME bodyStructure tree and return part IDs for text/plain and text/html (skip attachments)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findTextParts(node: any): { textPart?: string; htmlPart?: string } {
+  if (!node) return {};
+  // Leaf node (no children)
+  if (!node.childNodes?.length) {
+    const partId = node.part || '1';
+    if (node.type === 'text/plain' && node.disposition !== 'attachment')
+      return { textPart: partId };
+    if (node.type === 'text/html' && node.disposition !== 'attachment')
+      return { htmlPart: partId };
+    return {};
+  }
+  // Recurse children, take first match of each type
+  const result: { textPart?: string; htmlPart?: string } = {};
+  for (const child of node.childNodes) {
+    const childResult = findTextParts(child);
+    if (childResult.textPart && !result.textPart) result.textPart = childResult.textPart;
+    if (childResult.htmlPart && !result.htmlPart) result.htmlPart = childResult.htmlPart;
+  }
+  return result;
+}
+
+// Convert a readable stream to a UTF-8 string with timeout protection
+async function streamToString(stream: ReadableStream | NodeJS.ReadableStream, timeoutMs = 10000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const timeout = setTimeout(() => {
+      reject(new Error('Stream read timeout'));
+    }, timeoutMs);
+
+    (async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for await (const chunk of stream as any) {
+          chunks.push(Buffer.from(chunk));
+        }
+        clearTimeout(timeout);
+        resolve(Buffer.concat(chunks).toString('utf-8'));
+      } catch (err) {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    })();
+  });
+}
+
 export async function POST(request: NextRequest) {
   const { user, error: authError } = await requireAuth();
   if (authError || !user) {
@@ -59,12 +130,17 @@ export async function POST(request: NextRequest) {
       },
       logger: false,
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 30000,
+      greetingTimeout: 16000,
+      socketTimeout: 300000,
     });
 
     let totalNew = 0;
+    let syncStatus = 'error';
+    let syncError: string | null = null;
 
     try {
-      await client.connect();
+      await connectWithRetry(client);
 
       // Get folder list from server and sync
       const mailboxes = await client.list();
@@ -98,172 +174,155 @@ export async function POST(request: NextRequest) {
         // Open mailbox and fetch new messages
         const lock = await client.getMailboxLock(mailbox.path);
         try {
-          const status = await client.status(mailbox.path, { messages: true, unseen: true, uidNext: true });
+          const status = await client.status(mailbox.path, { messages: true, unseen: true });
 
-          // Only fetch if there are messages newer than what we've synced
-          if (status.uidNext && status.uidNext > lastUid + 1) {
-            const fetchRange = `${lastUid + 1}:*`;
-            let highestUid = lastUid;
-            let newInFolder = 0;
+          // Always try to fetch new messages — don't rely on uidNext from STATUS
+          // (RFC 3501: STATUS SHOULD NOT be used on the currently selected mailbox,
+          //  so uidNext can be stale and cause skipped messages)
+          const fetchRange = `${lastUid + 1}:*`;
+          let highestUid = lastUid;
+          let newInFolder = 0;
 
+          // Collect metadata for all new messages first
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pendingMessages: any[] = [];
+          try {
+            for await (const msg of client.fetch(fetchRange, {
+              uid: true,
+              envelope: true,
+              bodyStructure: true,
+              flags: true,
+              size: true,
+            }, { uid: true })) {
+              if (msg.uid <= lastUid) continue;
+              pendingMessages.push(msg);
+            }
+          } catch (fetchErr) {
+            console.error(`Error fetching metadata in ${mailbox.path}:`, fetchErr);
+          }
+
+          // Now download text/html body parts individually (no attachments)
+          for (const msg of pendingMessages) {
             try {
-              for await (const msg of client.fetch(fetchRange, {
-                uid: true,
-                envelope: true,
-                bodyStructure: true,
-                flags: true,
-                size: true,
-                source: { maxLength: 50000 }, // Fetch first 50KB for preview/body
-              })) {
-                if (msg.uid <= lastUid) continue;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const envelopeFrom = (msg.envelope as any)?.from;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const envelopeTo = (msg.envelope as any)?.to;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const envelopeCc = (msg.envelope as any)?.cc;
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const envelopeFrom = (msg.envelope as any)?.from;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const envelopeTo = (msg.envelope as any)?.to;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const envelopeCc = (msg.envelope as any)?.cc;
+              const parseAddr = (addr: { name?: string; address?: string; mailbox?: string; host?: string }) => ({
+                name: addr.name || undefined,
+                address: addr.address || (addr.mailbox && addr.host ? `${addr.mailbox}@${addr.host}` : 'unknown'),
+              });
 
-                const parseAddr = (addr: { name?: string; address?: string; mailbox?: string; host?: string }) => ({
-                  name: addr.name || undefined,
-                  address: addr.address || (addr.mailbox && addr.host ? `${addr.mailbox}@${addr.host}` : 'unknown'),
-                });
+              const from = envelopeFrom?.[0]
+                ? parseAddr(envelopeFrom[0])
+                : { address: 'unknown' };
 
-                const from = envelopeFrom?.[0]
-                  ? parseAddr(envelopeFrom[0])
-                  : { address: 'unknown' };
+              const to = (envelopeTo || []).map(parseAddr);
+              const cc = envelopeCc?.length ? envelopeCc.map(parseAddr) : null;
 
-                const to = (envelopeTo || []).map(parseAddr);
-                const cc = envelopeCc?.length ? envelopeCc.map(parseAddr) : null;
+              const hasAttachments = checkAttachments(msg.bodyStructure);
+              const attachmentsMeta = extractAttachmentMeta(msg.bodyStructure);
 
-                const hasAttachments = checkAttachments(msg.bodyStructure);
-                const attachmentsMeta = extractAttachmentMeta(msg.bodyStructure);
+              // Download only text/html parts (skip attachments)
+              let bodyText: string | null = null;
+              let bodyHtml: string | null = null;
+              const { textPart, htmlPart } = findTextParts(msg.bodyStructure);
 
-                // Extract text + html body from source
-                let bodyText: string | null = null;
-                let bodyHtml: string | null = null;
-                let preview = '';
-                if (msg.source) {
-                  const sourceText = msg.source.toString();
-                  const extracted = extractEmailBody(sourceText);
-                  bodyText = extracted.text;
-                  bodyHtml = extracted.html;
-                  preview = (bodyText || stripHtmlTags(bodyHtml) || '').substring(0, 200).replace(/\s+/g, ' ').trim();
+              try {
+                if (textPart) {
+                  const { content } = await client.download(String(msg.uid), textPart, { uid: true });
+                  if (content) bodyText = (await streamToString(content)).substring(0, 50000) || null;
                 }
+                if (htmlPart) {
+                  const { content } = await client.download(String(msg.uid), htmlPart, { uid: true });
+                  if (content) bodyHtml = (await streamToString(content)).substring(0, 100000) || null;
+                }
+              } catch (dlErr) {
+                console.error(`Error downloading body parts for UID ${msg.uid}:`, dlErr);
+              }
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const envelope = msg.envelope as any;
-                const messageId = `msg-${accountId}-${msg.uid}-${Date.now()}`;
-                await supabase.from('emailove_zpravy').upsert({
-                  id: messageId,
-                  id_uctu: accountId,
-                  id_slozky: folderDbId,
-                  imap_uid: msg.uid,
-                  id_zpravy_rfc: envelope?.messageId || null,
-                  predmet: envelope?.subject || '',
-                  odesilatel: from,
-                  prijemci: to,
-                  kopie: cc,
-                  datum: envelope?.date?.toISOString() || new Date().toISOString(),
-                  nahled: preview,
-                  telo_text: bodyText,
-                  telo_html: bodyHtml,
-                  precteno: msg.flags?.has('\\Seen') ?? false,
-                  oznaceno: msg.flags?.has('\\Flagged') ?? false,
-                  ma_prilohy: hasAttachments,
-                  metadata_priloh: attachmentsMeta,
-                  odpoved_na: envelope?.inReplyTo || null,
-                  vlakno_id: envelope?.messageId || null,
-                  velikost: msg.size ?? 0,
-                }, {
-                  onConflict: 'id_uctu,id_slozky,imap_uid',
-                  ignoreDuplicates: true,
-                });
+              const preview = (bodyText || stripHtmlTags(bodyHtml) || '').substring(0, 200).replace(/\s+/g, ' ').trim();
 
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const envelope = msg.envelope as any;
+              const messageId = `msg-${accountId}-${folderDbId}-${msg.uid}`;
+              const { error: upsertError } = await supabase.from('emailove_zpravy').upsert({
+                id: messageId,
+                id_uctu: accountId,
+                id_slozky: folderDbId,
+                imap_uid: msg.uid,
+                id_zpravy_rfc: envelope?.messageId || null,
+                predmet: envelope?.subject || '',
+                odesilatel: from,
+                prijemci: to,
+                kopie: cc,
+                datum: envelope?.date?.toISOString() || new Date().toISOString(),
+                nahled: preview,
+                telo_text: bodyText,
+                telo_html: bodyHtml,
+                precteno: msg.flags?.has('\\Seen') ?? false,
+                oznaceno: msg.flags?.has('\\Flagged') ?? false,
+                ma_prilohy: hasAttachments,
+                metadata_priloh: attachmentsMeta,
+                odpoved_na: envelope?.inReplyTo || null,
+                vlakno_id: envelope?.messageId || null,
+                velikost: msg.size ?? 0,
+              }, {
+                onConflict: 'id_uctu,id_slozky,imap_uid',
+                ignoreDuplicates: false,
+              });
+
+              if (upsertError) {
+                console.error(`Upsert failed for UID ${msg.uid}:`, upsertError.message);
+              } else {
                 if (msg.uid > highestUid) highestUid = msg.uid;
                 newInFolder++;
               }
-            } catch (fetchErr) {
-              console.error(`Error fetching messages in ${mailbox.path}:`, fetchErr);
+            } catch (msgErr) {
+              console.error(`Error processing UID ${msg.uid}:`, msgErr);
             }
-
-            totalNew += newInFolder;
-
-            // Update folder stats
-            await supabase.from('emailove_slozky').update({
-              pocet_zprav: status.messages ?? 0,
-              pocet_neprectenych: status.unseen ?? 0,
-              posledni_uid: highestUid,
-            }).eq('id', folderDbId);
-          } else {
-            // Just update counts
-            await supabase.from('emailove_slozky').update({
-              pocet_zprav: status.messages ?? 0,
-              pocet_neprectenych: status.unseen ?? 0,
-            }).eq('id', folderDbId);
           }
 
-          // Re-fetch body for existing messages with empty text+html (max 50)
-          try {
-            const { data: emptyBodyMsgs } = await supabase
-              .from('emailove_zpravy')
-              .select('id, imap_uid')
-              .eq('id_slozky', folderDbId)
-              .is('telo_text', null)
-              .is('telo_html', null)
-              .limit(50);
+          totalNew += newInFolder;
 
-            if (emptyBodyMsgs && emptyBodyMsgs.length > 0) {
-              for (const dbMsg of emptyBodyMsgs) {
-                try {
-                  // Fetch source for this specific UID
-                  const fetched = await client.fetchOne(String(dbMsg.imap_uid), {
-                    uid: true,
-                    source: { maxLength: 50000 },
-                  });
-                  if (fetched?.source) {
-                    const { text, html } = extractEmailBody(fetched.source.toString());
-                    if (text || html) {
-                      const newPreview = (text || stripHtmlTags(html) || '').substring(0, 200).replace(/\s+/g, ' ').trim();
-                      await supabase.from('emailove_zpravy').update({
-                        telo_text: text,
-                        telo_html: html,
-                        nahled: newPreview || undefined,
-                      }).eq('id', dbMsg.id);
-                    }
-                  }
-                } catch {
-                  // Skip individual message errors
-                }
-              }
-            }
-          } catch (refetchErr) {
-            console.error(`Error re-fetching empty bodies in ${mailbox.path}:`, refetchErr);
+          // Always update counts; conditionally update posledni_uid
+          const folderUpdate: Record<string, unknown> = {
+            pocet_zprav: status.messages ?? 0,
+            pocet_neprectenych: status.unseen ?? 0,
+          };
+          if (highestUid > lastUid) {
+            folderUpdate.posledni_uid = highestUid;
           }
+          await supabase.from('emailove_slozky').update(folderUpdate).eq('id', folderDbId);
         } finally {
           lock.release();
         }
       }
-
-      await client.logout();
 
       // Update account last sync
       await supabase.from('emailove_ucty').update({
         posledni_sync: new Date().toISOString(),
       }).eq('id', accountId);
 
-      const duration = Date.now() - startTime;
-      await updateLog(supabase, logEntry?.id, 'success', null, totalNew, duration);
-
-      return NextResponse.json({ success: true, newCount: totalNew });
+      syncStatus = 'success';
     } catch (imapErr) {
+      syncError = imapErr instanceof Error ? imapErr.message : String(imapErr);
+      console.error('IMAP sync error:', imapErr);
+    } finally {
       await client.logout().catch(() => {});
       const duration = Date.now() - startTime;
-      const errMsg = imapErr instanceof Error ? imapErr.message : String(imapErr);
-      await updateLog(supabase, logEntry?.id, 'error', errMsg, totalNew, duration);
-      console.error('IMAP sync error:', imapErr);
-      return NextResponse.json({ success: false, error: errMsg });
+      try {
+        await updateLog(supabase, logEntry?.id, syncStatus, syncError, totalNew, duration);
+      } catch { /* ignore log update failure */ }
     }
+
+    if (syncError) {
+      return NextResponse.json({ success: false, error: friendlyError(syncError) });
+    }
+    return NextResponse.json({ success: true, newCount: totalNew });
   } catch (error) {
     console.error('Email sync error:', error);
     return NextResponse.json({ success: false, error: 'Sync failed' });
@@ -340,70 +399,6 @@ function extractAttachmentMeta(bodyStructure: any, results: any[] = []): any[] {
     }
   }
   return results;
-}
-
-function decodePartBody(part: string): string | null {
-  const bodyStart = part.indexOf('\r\n\r\n');
-  if (bodyStart === -1) return null;
-
-  const headers = part.substring(0, bodyStart).toLowerCase();
-  let body = part.substring(bodyStart + 4).trim().replace(/--$/, '').trim();
-  if (!body) return null;
-
-  // Detect Content-Transfer-Encoding
-  const encodingMatch = headers.match(/content-transfer-encoding:\s*(\S+)/);
-  const encoding = encodingMatch?.[1]?.toLowerCase();
-
-  if (encoding === 'base64') {
-    try {
-      // Remove line breaks from base64 content
-      const cleaned = body.replace(/[\r\n\s]/g, '');
-      body = Buffer.from(cleaned, 'base64').toString('utf-8');
-    } catch {
-      return null;
-    }
-  } else if (encoding === 'quoted-printable') {
-    // Decode quoted-printable: =XX hex sequences and =\r\n soft line breaks
-    body = body
-      .replace(/=\r?\n/g, '') // soft line breaks
-      .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  }
-
-  return body || null;
-}
-
-function extractEmailBody(source: string): { text: string | null; html: string | null } {
-  const boundary = source.match(/boundary="?([^"\r\n]+)"?/)?.[1];
-  let text: string | null = null;
-  let html: string | null = null;
-
-  if (boundary) {
-    const parts = source.split(boundary);
-    for (const part of parts) {
-      const decoded = decodePartBody(part);
-      if (!decoded) continue;
-      if (part.toLowerCase().includes('text/plain') && !text) {
-        text = decoded;
-      } else if (part.toLowerCase().includes('text/html') && !html) {
-        html = decoded;
-      }
-    }
-  } else {
-    // Single-part email
-    const decoded = decodePartBody(source);
-    if (decoded) {
-      if (source.toLowerCase().includes('text/html') || decoded.trim().startsWith('<')) {
-        html = decoded;
-      } else {
-        text = decoded;
-      }
-    }
-  }
-
-  return {
-    text: text?.substring(0, 50000) || null,
-    html: html?.substring(0, 100000) || null,
-  };
 }
 
 function stripHtmlTags(html: string | null): string {
