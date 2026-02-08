@@ -168,7 +168,7 @@ export function EmailFullView() {
 
         {/* Desktop: two-panel layout */}
         <div className="hidden md:flex flex-1 min-w-0">
-          <div className="w-52 flex-shrink-0 bg-white border-r border-slate-200">
+          <div className="w-64 flex-shrink-0 bg-white border-r border-slate-200">
             <EmailSidebar />
           </div>
           <div className="flex-1 min-w-0 bg-white overflow-hidden">

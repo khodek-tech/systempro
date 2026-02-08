@@ -7,10 +7,12 @@ import { cn } from '@/lib/utils';
 
 interface EmailMessageItemProps {
   message: EmailMessage;
+  selected: boolean;
+  onToggleSelect: () => void;
   onClick: () => void;
 }
 
-export function EmailMessageItem({ message, onClick }: EmailMessageItemProps) {
+export function EmailMessageItem({ message, selected, onToggleSelect, onClick }: EmailMessageItemProps) {
   const initials = getEmailInitials(message.from);
   const senderName = formatEmailAddressShort(message.from);
   const dateStr = formatEmailDate(message.date);
@@ -23,6 +25,15 @@ export function EmailMessageItem({ message, onClick }: EmailMessageItemProps) {
         !message.read && 'bg-blue-50/50'
       )}
     >
+      {/* Checkbox */}
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={(e) => { e.stopPropagation(); onToggleSelect(); }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 flex-shrink-0 cursor-pointer"
+      />
+
       {/* Unread indicator */}
       <div className="w-2 flex-shrink-0">
         {!message.read && (

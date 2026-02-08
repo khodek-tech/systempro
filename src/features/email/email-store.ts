@@ -28,16 +28,21 @@ interface EmailState {
   _loaded: boolean;
   _loading: boolean;
   _messagesLoading: boolean;
+  _searchLoading: boolean;
+  searchResults: EmailMessage[];
 
   // View state
   emailViewMode: 'card' | 'view';
   selectedAccountId: string | null;
   selectedFolderId: string | null;
   selectedMessageId: string | null;
+  selectedMessageIds: string[];
   composerOpen: boolean;
   composerMode: 'new' | 'reply' | 'replyAll' | 'forward';
   composerReplyTo: EmailMessage | null;
   searchQuery: string;
+  emailSortField: 'date' | 'from' | 'subject';
+  emailSortDirection: 'asc' | 'desc';
 
   // Pagination
   messagesPage: number;
@@ -58,7 +63,15 @@ interface EmailActions {
   selectFolder: (folderId: string | null) => void;
   selectMessage: (messageId: string | null) => void;
   setSearchQuery: (query: string) => void;
+  searchMessages: (query: string) => Promise<void>;
+  setEmailSort: (field: 'date' | 'from' | 'subject') => void;
   loadMoreMessages: () => Promise<void>;
+
+  // Selection
+  toggleMessageSelection: (messageId: string) => void;
+  selectAllMessages: () => void;
+  clearSelection: () => void;
+  moveSelectedToFolder: (targetFolderId: string) => Promise<void>;
 
   // Message actions
   markAsRead: (messageId: string) => Promise<void>;
@@ -100,15 +113,20 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   _loaded: false,
   _loading: false,
   _messagesLoading: false,
+  _searchLoading: false,
+  searchResults: [],
 
   emailViewMode: 'card',
   selectedAccountId: null,
   selectedFolderId: null,
   selectedMessageId: null,
+  selectedMessageIds: [],
   composerOpen: false,
   composerMode: 'new',
   composerReplyTo: null,
   searchQuery: '',
+  emailSortField: 'date',
+  emailSortDirection: 'desc',
 
   messagesPage: 0,
   messagesTotal: 0,
@@ -223,8 +241,10 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     selectedAccountId: null,
     selectedFolderId: null,
     selectedMessageId: null,
+    selectedMessageIds: [],
     composerOpen: false,
     searchQuery: '',
+    searchResults: [],
   }),
 
   selectAccount: (accountId) => {
@@ -232,6 +252,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       selectedAccountId: accountId,
       selectedFolderId: null,
       selectedMessageId: null,
+      selectedMessageIds: [],
       messages: [],
       messagesPage: 0,
       messagesTotal: 0,
@@ -254,6 +275,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     set({
       selectedFolderId: folderId,
       selectedMessageId: null,
+      selectedMessageIds: [],
       messages: [],
       messagesPage: 0,
       messagesTotal: 0,
@@ -284,10 +306,113 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
   setSearchQuery: (query) => set({ searchQuery: query }),
 
+  searchMessages: async (query) => {
+    const accountId = get().selectedAccountId;
+    if (!accountId || !query.trim()) {
+      set({ searchResults: [], _searchLoading: false });
+      return;
+    }
+
+    set({ _searchLoading: true });
+    const supabase = createClient();
+    const q = query.trim().replace(/%/g, '\\%').replace(/_/g, '\\_');
+
+    const { data, error } = await supabase
+      .from('emailove_zpravy')
+      .select('id, id_uctu, id_slozky, imap_uid, id_zpravy_rfc, predmet, odesilatel, prijemci, kopie, skryta_kopie, datum, nahled, precteno, oznaceno, ma_prilohy, metadata_priloh, odpoved_na, vlakno_id, velikost, synchronizovano')
+      .eq('id_uctu', accountId)
+      .or(`predmet.ilike.%${q}%,nahled.ilike.%${q}%,odesilatel->>address.ilike.%${q}%,odesilatel->>name.ilike.%${q}%`)
+      .order('datum', { ascending: false })
+      .limit(100);
+
+    if (!error && data) {
+      set({
+        searchResults: data.map((row) => mapDbToEmailMessage({ ...row, telo_text: null, telo_html: null })),
+        _searchLoading: false,
+      });
+    } else {
+      console.error('Search failed:', error);
+      set({ searchResults: [], _searchLoading: false });
+    }
+  },
+
+  setEmailSort: (field) => {
+    const { emailSortField, emailSortDirection } = get();
+    if (field === emailSortField) {
+      set({ emailSortDirection: emailSortDirection === 'asc' ? 'desc' : 'asc' });
+    } else {
+      set({
+        emailSortField: field,
+        emailSortDirection: field === 'date' ? 'desc' : 'asc',
+      });
+    }
+  },
+
   loadMoreMessages: async () => {
     const { selectedAccountId, selectedFolderId, messagesPage, messagesHasMore, _messagesLoading } = get();
     if (!selectedAccountId || !selectedFolderId || !messagesHasMore || _messagesLoading) return;
     await get().fetchMessages(selectedAccountId, selectedFolderId, messagesPage + 1);
+  },
+
+  // =========================================================================
+  // Selection
+  // =========================================================================
+
+  toggleMessageSelection: (messageId) => {
+    const ids = get().selectedMessageIds;
+    set({
+      selectedMessageIds: ids.includes(messageId)
+        ? ids.filter((id) => id !== messageId)
+        : [...ids, messageId],
+    });
+  },
+
+  selectAllMessages: () => {
+    set({ selectedMessageIds: get().messages.map((m) => m.id) });
+  },
+
+  clearSelection: () => {
+    set({ selectedMessageIds: [] });
+  },
+
+  moveSelectedToFolder: async (targetFolderId) => {
+    const ids = get().selectedMessageIds;
+    if (ids.length === 0) return;
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('emailove_zpravy')
+      .update({ id_slozky: targetFolderId })
+      .in('id', ids);
+
+    if (!error) {
+      const movedMessages = get().messages.filter((m) => ids.includes(m.id));
+      const unreadCount = movedMessages.filter((m) => !m.read).length;
+      const sourceFolderId = get().selectedFolderId;
+
+      set({
+        messages: get().messages.filter((m) => !ids.includes(m.id)),
+        selectedMessageIds: [],
+        selectedMessageId: ids.includes(get().selectedMessageId ?? '') ? null : get().selectedMessageId,
+        folders: get().folders.map((f) => {
+          if (f.id === sourceFolderId) {
+            return {
+              ...f,
+              messageCount: Math.max(0, f.messageCount - movedMessages.length),
+              unreadCount: Math.max(0, f.unreadCount - unreadCount),
+            };
+          }
+          if (f.id === targetFolderId) {
+            return {
+              ...f,
+              messageCount: f.messageCount + movedMessages.length,
+              unreadCount: f.unreadCount + unreadCount,
+            };
+          }
+          return f;
+        }),
+      });
+    }
   },
 
   // =========================================================================
