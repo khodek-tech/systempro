@@ -155,6 +155,14 @@
 | 7 | Změnit název a členy | Změny uloženy |
 | 8 | Smazat skupinu | Skupina smazána |
 
+#### CHAT-006: Realtime multi-klient
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít chat ve dvou prohlížečích | Oba připojeni přes Realtime |
+| 2 | Uživatel A pošle zprávu | Zpráva se okamžitě objeví u B |
+| 3 | Zkontrolovat badge u B | Badge se aktualizuje bez refreshe |
+
 ### Hraniční případy
 
 | ID | Situace | Očekávané chování |
@@ -610,12 +618,49 @@
 | 2 | Stiskne F5 | Data se znovu načtou z DB |
 | 3 | Stav konzistentní | Počty odpovídají |
 
+### SC-EMAIL-08: Přesun e-mailu se sync na IMAP
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přesune zprávu do jiné složky | Zpráva se přesune na IMAP serveru |
+| 2 | Zkontroluje v jiném IMAP klientu | Zpráva je ve správné složce |
+| 3 | Druhý uživatel vidí změnu | Realtime aktualizace bez refreshe |
+
+### SC-EMAIL-09: Označení přečteno/nepřečteno se sync na IMAP
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Označí zprávu jako přečtenou | Flag \Seen se přidá na IMAP (best-effort) |
+| 2 | Označí zprávu jako nepřečtenou | Flag \Seen se odebere na IMAP |
+
+### SC-EMAIL-10: Smazání e-mailu se sync na IMAP
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Smaže zprávu (z koše) | Zpráva se smaže na IMAP serveru |
+| 2 | Smaže zprávu (z Inbox) | Přesune se do koše (IMAP MOVE) |
+
+### SC-EMAIL-11: Multi-klient Realtime
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Dva uživatelé otevřou stejný účet | Oba připojeni přes Realtime |
+| 2 | Jeden přesune zprávu | Druhý vidí změnu okamžitě |
+| 3 | Počty ve složkách | Aktualizují se u obou |
+
+### SC-EMAIL-12: Odeslání e-mailu s IMAP APPEND
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Odešle e-mail | SMTP odesláno |
+| 2 | Zkontroluje Sent v jiném klientu | Kopie existuje na IMAP serveru |
+| 3 | imap_uid | Nenulový v DB |
+
 ### Edge cases
 - Bez nastavené env proměnné `EMAIL_ENCRYPTION_KEY` → chyba při ukládání účtu
 - Velká příloha → stahuje se on-demand z IMAP, ne z DB
 - Timeout IMAP připojení → chyba v sync logu
 - HTML e-mail s nebezpečným obsahem → DOMPurify sanitizace
 - Uživatel bez přístupu → nezobrazí se žádný účet
+- imapUid === 0 → přeskočit IMAP operace (lokálně vytvořené zprávy)
+- IMAP MOVE vrací nový UID → aktualizovat v DB
+- Auto-sync při neaktivní záložce → přeskočit
+- Realtime event od vlastního klienta → nezduplikovat
 
 ---
 

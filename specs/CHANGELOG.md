@@ -2,6 +2,33 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.3.0] - 2026-02-08
+
+### Přidáno
+
+#### Obousměrná IMAP synchronizace
+- `lib/email/imap-client.ts` - Sdílená IMAP connection utility (`withImapConnection`)
+- `POST /api/email/imap-action` - API endpoint pro IMAP operace (move, setRead, setUnread, setFlagged, unsetFlagged, delete)
+- IMAP APPEND po SMTP send - odeslaný e-mail se uloží do Sent složky na serveru
+- Automatická IMAP synchronizace každých 60 sekund (při aktivní záložce)
+
+#### Supabase Realtime
+- Email: Realtime subscription na `emailove_zpravy` a `emailove_slozky`
+- Chat: Realtime subscription na `chat_zpravy` a `chat_stav_precteni`
+- Migrace: `ALTER PUBLICATION supabase_realtime ADD TABLE` pro 4 tabulky
+- Změny jednoho uživatele se okamžitě propagují všem připojeným klientům
+
+### Změněno
+- `email-store.ts`: moveToFolder, markAsRead, markAsUnread, toggleFlagged, deleteMessage nyní volají IMAP server
+- `email-store.ts`: přidány metody subscribeRealtime, unsubscribeRealtime, startAutoSync, stopAutoSync
+- `chat-store.ts`: přidány metody subscribeRealtime, unsubscribeRealtime
+- `lib/supabase/init.ts`: po inicializaci spustí Realtime subscriptions a auto-sync, cleanup při unmount
+- `app/api/email/send/route.ts`: IMAP APPEND do Sent složky po odeslání
+- `/specs/modules/email.spec.yaml`: přidány features email-imap-writeback, email-realtime; scénáře SC-EMAIL-08 až SC-EMAIL-12
+- `/specs/modules/chat.spec.yaml`: přidána feature realtime; scénář CHAT-006; aktualizován CHAT-E004
+
+---
+
 ## [1.2.0] - 2026-02-08
 
 ### Přidáno

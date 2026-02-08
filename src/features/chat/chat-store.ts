@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   ChatGroup,
   ChatMessage,
@@ -28,6 +29,7 @@ interface ChatState {
   searchQuery: string;
   isGroupFormOpen: boolean;
   editingGroupId: string | null;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface ChatActions {
@@ -60,6 +62,10 @@ interface ChatActions {
   updateGroup: (groupId: string, updates: Partial<Pick<ChatGroup, 'name' | 'memberIds'>>) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
 
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
+
   // Getters
   getGroupsForUser: (userId: string) => ChatGroup[];
   getMessagesForGroup: (groupId: string) => ChatMessage[];
@@ -80,6 +86,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   searchQuery: '',
   isGroupFormOpen: false,
   editingGroupId: null,
+  _realtimeChannel: null,
 
   // Fetch
   fetchChatData: async () => {
@@ -323,6 +330,66 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       selectedGroupId:
         state.selectedGroupId === groupId ? null : state.selectedGroupId,
     }));
+  },
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('chat-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_zpravy',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const newMsg = mapDbToChatMessage(payload.new);
+          const exists = get().messages.some((m) => m.id === newMsg.id);
+          if (!exists) {
+            set({ messages: [...get().messages, newMsg] });
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_stav_precteni',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const updated = mapDbToChatReadStatus(payload.new);
+            const existing = get().readStatuses.find(
+              (s) => s.groupId === updated.groupId && s.userId === updated.userId,
+            );
+            if (existing) {
+              set({
+                readStatuses: get().readStatuses.map((s) =>
+                  s.groupId === updated.groupId && s.userId === updated.userId ? updated : s,
+                ),
+              });
+            } else {
+              set({ readStatuses: [...get().readStatuses, updated] });
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
   },
 
   // Getters

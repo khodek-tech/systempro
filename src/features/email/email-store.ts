@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import type {
   EmailAccount,
   EmailAccountAccess,
@@ -18,6 +19,26 @@ import {
 } from '@/lib/supabase/mappers';
 
 const PAGE_SIZE = 50;
+
+type ImapAction = 'move' | 'setRead' | 'setUnread' | 'setFlagged' | 'unsetFlagged' | 'delete';
+
+async function callImapAction(
+  action: ImapAction,
+  messageId: string,
+  accountId: string,
+  targetFolderId?: string,
+): Promise<{ success: boolean; newUid?: number; skipped?: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/email/imap-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, messageId, accountId, targetFolderId }),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: 'Network error' };
+  }
+}
 
 interface EmailState {
   accounts: EmailAccount[];
@@ -48,6 +69,10 @@ interface EmailState {
   messagesPage: number;
   messagesTotal: number;
   messagesHasMore: boolean;
+
+  // Realtime & auto-sync (internal)
+  _realtimeChannel: RealtimeChannel | null;
+  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface EmailActions {
@@ -95,6 +120,12 @@ interface EmailActions {
   updateRule: (ruleId: string, updates: Partial<EmailRule>) => Promise<void>;
   deleteRule: (ruleId: string) => Promise<void>;
 
+  // Realtime & auto-sync
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
+  startAutoSync: () => void;
+  stopAutoSync: () => void;
+
   // Getters
   getAccountsForUser: (userId: string) => EmailAccount[];
   getFoldersForAccount: (accountId: string) => EmailFolder[];
@@ -131,6 +162,9 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   messagesPage: 0,
   messagesTotal: 0,
   messagesHasMore: false,
+
+  _realtimeChannel: null,
+  _autoSyncInterval: null,
 
   // =========================================================================
   // Fetch
@@ -379,6 +413,22 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     const ids = get().selectedMessageIds;
     if (ids.length === 0) return;
 
+    // Call IMAP action for each selected message (best-effort, don't block on failure)
+    const messagesToMove = get().messages.filter((m) => ids.includes(m.id));
+    for (const msg of messagesToMove) {
+      if (msg.imapUid > 0) {
+        const imapResult = await callImapAction('move', msg.id, msg.accountId, targetFolderId);
+        if (!imapResult.success && !imapResult.skipped) {
+          console.error(`IMAP move failed for ${msg.id}:`, imapResult.error);
+        }
+        // Update imap_uid if IMAP returned a new UID after move
+        if (imapResult.newUid) {
+          const sb = createClient();
+          await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', msg.id);
+        }
+      }
+    }
+
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
@@ -420,6 +470,13 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   // =========================================================================
 
   markAsRead: async (messageId) => {
+    const msg = get().messages.find((m) => m.id === messageId);
+
+    // IMAP flag sync (best-effort — don't block DB update on failure)
+    if (msg && msg.imapUid > 0) {
+      callImapAction('setRead', messageId, msg.accountId).catch(() => {});
+    }
+
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
@@ -427,7 +484,6 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .eq('id', messageId);
 
     if (!error) {
-      const msg = get().messages.find((m) => m.id === messageId);
       if (msg) {
         // Recount unread from DB and persist to folder
         const { count } = await supabase
@@ -450,6 +506,13 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   },
 
   markAsUnread: async (messageId) => {
+    const msg = get().messages.find((m) => m.id === messageId);
+
+    // IMAP flag sync (best-effort)
+    if (msg && msg.imapUid > 0) {
+      callImapAction('setUnread', messageId, msg.accountId).catch(() => {});
+    }
+
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
@@ -457,7 +520,6 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .eq('id', messageId);
 
     if (!error) {
-      const msg = get().messages.find((m) => m.id === messageId);
       if (msg) {
         // Recount unread from DB and persist to folder
         const { count } = await supabase
@@ -483,6 +545,12 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     const msg = get().messages.find((m) => m.id === messageId);
     if (!msg) return;
 
+    // IMAP flag sync (best-effort)
+    if (msg.imapUid > 0) {
+      const action: ImapAction = msg.flagged ? 'unsetFlagged' : 'setFlagged';
+      callImapAction(action, messageId, msg.accountId).catch(() => {});
+    }
+
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
@@ -501,6 +569,20 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   moveToFolder: async (messageId, targetFolderId) => {
     const msg = get().messages.find((m) => m.id === messageId);
     if (!msg) return;
+
+    // IMAP move (blocking — if it fails, don't update DB)
+    if (msg.imapUid > 0) {
+      const imapResult = await callImapAction('move', messageId, msg.accountId, targetFolderId);
+      if (!imapResult.success && !imapResult.skipped) {
+        console.error('IMAP move failed:', imapResult.error);
+        return;
+      }
+      // Update imap_uid if IMAP returned a new UID after move
+      if (imapResult.newUid) {
+        const sb = createClient();
+        await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', messageId);
+      }
+    }
 
     const supabase = createClient();
     const { error } = await supabase
@@ -548,10 +630,19 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     );
 
     if (trashFolder && msg.folderId !== trashFolder.id) {
-      // Soft delete — move to trash
+      // Soft delete — move to trash (IMAP move handled inside moveToFolder)
       await get().moveToFolder(messageId, trashFolder.id);
     } else {
       // Already in trash — hard delete
+      // IMAP permanent delete (blocking)
+      if (msg.imapUid > 0) {
+        const imapResult = await callImapAction('delete', messageId, msg.accountId);
+        if (!imapResult.success && !imapResult.skipped) {
+          console.error('IMAP delete failed:', imapResult.error);
+          return;
+        }
+      }
+
       const supabase = createClient();
       const { error } = await supabase
         .from('emailove_zpravy')
@@ -756,6 +847,124 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     if (!error) {
       set({ rules: get().rules.filter((r) => r.id !== ruleId) });
     }
+  },
+
+  // =========================================================================
+  // Realtime & auto-sync
+  // =========================================================================
+
+  subscribeRealtime: () => {
+    // Unsubscribe existing channel first
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+    const accountIds = get().accounts.map((a) => a.id);
+    if (accountIds.length === 0) return;
+
+    const channel = supabase
+      .channel('email-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'emailove_zpravy',
+          filter: `id_uctu=in.(${accountIds.join(',')})`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const selectedFolderId = get().selectedFolderId;
+
+          if (payload.eventType === 'INSERT') {
+            const newMsg = mapDbToEmailMessage({ ...payload.new, telo_text: null, telo_html: null });
+            // Only add to messages list if it's in the currently viewed folder
+            if (newMsg.folderId === selectedFolderId) {
+              const exists = get().messages.some((m) => m.id === newMsg.id);
+              if (!exists) {
+                set({ messages: [newMsg, ...get().messages] });
+              }
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new;
+            set({
+              messages: get().messages.map((m) => {
+                if (m.id !== updated.id) return m;
+                return {
+                  ...m,
+                  read: updated.precteno ?? m.read,
+                  flagged: updated.oznaceno ?? m.flagged,
+                  folderId: updated.id_slozky ?? m.folderId,
+                };
+              }),
+            });
+            // If message moved to a different folder, remove from view
+            if (updated.id_slozky && updated.id_slozky !== selectedFolderId) {
+              set({
+                messages: get().messages.filter((m) => m.id !== updated.id),
+              });
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({
+                messages: get().messages.filter((m) => m.id !== oldId),
+              });
+            }
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'emailove_slozky',
+          filter: `id_uctu=in.(${accountIds.join(',')})`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const updated = payload.new;
+          set({
+            folders: get().folders.map((f) => {
+              if (f.id !== updated.id) return f;
+              return {
+                ...f,
+                messageCount: updated.pocet_zprav ?? f.messageCount,
+                unreadCount: updated.pocet_neprectenych ?? f.unreadCount,
+              };
+            }),
+          });
+        },
+      )
+      .subscribe();
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
+  },
+
+  startAutoSync: () => {
+    // Clear any existing interval
+    const existing = get()._autoSyncInterval;
+    if (existing) clearInterval(existing);
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const accounts = get().accounts;
+        accounts.forEach((acc) => get().triggerSync(acc.id));
+      }
+    }, 60_000);
+
+    set({ _autoSyncInterval: interval });
+  },
+
+  stopAutoSync: () => {
+    const interval = get()._autoSyncInterval;
+    if (interval) clearInterval(interval);
+    set({ _autoSyncInterval: null });
   },
 
   // =========================================================================

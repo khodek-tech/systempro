@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
+import { withImapConnection } from '@/lib/email/imap-client';
 import nodemailer from 'nodemailer';
+import MailComposer from 'nodemailer/lib/mail-composer';
 
 export async function POST(request: NextRequest) {
   const { user, error: authError } = await requireAuth();
@@ -103,10 +105,42 @@ export async function POST(request: NextRequest) {
     // Save to Sent folder in DB
     const sentFolder = await supabase
       .from('emailove_slozky')
-      .select('id')
+      .select('id, imap_cesta')
       .eq('id_uctu', accountId)
       .eq('typ', 'sent')
       .single();
+
+    // Try to APPEND the message to the IMAP Sent folder (best-effort)
+    let appendedUid = 0;
+    if (sentFolder.data?.imap_cesta) {
+      try {
+        const composer = new MailComposer({
+          from: formatAddr({ name: account.nazev, address: account.email }),
+          to: to.map(formatAddr).join(', '),
+          subject,
+          text: bodyText,
+          ...(bodyHtml && { html: bodyHtml }),
+          ...(cc && { cc: cc.map(formatAddr).join(', ') }),
+          ...(bcc && { bcc: bcc.map(formatAddr).join(', ') }),
+          ...(inReplyTo && { inReplyTo, references: inReplyTo }),
+          messageId: info.messageId,
+          date: new Date(),
+          ...(attachments.length > 0 && { attachments }),
+        });
+        const rawMessage = await compiler(composer);
+
+        const result = await withImapConnection(accountId, supabase, async (client) => {
+          return await client.append(sentFolder.data.imap_cesta, rawMessage, ['\\Seen']);
+        });
+
+        if (typeof result === 'object' && result.uid) {
+          appendedUid = result.uid;
+        }
+      } catch (appendErr) {
+        // APPEND is best-effort — email was already sent via SMTP
+        console.error('IMAP APPEND to Sent failed (non-critical):', appendErr);
+      }
+    }
 
     if (sentFolder.data) {
       const messageId = `msg-${accountId}-sent-${Date.now()}`;
@@ -114,7 +148,7 @@ export async function POST(request: NextRequest) {
         id: messageId,
         id_uctu: accountId,
         id_slozky: sentFolder.data.id,
-        imap_uid: 0,
+        imap_uid: appendedUid,
         id_zpravy_rfc: info.messageId || null,
         predmet: subject,
         odesilatel: { name: account.nazev, address: account.email },
@@ -157,4 +191,14 @@ export async function POST(request: NextRequest) {
     const errMsg = error instanceof Error ? error.message : 'Failed to send email';
     return NextResponse.json({ success: false, error: errMsg });
   }
+}
+
+/** Compile a MailComposer instance into a raw RFC822 Buffer */
+function compiler(mail: InstanceType<typeof MailComposer>): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    mail.compile().build((err: Error | null, message: Buffer) => {
+      if (err) reject(err);
+      else resolve(message);
+    });
+  });
 }

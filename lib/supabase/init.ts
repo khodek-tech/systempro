@@ -26,6 +26,7 @@ function cleanupLegacyStorage() {
  * Initialize all stores by fetching data from Supabase.
  * Order matters: roles + stores first, then users (depends on roles/stores for validation),
  * then everything else in parallel.
+ * After init: start Realtime subscriptions and auto-sync.
  */
 async function initializeStores() {
   // Phase 1: Core entities (no dependencies)
@@ -46,6 +47,20 @@ async function initializeStores() {
     useEmailStore.getState().fetchEmailData(),
     useAdminStore.getState().fetchAttendanceRecords(),
   ]);
+
+  // Phase 4: Start Realtime subscriptions and auto-sync
+  useEmailStore.getState().subscribeRealtime();
+  useEmailStore.getState().startAutoSync();
+  useChatStore.getState().subscribeRealtime();
+}
+
+/**
+ * Tear down Realtime subscriptions and auto-sync intervals.
+ */
+function cleanupSubscriptions() {
+  useEmailStore.getState().unsubscribeRealtime();
+  useEmailStore.getState().stopAutoSync();
+  useChatStore.getState().unsubscribeRealtime();
 }
 
 /**
@@ -67,6 +82,7 @@ export function useInitializeData() {
 
     return () => {
       cancelled = true;
+      cleanupSubscriptions();
     };
   }, []);
 

@@ -110,6 +110,14 @@ features:
       - Smazání skupiny (včetně všech zpráv)
       - Konfigurace v nastavení modulu (Module Settings)
 
+  - id: realtime
+    name: Supabase Realtime
+    description: Real-time propagace zpráv a stavů přečtení přes Supabase Realtime
+    acceptance_criteria:
+      - Nové zprávy se zobrazí ostatním uživatelům okamžitě bez refreshe
+      - Stav přečtení se synchronizuje přes WebSocket
+      - Automatická reconnect při ztrátě spojení
+
 notifications:
   badge:
     type: count
@@ -207,6 +215,17 @@ scenarios:
     expected:
       - Uživatel vidí pouze skupiny kde je členem
 
+  - id: CHAT-006
+    name: Realtime multi-klient
+    preconditions:
+      - Dva uživatelé mají otevřen stejný chat ve dvou prohlížečích
+    steps:
+      - Uživatel A pošle zprávu do skupiny
+      - Uživatel B sleduje konverzaci
+    expected:
+      - Zpráva se okamžitě objeví u uživatele B bez refreshe
+      - Badge se aktualizuje pro uživatele B
+
 edge_cases:
   - id: CHAT-E001
     name: Prázdná skupina
@@ -235,5 +254,5 @@ edge_cases:
     name: Více oken/sessions
     description: Uživatel má otevřeno více oken aplikace
     expected: >
-      Zustand persist synchronizuje data přes localStorage.
-      Nové zprávy se zobrazí v obou oknech.
+      Supabase Realtime synchronizuje nové zprávy a stav přečtení
+      přes WebSocket na všechny připojené klienty v reálném čase.

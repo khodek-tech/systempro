@@ -120,7 +120,21 @@ features:
     name: Synchronizace IMAP
     description: |
       Manuální sync přes tlačítko. Inkrementální stahování od posledního UID.
-      Automatický sync (cron) odložen do budoucna.
+      Automatický sync každých 60 sekund (pouze pokud je záložka aktivní).
+
+  - id: email-imap-writeback
+    name: Obousměrná IMAP synchronizace
+    description: |
+      Lokální operace (přesun, přečteno, označeno, smazání) se promítají na IMAP server.
+      API endpoint /api/email/imap-action provádí IMAP příkazy (move, flags, delete).
+      Odeslaný e-mail se APPENDuje do IMAP Sent složky.
+
+  - id: email-realtime
+    name: Supabase Realtime
+    description: |
+      Změny v emailových zprávách a složkách se propagují přes Supabase Realtime
+      na všechny připojené klienty. Sdílené účty: změna jedním uživatelem je
+      okamžitě viditelná ostatním.
 
   - id: email-rules
     name: E-mailová pravidla
@@ -171,6 +185,52 @@ scenarios:
       - Nové zprávy se stáhnou od posledního UID
       - Složky se aktualizují (počty zpráv, nepřečtené)
       - Sync log se zapíše
+      - Automatický sync probíhá každou minutu na pozadí
+
+  - id: SC-EMAIL-08
+    name: Přesun e-mailu se sync na IMAP
+    steps:
+      - Uživatel přesune zprávu do jiné složky
+    expected:
+      - Zpráva se přesune na IMAP serveru (MOVE příkaz)
+      - imap_uid se aktualizuje po přesunu
+      - DB se aktualizuje
+      - Ostatní klienti vidí změnu přes Realtime
+
+  - id: SC-EMAIL-09
+    name: Označení přečteno/nepřečteno se sync na IMAP
+    steps:
+      - Uživatel označí zprávu jako přečtenou/nepřečtenou
+    expected:
+      - Flag \Seen se přidá/odebere na IMAP serveru (best-effort)
+      - DB se vždy aktualizuje
+
+  - id: SC-EMAIL-10
+    name: Smazání e-mailu se sync na IMAP
+    steps:
+      - Uživatel smaže zprávu (z koše = hard delete)
+    expected:
+      - Zpráva se smaže na IMAP serveru
+      - Pokud ne v koši, přesune se do koše (IMAP MOVE)
+
+  - id: SC-EMAIL-11
+    name: Multi-klient Realtime
+    steps:
+      - Dva uživatelé mají otevřený stejný e-mailový účet
+      - Jeden přesune zprávu
+    expected:
+      - Druhý uživatel vidí změnu okamžitě bez refreshe
+      - Počty ve složkách se aktualizují
+
+  - id: SC-EMAIL-12
+    name: Odeslání e-mailu s IMAP APPEND
+    steps:
+      - Uživatel odešle e-mail
+    expected:
+      - E-mail se odešle přes SMTP
+      - Kopie se APPENDuje do IMAP Sent složky
+      - imap_uid se uloží do DB
+      - APPEND je best-effort — pokud selže, e-mail byl odeslán
 
   - id: SC-EMAIL-04
     name: Čtení e-mailu
@@ -219,4 +279,9 @@ edge_cases:
   - HTML body s nebezpečným obsahem — sanitizace DOMPurify
   - Uživatel bez přístupu k účtu — nezobrazí se v modulu
   - Prázdná složka — zobrazí se "Žádné zprávy"
-  - Cron job — ODLOŽEN do budoucna, sync pouze manuální
+  - imapUid === 0 — lokálně vytvořené zprávy, přeskočit IMAP operace
+  - IMAP MOVE vrací nový UID — aktualizovat imap_uid v DB po přesunu
+  - Realtime event od vlastního klienta — zpráva je už v lokálním state, neaktualizovat duplicitně
+  - Auto-sync při neaktivní záložce — přeskočit (šetří prostředky)
+  - Hromadný přesun — API volání pro každou zprávu jednotlivě
+  - Ztráta WebSocket spojení — Supabase automaticky reconnectuje
