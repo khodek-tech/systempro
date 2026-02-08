@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 export function EmailComposer() {
   const {
     composerMode, composerReplyTo, selectedAccountId,
-    closeComposer, sendEmail, accounts,
+    closeComposer, sendEmail, selectMessage, accounts,
   } = useEmailStore();
 
   const computeInitialValues = () => {
@@ -96,6 +96,10 @@ export function EmailComposer() {
     if (result.success) {
       toast.success('E-mail odeslán');
       closeComposer();
+      // Close the message detail when replying/forwarding
+      if (composerMode !== 'new') {
+        selectMessage(null);
+      }
       setTo('');
       setCc('');
       setSubject('');
