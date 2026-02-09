@@ -306,6 +306,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       selectedMessageId: null,
       selectedMessageIds: [],
       messages: [],
+      searchResults: [],
+      searchQuery: '',
       messagesPage: 0,
       messagesTotal: 0,
       messagesHasMore: false,
@@ -843,7 +845,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   // =========================================================================
 
   createRule: async (rule) => {
-    const id = `rule-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const id = `rule-${crypto.randomUUID()}`;
     const now = new Date().toISOString();
     const fullRule: EmailRule = { ...rule, id, createdAt: now, updatedAt: now };
 

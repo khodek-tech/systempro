@@ -260,10 +260,10 @@ export function Header() {
             <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 cleanupSubscriptions();
+                await signOut();
                 useAuthStore.getState().resetAuth();
-                signOut();
               }}
               className="p-2.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
               aria-label="Odhlasit se"

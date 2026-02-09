@@ -3,6 +3,7 @@ import { WorkplaceType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { toast } from 'sonner';
+import { formatCzechDate } from '@/shared/utils';
 
 interface AttendanceState {
   isInWork: boolean;
@@ -52,12 +53,26 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
     }
 
     const now = new Date();
-    const datum = `${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()}`;
+    const datum = formatCzechDate(now);
     const cas = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     const supabase = createClient();
 
     if (!isInWork) {
-      // CHECK-IN: INSERT new record
+      // CHECK-IN: Check for existing open record to prevent duplicates
+      const { data: existing } = await supabase
+        .from('dochazka')
+        .select('id')
+        .eq('datum', datum)
+        .eq('zamestnanec', currentUser.fullName)
+        .is('odchod', null)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        toast.error('Dnešní příchod již byl zaznamenán.');
+        return { success: false, error: 'Příchod byl již zaznamenán.' };
+      }
+
+      // INSERT new record
       const { error } = await supabase.from('dochazka').insert({
         datum,
         prodejna: workplaceType === 'store' ? workplaceName : null,
@@ -100,7 +115,9 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
       if (record.prichod) {
         const [pH, pM] = record.prichod.split(':').map(Number);
         const [oH, oM] = cas.split(':').map(Number);
-        const diffMinutes = (oH * 60 + oM) - (pH * 60 + pM);
+        let diffMinutes = (oH * 60 + oM) - (pH * 60 + pM);
+        // Handle night shifts (checkout after midnight)
+        if (diffMinutes < 0) diffMinutes += 24 * 60;
         const hours = Math.floor(diffMinutes / 60);
         const mins = diffMinutes % 60;
         hodiny = `${hours}:${mins.toString().padStart(2, '0')}`;

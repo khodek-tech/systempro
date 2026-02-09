@@ -15,9 +15,17 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const accountId = formData.get('accountId') as string;
-    const to = JSON.parse(formData.get('to') as string || '[]');
-    const cc = formData.has('cc') ? JSON.parse(formData.get('cc') as string) : undefined;
-    const bcc = formData.has('bcc') ? JSON.parse(formData.get('bcc') as string) : undefined;
+
+    let to: { name?: string; address: string }[];
+    let cc: { name?: string; address: string }[] | undefined;
+    let bcc: { name?: string; address: string }[] | undefined;
+    try {
+      to = JSON.parse(formData.get('to') as string || '[]');
+      cc = formData.has('cc') ? JSON.parse(formData.get('cc') as string) : undefined;
+      bcc = formData.has('bcc') ? JSON.parse(formData.get('bcc') as string) : undefined;
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid recipient data' }, { status: 400 });
+    }
     const subject = formData.get('subject') as string || '';
     const bodyText = formData.get('bodyText') as string || '';
     const bodyHtml = formData.get('bodyHtml') as string | null;
@@ -155,8 +163,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (sentFolder.data) {
-      const messageId = `msg-${accountId}-sent-${Date.now()}`;
-      await supabase.from('emailove_zpravy').insert({
+      const messageId = `msg-${crypto.randomUUID()}`;
+      const { error: insertError } = await supabase.from('emailove_zpravy').insert({
         id: messageId,
         id_uctu: accountId,
         id_slozky: sentFolder.data.id,
@@ -183,6 +191,12 @@ export async function POST(request: NextRequest) {
         vlakno_id: threadId || info.messageId || null,
         velikost: 0,
       });
+
+      if (insertError) {
+        console.error('Failed to save sent message to DB:', insertError);
+        // Email was sent successfully via SMTP, but DB record failed — report partial success
+        return NextResponse.json({ success: true, messageId: info.messageId, warning: 'Email odeslán, ale nepodařilo se uložit do databáze.' });
+      }
 
       // Update sent folder message count
       const { data: folderData } = await supabase

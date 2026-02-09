@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { toast } from 'sonner';
+import { formatCzechDate } from '@/shared/utils';
 
 const createEmptyRow = (): ExtraRow => ({
   id: crypto.randomUUID(),
@@ -181,6 +182,12 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     const { formData } = get();
     const allRows = [...formData.incomes, ...formData.expenses];
     for (const row of allRows) {
+      if (row.amount < 0) {
+        return {
+          valid: false,
+          error: 'Částky nesmí být záporné!',
+        };
+      }
       if (row.amount > 0 && !row.note.trim()) {
         return {
           valid: false,
@@ -226,7 +233,7 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     const poznamkaTrzba = notes.join('; ') || null;
 
     const now = new Date();
-    const datum = `${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()}`;
+    const datum = formatCzechDate(now);
 
     const supabase = createClient();
     const { error } = await supabase.from('dochazka').insert({
@@ -241,7 +248,7 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
       partner: formData.partner,
       pohyby: pohyby,
       poznamka_trzba: poznamkaTrzba,
-      vybrano: 'false',
+      vybrano: null,
     });
 
     if (error) {
@@ -278,7 +285,7 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     }
 
     const now = new Date();
-    const datum = `${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()}`;
+    const datum = formatCzechDate(now);
     const vybranoValue = `${driverName.trim()} - ${datum}`;
 
     const supabase = createClient();

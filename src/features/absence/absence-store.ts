@@ -178,6 +178,13 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       return { success: false, error: 'Vyplňte data od a do!' };
     }
 
+    // Validate dateFrom is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(formData.dateFrom) < today) {
+      return { success: false, error: 'Nelze podat žádost na datum v minulosti!' };
+    }
+
     // Validate dateFrom <= dateTo
     if (new Date(formData.dateFrom) > new Date(formData.dateTo)) {
       return { success: false, error: 'Datum od nemůže být po datu do!' };
