@@ -27,7 +27,7 @@ interface HomePageProps {
 export function HomePage({ slug }: HomePageProps) {
   const { getActiveRoleType, _hydrated, setLoggedInUser } = useAuthStore();
   const { workplaceType } = useAttendanceStore();
-  const { ready } = useInitializeData();
+  const { ready, error: initError } = useInitializeData();
   const { getUserByAuthId } = useUsersStore();
   const [authId, setAuthId] = useState<string | null>(null);
 
@@ -43,6 +43,27 @@ export function HomePage({ slug }: HomePageProps) {
       }
     });
   }, [ready, setLoggedInUser]);
+
+  // Error state
+  if (initError) {
+    return (
+      <>
+        <Header />
+        <main className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50">
+          <div className="text-center space-y-4">
+            <div className="text-red-600 font-semibold">Nepodařilo se načíst data</div>
+            <p className="text-sm text-slate-500">{initError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+            >
+              Zkusit znovu
+            </button>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   // Loading state during hydration and data loading
   if (!_hydrated || !ready) {

@@ -46,9 +46,9 @@ interface TasksActions {
   closeFormModal: () => void;
 
   // CRUD actions
-  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'comments' | 'status'>) => Promise<void>;
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  deleteTask: (taskId: string) => Promise<void>;
+  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'comments' | 'status'>) => Promise<{ success: boolean; error?: string }>;
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<{ success: boolean; error?: string }>;
+  deleteTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
 
   // Workflow actions
   startTask: (taskId: string, userId: string) => Promise<{ success: boolean; error?: string }>;
@@ -63,7 +63,7 @@ interface TasksActions {
   returnToDelegatee: (taskId: string, delegatorId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
 
   // Comment actions
-  addComment: (taskId: string, userId: string, text: string, attachments?: TaskAttachment[]) => Promise<void>;
+  addComment: (taskId: string, userId: string, text: string, attachments?: TaskAttachment[]) => Promise<{ success: boolean; error?: string }>;
 
   // Getters
   getTaskById: (taskId: string) => Task | undefined;
@@ -177,7 +177,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     if (error) {
       console.error('Failed to create task:', error);
       toast.error('Nepodařilo se vytvořit úkol');
-      return;
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
@@ -186,17 +186,19 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       editingTaskId: null,
       activeTab: 'created-by-me',
     }));
+    return { success: true };
   },
 
   updateTask: async (taskId, updates) => {
     const ok = await updateTaskInDb(taskId, updates);
-    if (!ok) return;
+    if (!ok) return { success: false, error: 'Chyba při ukládání' };
 
     set((state) => ({
       tasks: state.tasks.map((t) =>
         t.id === taskId ? { ...t, ...updates } : t
       ),
     }));
+    return { success: true };
   },
 
   deleteTask: async (taskId) => {
@@ -205,19 +207,21 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const { error: commentsError } = await supabase.from('komentare_ukolu').delete().eq('id_ukolu', taskId);
     if (commentsError) {
       console.error('Failed to delete task comments:', commentsError);
-      return;
+      toast.error('Nepodařilo se smazat komentáře úkolu');
+      return { success: false, error: commentsError.message };
     }
     const { error } = await supabase.from('ukoly').delete().eq('id', taskId);
     if (error) {
       console.error('Failed to delete task:', error);
       toast.error('Nepodařilo se smazat úkol');
-      return;
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
       tasks: state.tasks.filter((t) => t.id !== taskId),
       selectedTaskId: state.selectedTaskId === taskId ? null : state.selectedTaskId,
     }));
+    return { success: true };
   },
 
   // Workflow actions
@@ -493,7 +497,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     if (error) {
       console.error('Failed to add comment:', error);
       toast.error('Nepodařilo se přidat komentář');
-      return;
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
@@ -526,6 +530,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         console.error('Failed to update seen flags after comment:', seenError);
       }
     }
+    return { success: true };
   },
 
   // Getters
@@ -776,7 +781,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         },
       )
       .subscribe((status, err) => {
-        console.log('[tasks-realtime]', status, err ?? '');
+        if (err) console.error('[tasks-realtime]', status, err);
         // Re-fetch tasks after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           get().fetchTasks();

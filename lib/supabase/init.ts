@@ -11,6 +11,7 @@ import { useChatStore } from '@/features/chat/chat-store';
 import { useEmailStore } from '@/features/email/email-store';
 import { useAdminStore } from '@/admin/admin-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
+import { toast } from 'sonner';
 
 /**
  * Clean up legacy localStorage keys from when stores used persist middleware.
@@ -72,20 +73,30 @@ export function cleanupSubscriptions() {
 
 /**
  * Hook that initializes all stores on mount.
- * Returns { ready: boolean } - true when all data is loaded.
+ * Returns { ready, error } - ready=true when all data is loaded, error if init failed.
  */
 export function useInitializeData() {
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     cleanupLegacyStorage();
-    initializeStores().then(() => {
-      if (!cancelled) {
-        setReady(true);
-      }
-    });
+    initializeStores()
+      .then(() => {
+        if (!cancelled) {
+          setReady(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to initialize stores:', err);
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Nepodařilo se načíst data';
+          setError(message);
+          toast.error('Chyba při načítání dat. Zkuste obnovit stránku.');
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -93,5 +104,5 @@ export function useInitializeData() {
     };
   }, []);
 
-  return { ready };
+  return { ready, error };
 }

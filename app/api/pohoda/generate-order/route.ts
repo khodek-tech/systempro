@@ -124,17 +124,10 @@ function parseStockItems(xmlText: string): StockItem[] {
         responseItem?.listStock?.stock || responseItem?.stock || [];
       const stockArray = Array.isArray(stockList) ? stockList : [stockList];
 
-      let debugCount = 0;
       for (const stock of stockArray) {
         if (!stock) continue;
 
         const stockHeader = stock.stockHeader || stock;
-
-        // DEBUG: Log raw stockHeader pro prvnich 5 polozek
-        if (debugCount < 5) {
-          console.log(`[DEBUG stockHeader #${debugCount}]:`, JSON.stringify(stockHeader, null, 2));
-          debugCount++;
-        }
 
         const ean = stockHeader?.EAN || stockHeader?.ean || '';
         const code = stockHeader?.code || stockHeader?.ids || '';
@@ -167,8 +160,6 @@ async function fetchAllStockData(
   const authHeader = createAuthHeader(username, password);
   const xmlRequest = createAllStockExportRequest(ico);
 
-  console.log('Stahovani VSECH skladovych dat najednou (bez filtru)...');
-
   const response = await fetch(mserverUrl, {
     method: 'POST',
     headers: {
@@ -186,11 +177,6 @@ async function fetchAllStockData(
   // Dekodovat z Windows-1250 do UTF-8
   const arrayBuffer = await response.arrayBuffer();
   const xmlText = iconv.decode(Buffer.from(arrayBuffer), 'win1250');
-
-  // DEBUG: Log delku odpovedi a prvnich 2000 znaku
-  console.log(`[DEBUG XML response] Length: ${xmlText.length} chars`);
-  console.log('[DEBUG XML response] First 2000 chars:');
-  console.log(xmlText.substring(0, 2000));
 
   // Zkontrolovat, zda odpoved obsahuje chybu
   if (xmlText.includes('<rdc:state>error</rdc:state>') || xmlText.includes('state="error"')) {
@@ -388,9 +374,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Nacist Podklady.xlsx
-    console.log('Nacitani Podklady.xlsx...');
     const podklady = await loadPodklady();
-    console.log(`Nacteno ${podklady.length} produktu s Obj=1`);
 
     if (podklady.length === 0) {
       return NextResponse.json(
@@ -400,9 +384,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Stahnout VSECHNA data najednou (jako fungujici export)
-    console.log('Stahovani dat z mServeru...');
     const allItems = await fetchAllStockData(url, username, password, ico);
-    console.log(`Stazeno celkem ${allItems.length} polozek`);
 
     // 3. Transformovat data: kod -> (sklad -> mnozstvi) - sjednoceno s vsechny-sklady
     const stockData = new Map<string, Map<string, number>>();
@@ -426,11 +408,7 @@ export async function POST(request: NextRequest) {
       stockData.get(kod)!.set(storage, currentQty + item.quantity);
     }
 
-    console.log(`[Generate order] Nalezeno ${stockData.size} unikatnich kodu`);
-    console.log(`[Generate order] Nalezeno ${allStorages.size} skladu:`, Array.from(allStorages).sort().join(', '));
-
     // 4. Vygenerovat vystupni Excel
-    console.log('Generovani vystupniho Excel...');
     const excelBuffer = await createOutputExcel(podklady, stockData);
 
     // 5. Vratit jako downloadable soubor

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { AbsenceType, AbsenceFormData, AbsenceRequest, AbsenceRequestStatus, RoleType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToAbsenceRequest, mapAbsenceRequestToDb } from '@/lib/supabase/mappers';
+import { toast } from 'sonner';
 import {
   getUserPrimaryRoleType,
   canApproveUser,
@@ -425,6 +426,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
 
     if (error) {
       console.error('Failed to mark absence requests as seen:', error);
+      toast.error('Nepodařilo se označit žádosti jako přečtené');
       return;
     }
 

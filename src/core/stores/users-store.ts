@@ -47,6 +47,7 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
       set({ users: data.map(mapDbToUser), _loaded: true, _loading: false });
     } else {
       console.error('Failed to fetch users:', error);
+      toast.error('Nepodařilo se načíst uživatele');
       set({ _loading: false });
     }
   },

@@ -103,11 +103,6 @@ function parseStockItems(xmlText: string): StockItem[] {
           stockHeader?.storage?.ids || stockHeader?.sklad || ''
         );
 
-        // DEBUG: Sledování kódů 99826*
-        if (code.startsWith('99826')) {
-          console.log('[DEBUG] Nalezen kod 99826*:', { ean, code, quantity, storage });
-        }
-
         items.push({
           code,
           ean,
@@ -133,8 +128,6 @@ async function fetchAllStockData(
   const authHeader = createAuthHeader(username, password);
   const xmlRequest = createAllStockExportRequest(ico);
 
-  console.log('[Vsechny sklady] Stahovani VSECH skladovych dat...');
-
   const response = await fetch(mserverUrl, {
     method: 'POST',
     headers: {
@@ -152,8 +145,6 @@ async function fetchAllStockData(
   // Dekodovat z Windows-1250 do UTF-8
   const arrayBuffer = await response.arrayBuffer();
   const xmlText = iconv.decode(Buffer.from(arrayBuffer), 'win1250');
-
-  console.log(`[Vsechny sklady] XML response length: ${xmlText.length} chars`);
 
   // Zkontrolovat, zda odpoved obsahuje chybu
   if (
@@ -276,9 +267,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Stahnout VSECHNA data z mServeru
-    console.log('[Vsechny sklady] Stahovani dat z mServeru...');
     const allItems = await fetchAllStockData(url, username, password, ico);
-    console.log(`[Vsechny sklady] Stazeno celkem ${allItems.length} polozek`);
 
     if (allItems.length === 0) {
       return NextResponse.json(
@@ -308,18 +297,7 @@ export async function POST(request: NextRequest) {
       stockData.get(kod)!.set(storage, currentQty + item.quantity);
     }
 
-    console.log(`[Vsechny sklady] Nalezeno ${stockData.size} unikatnich kodu`);
-    console.log(`[Vsechny sklady] Nalezeno ${allStorages.size} skladu`);
-
-    // DEBUG: Kontrola zda jsou kódy 99826* v stockData
-    for (const [kod] of stockData) {
-      if (kod.startsWith('99826')) {
-        console.log('[DEBUG] stockData obsahuje:', kod, stockData.get(kod));
-      }
-    }
-
     // 3. Vygenerovat Excel
-    console.log('[Vsechny sklady] Generovani Excel...');
     const excelBuffer = await createVsechnySkladyExcel(
       stockData,
       Array.from(allStorages)

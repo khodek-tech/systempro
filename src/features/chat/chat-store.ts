@@ -411,7 +411,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         },
       )
       .subscribe((status, err) => {
-        console.log('[chat-realtime]', status, err ?? '');
+        if (err) console.error('[chat-realtime]', status, err);
         // Re-fetch data after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           const supabaseRefresh = createClient();
@@ -432,6 +432,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
             if (!readResult.error && readResult.data) {
               set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
             }
+          }).catch((err) => {
+            console.error('[chat-realtime] reconnect refresh failed:', err);
           });
         }
       });
@@ -478,6 +480,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
           if (!readResult.error && readResult.data) {
             set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
           }
+        }).catch((err) => {
+          console.error('[chat-autosync] refresh failed:', err);
         });
       }
     }, 15_000);

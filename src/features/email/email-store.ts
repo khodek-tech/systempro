@@ -51,6 +51,7 @@ interface EmailState {
   _loaded: boolean;
   _loading: boolean;
   _messagesLoading: boolean;
+  _bodyLoading: boolean;
   _searchLoading: boolean;
   searchResults: EmailMessage[];
 
@@ -146,6 +147,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   _loaded: false,
   _loading: false,
   _messagesLoading: false,
+  _bodyLoading: false,
   _searchLoading: false,
   searchResults: [],
 
@@ -258,6 +260,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   },
 
   fetchMessageBody: async (messageId: string) => {
+    set({ _bodyLoading: true });
     const supabase = createClient();
     const { data, error } = await supabase
       .from('emailove_zpravy')
@@ -267,12 +270,15 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
     if (!error && data) {
       set({
+        _bodyLoading: false,
         messages: get().messages.map((m) =>
           m.id === messageId
             ? { ...m, bodyText: data.telo_text ?? '', bodyHtml: data.telo_html ?? '' }
             : m
         ),
       });
+    } else {
+      set({ _bodyLoading: false });
     }
   },
 
@@ -447,34 +453,38 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .update({ id_slozky: targetFolderId })
       .in('id', ids);
 
-    if (!error) {
-      const movedMessages = get().messages.filter((m) => ids.includes(m.id));
-      const unreadCount = movedMessages.filter((m) => !m.read).length;
-      const sourceFolderId = get().selectedFolderId;
-
-      set({
-        messages: get().messages.filter((m) => !ids.includes(m.id)),
-        selectedMessageIds: [],
-        selectedMessageId: ids.includes(get().selectedMessageId ?? '') ? null : get().selectedMessageId,
-        folders: get().folders.map((f) => {
-          if (f.id === sourceFolderId) {
-            return {
-              ...f,
-              messageCount: Math.max(0, f.messageCount - movedMessages.length),
-              unreadCount: Math.max(0, f.unreadCount - unreadCount),
-            };
-          }
-          if (f.id === targetFolderId) {
-            return {
-              ...f,
-              messageCount: f.messageCount + movedMessages.length,
-              unreadCount: f.unreadCount + unreadCount,
-            };
-          }
-          return f;
-        }),
-      });
+    if (error) {
+      console.error('Failed to move messages:', error);
+      toast.error('Nepodařilo se přesunout zprávy');
+      return;
     }
+
+    const movedMessages = get().messages.filter((m) => ids.includes(m.id));
+    const unreadCount = movedMessages.filter((m) => !m.read).length;
+    const sourceFolderId = get().selectedFolderId;
+
+    set({
+      messages: get().messages.filter((m) => !ids.includes(m.id)),
+      selectedMessageIds: [],
+      selectedMessageId: ids.includes(get().selectedMessageId ?? '') ? null : get().selectedMessageId,
+      folders: get().folders.map((f) => {
+        if (f.id === sourceFolderId) {
+          return {
+            ...f,
+            messageCount: Math.max(0, f.messageCount - movedMessages.length),
+            unreadCount: Math.max(0, f.unreadCount - unreadCount),
+          };
+        }
+        if (f.id === targetFolderId) {
+          return {
+            ...f,
+            messageCount: f.messageCount + movedMessages.length,
+            unreadCount: f.unreadCount + unreadCount,
+          };
+        }
+        return f;
+      }),
+    });
   },
 
   // =========================================================================
@@ -952,7 +962,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         },
       )
       .subscribe((status, err) => {
-        console.log('[email-realtime]', status, err ?? '');
+        if (err) console.error('[email-realtime]', status, err);
         // Re-fetch data after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           const { selectedAccountId, selectedFolderId } = get();
@@ -961,10 +971,12 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
           }
           // Refresh folders (unread counts etc.)
           const supabaseRefresh = createClient();
-          supabaseRefresh.from('emailove_slozky').select('*').order('poradi').then(({ data }) => {
+          Promise.resolve(supabaseRefresh.from('emailove_slozky').select('*').order('poradi')).then(({ data }) => {
             if (data) {
               set({ folders: data.map(mapDbToEmailFolder) });
             }
+          }).catch((err) => {
+            console.error('[email-realtime] reconnect folder refresh failed:', err);
           });
         }
       });

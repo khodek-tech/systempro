@@ -15,10 +15,10 @@ SYSTEM.PRO je modulární aplikace pro řízení maloobchodních operací. Syst�
 ## Architektura
 
 ### Tech Stack
-- **Frontend**: Next.js 14, React, TypeScript
+- **Frontend**: Next.js 16, React, TypeScript
 - **UI**: Tailwind CSS, shadcn/ui
-- **State**: Zustand (persist middleware)
-- **Data**: Mock data (JSON), localStorage
+- **State**: Zustand
+- **Data**: Supabase (PostgreSQL), Realtime subscriptions
 
 ### Struktura modulů
 

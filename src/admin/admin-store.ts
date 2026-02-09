@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { AttendanceRecord } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToAttendanceRecord } from '@/lib/supabase/mappers';
+import { toast } from 'sonner';
 
 type AdminSubView = 'main' | 'reports' | 'settings';
 type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda' | 'email';
@@ -69,6 +70,7 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
       set({ attendanceRecords: data.map(mapDbToAttendanceRecord), _loaded: true, _loading: false });
     } else {
       console.error('Failed to fetch attendance records:', error);
+      toast.error('Nepodařilo se načíst docházku');
       set({ _loading: false });
     }
   },

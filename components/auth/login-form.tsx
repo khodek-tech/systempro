@@ -24,7 +24,7 @@ export function LoginForm() {
     })
 
     if (!email) {
-      setError('Neplatne prihlasovaci udaje')
+      setError('Neplatné přihlašovací údaje')
       setLoading(false)
       return
     }
@@ -35,7 +35,7 @@ export function LoginForm() {
     })
 
     if (error) {
-      setError('Neplatne prihlasovaci udaje')
+      setError('Neplatné přihlašovací údaje')
       setLoading(false)
       return
     }
@@ -90,7 +90,7 @@ export function LoginForm() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all"
         >
-          {loading ? 'Prihlasovani...' : 'Prihlasit se'}
+          {loading ? 'Přihlašování...' : 'Přihlásit se'}
         </button>
       </div>
     </form>
