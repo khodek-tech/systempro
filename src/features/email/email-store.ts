@@ -892,6 +892,9 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
     if (!error) {
       set({ rules: get().rules.filter((r) => r.id !== ruleId) });
+    } else {
+      console.error('Failed to delete email rule:', error);
+      toast.error('Nepodařilo se smazat pravidlo');
     }
   },
 

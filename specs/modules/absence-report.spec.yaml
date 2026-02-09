@@ -67,6 +67,17 @@ features:
       - Řazení: nejnovější první
       - Barevné rozlišení stavů
 
+  - id: delete_request
+    name: Zrušení žádosti
+    description: Zrušení vlastní pending žádosti o absenci
+    acceptance_criteria:
+      - Tlačítko Zrušit (Trash2 ikona) u žádostí se stavem pending
+      - Potvrzovací dialog před smazáním
+      - Pouze vlastní žádosti
+      - Pouze pending žádosti (schválené/zamítnuté nelze mazat)
+      - DELETE z DB + odebrání z lokálního stavu
+      - Toast potvrzení po smazání
+
   - id: absence_types
     name: Typy absencí
     description: Různé typy nepřítomnosti
@@ -170,6 +181,24 @@ scenarios:
     expected:
       - Validace zabrání odeslání neplatných dat
       - Chybové hlášky jsou česky
+
+  - id: ABS-R-006
+    name: Zrušení pending žádosti
+    preconditions:
+      - Uživatel je přihlášen
+      - Existuje vlastní žádost ve stavu pending
+    steps:
+      - Otevřu přehled žádostí
+      - U pending žádosti vidím ikonu koše
+      - Kliknu na ikonu koše
+      - Zobrazí se potvrzovací dialog
+      - Kliknu "Ano, zrušit"
+      - Žádost zmizí ze seznamu
+      - Zobrazí se toast "Žádost byla zrušena"
+    expected:
+      - Žádost je smazána z DB
+      - Žádost zmizí z lokálního stavu
+      - U schválených/zamítnutých žádostí se ikona koše nezobrazuje
 
 edge_cases:
   - id: ABS-R-E001

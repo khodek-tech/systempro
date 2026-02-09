@@ -243,6 +243,17 @@
 | 4 | Otevřít modul Absence | Schválená žádost viditelná |
 | 5 | Badge zmizí | seenByUser = true |
 
+#### ABS-R-006: Zrušení pending žádosti
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Vytvořit žádost o absenci | Žádost ve stavu pending |
+| 2 | V přehledu najít pending žádost | Ikona koše viditelná |
+| 3 | Kliknout na ikonu koše | Potvrzovací dialog |
+| 4 | Kliknout "Ano, zrušit" | Žádost smazána, toast "Žádost byla zrušena" |
+| 5 | Zkontrolovat přehled | Žádost zmizela |
+| 6 | Najít schválenou žádost | Ikona koše není viditelná |
+
 ### Hraniční případy
 
 | ID | Situace | Očekávané chování |
@@ -250,6 +261,7 @@
 | ABS-R-E001 | Jednodenní absence | Datum od = datum do funguje |
 | ABS-R-E002 | Prázdná poznámka | Odeslání povoleno |
 | ABS-R-E003 | Překrývající se žádosti | Systém nekontroluje (potenciální bug) |
+| ABS-R-E005 | Zrušení schválené žádosti | Ikona koše se nezobrazuje, nelze zrušit |
 
 ---
 

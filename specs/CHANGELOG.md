@@ -2,6 +2,28 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.7.0] - 2026-02-09
+
+### Přidáno
+
+#### Mazání žádostí o absenci
+- `absence-store.ts`: nová metoda `deleteAbsenceRequest(requestId, userId)` — smazání pending žádosti z DB
+- `absence-requests-list.tsx`: tlačítko Zrušit (Trash2 ikona) u pending žádostí s potvrzovacím dialogem
+- `/specs/modules/absence-report.spec.yaml`: feature `delete_request`, scénář ABS-R-006
+
+#### Health check endpoint
+- `app/api/health/route.ts`: GET endpoint pro monitoring — testuje DB konektivitu, vrací JSON status
+
+### Opraveno
+
+#### Email deleteRule error handling
+- `email-store.ts`: přidán `console.error` + `toast.error` při selhání smazání e-mailového pravidla
+
+#### CSP unsafe-eval pouze v development
+- `next.config.ts`: `'unsafe-eval'` v CSP script-src je podmíněný na `NODE_ENV === 'development'`
+
+---
+
 ## [1.6.0] - 2026-02-09
 
 ### Opraveno

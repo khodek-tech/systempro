@@ -47,6 +47,7 @@ interface AbsenceActions {
 
   // Absence request actions
   submitAbsenceRequest: (userId: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAbsenceRequest: (requestId: string, userId: string) => Promise<{ success: boolean; error?: string }>;
   approveAbsence: (requestId: string, approverId: string) => Promise<{ success: boolean; error?: string }>;
   rejectAbsence: (requestId: string, approverId: string) => Promise<{ success: boolean; error?: string }>;
 
@@ -212,6 +213,39 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       formData: { ...initialFormData },
     }));
 
+    return { success: true };
+  },
+
+  deleteAbsenceRequest: async (requestId: string, userId: string) => {
+    const { absenceRequests } = get();
+    const request = absenceRequests.find((r) => r.id === requestId);
+
+    if (!request) {
+      return { success: false, error: 'Žádost nenalezena' };
+    }
+
+    if (request.userId !== userId) {
+      return { success: false, error: 'Nemáte oprávnění smazat tuto žádost' };
+    }
+
+    if (request.status !== 'pending') {
+      return { success: false, error: 'Lze zrušit pouze žádosti čekající na schválení' };
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.from('zadosti_o_absenci').delete().eq('id', requestId);
+
+    if (error) {
+      console.error('Failed to delete absence request:', error);
+      toast.error('Nepodařilo se zrušit žádost');
+      return { success: false, error: error.message };
+    }
+
+    set((state) => ({
+      absenceRequests: state.absenceRequests.filter((r) => r.id !== requestId),
+    }));
+
+    toast.success('Žádost byla zrušena');
     return { success: true };
   },
 
