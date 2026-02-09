@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { withImapConnection } from '@/lib/email/imap-client';
 import { checkRateLimit, getRateLimitKey } from '@/lib/rate-limit';
+import { emailSendSchema, parseBody } from '@/lib/api/schemas';
 import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer';
 
@@ -25,27 +26,32 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData();
-    const accountId = formData.get('accountId') as string;
 
-    let to: { name?: string; address: string }[];
-    let cc: { name?: string; address: string }[] | undefined;
-    let bcc: { name?: string; address: string }[] | undefined;
+    // Extract and validate fields from FormData
+    let rawTo, rawCc, rawBcc;
     try {
-      to = JSON.parse(formData.get('to') as string || '[]');
-      cc = formData.has('cc') ? JSON.parse(formData.get('cc') as string) : undefined;
-      bcc = formData.has('bcc') ? JSON.parse(formData.get('bcc') as string) : undefined;
+      rawTo = JSON.parse(formData.get('to') as string || '[]');
+      rawCc = formData.has('cc') ? JSON.parse(formData.get('cc') as string) : undefined;
+      rawBcc = formData.has('bcc') ? JSON.parse(formData.get('bcc') as string) : undefined;
     } catch {
       return NextResponse.json({ success: false, error: 'Invalid recipient data' }, { status: 400 });
     }
-    const subject = formData.get('subject') as string || '';
-    const bodyText = formData.get('bodyText') as string || '';
-    const bodyHtml = formData.get('bodyHtml') as string | null;
-    const inReplyTo = formData.get('inReplyTo') as string | null;
-    const threadId = formData.get('threadId') as string | null;
 
-    if (!accountId || !to?.length) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    const parsed = parseBody(emailSendSchema, {
+      accountId: formData.get('accountId'),
+      to: rawTo,
+      cc: rawCc,
+      bcc: rawBcc,
+      subject: formData.get('subject') || '',
+      bodyText: formData.get('bodyText') || '',
+      bodyHtml: formData.get('bodyHtml') || null,
+      inReplyTo: formData.get('inReplyTo') || null,
+      threadId: formData.get('threadId') || null,
+    });
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, threadId } = parsed.data;
 
     const supabase = await createClient();
 
@@ -84,13 +90,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Decrypt password
-    const password = decrypt(account.heslo_sifrovane, account.heslo_iv, account.heslo_tag);
+    let password: string;
+    try {
+      password = decrypt(account.heslo_sifrovane, account.heslo_iv, account.heslo_tag);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('Password decryption failed:', detail);
+      return NextResponse.json(
+        { success: false, error: 'Chyba dešifrování hesla. Zkontrolujte konfiguraci šifrování.' },
+        { status: 500 }
+      );
+    }
 
-    // Collect attachments from formData
+    // Collect attachments from formData (max 25MB total)
+    const MAX_ATTACHMENTS_SIZE = 25 * 1024 * 1024; // 25 MB
     const attachments: { filename: string; content: Buffer; contentType: string }[] = [];
     const files = formData.getAll('attachments');
+    let totalSize = 0;
     for (const file of files) {
       if (file instanceof File) {
+        totalSize += file.size;
+        if (totalSize > MAX_ATTACHMENTS_SIZE) {
+          return NextResponse.json(
+            { success: false, error: 'Celková velikost příloh nesmí překročit 25 MB.' },
+            { status: 413 }
+          );
+        }
         const buffer = Buffer.from(await file.arrayBuffer());
         attachments.push({
           filename: file.name,

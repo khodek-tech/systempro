@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser';
 import ExcelJS from 'exceljs';
 import iconv from 'iconv-lite';
 import { requireAdmin } from '@/lib/supabase/api-auth';
+import { pohodaCredentialsSchema, parseBody } from '@/lib/api/schemas';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -257,14 +258,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { url, username, password, ico } = body;
-
-    if (!url || !username || !password || !ico) {
-      return NextResponse.json(
-        { success: false, error: 'Chybi prihlasovaci udaje' },
-        { status: 400 }
-      );
+    const parsed = parseBody(pohodaCredentialsSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { url, username, password, ico } = parsed.data;
 
     // 1. Stahnout VSECHNA data z mServeru
     const allItems = await fetchAllStockData(url, username, password, ico);

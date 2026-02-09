@@ -138,7 +138,7 @@ export function mapDbToAbsenceRequest(row: any): AbsenceRequest {
     status: row.stav as AbsenceRequestStatus,
     createdAt: row.vytvoreno,
     approvedBy: row.schvalil ?? undefined,
-    approvedAt: row.schvaleno ?? undefined,
+    approvedAt: row.zpracovano ?? undefined,
     seenByUser: row.precteno_zamestnancem ?? undefined,
   };
 }
@@ -155,7 +155,7 @@ export function mapAbsenceRequestToDb(req: Partial<AbsenceRequest> & { id: strin
   if (req.status !== undefined) row.stav = req.status;
   if (req.createdAt !== undefined) row.vytvoreno = req.createdAt;
   if (req.approvedBy !== undefined) row.schvalil = req.approvedBy || null;
-  if (req.approvedAt !== undefined) row.schvaleno = req.approvedAt || null;
+  if (req.approvedAt !== undefined) row.zpracovano = req.approvedAt || null;
   if (req.seenByUser !== undefined) row.precteno_zamestnancem = req.seenByUser;
   return row;
 }

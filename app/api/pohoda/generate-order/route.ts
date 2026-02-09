@@ -6,6 +6,7 @@ import * as path from 'path';
 import iconv from 'iconv-lite';
 import { requireAdmin } from '@/lib/supabase/api-auth';
 import { checkRateLimit, getRateLimitKey } from '@/lib/rate-limit';
+import { pohodaCredentialsSchema, parseBody } from '@/lib/api/schemas';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -375,14 +376,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { url, username, password, ico } = body;
-
-    if (!url || !username || !password || !ico) {
-      return NextResponse.json(
-        { success: false, error: 'Chybi prihlasovaci udaje' },
-        { status: 400 }
-      );
+    const parsed = parseBody(pohodaCredentialsSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { url, username, password, ico } = parsed.data;
 
     // 1. Nacist Podklady.xlsx
     const podklady = await loadPodklady();

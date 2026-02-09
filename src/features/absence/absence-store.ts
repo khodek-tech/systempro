@@ -190,8 +190,17 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       return { success: false, error: 'Datum od nemůže být po datu do!' };
     }
 
-    if (formData.type === 'Lékař' && (!formData.timeFrom || !formData.timeTo)) {
-      return { success: false, error: 'Vyplňte čas od a do!' };
+    if (formData.type === 'Lékař') {
+      if (!formData.timeFrom || !formData.timeTo) {
+        return { success: false, error: 'Vyplňte čas od a do!' };
+      }
+      const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+      if (!timeRegex.test(formData.timeFrom) || !timeRegex.test(formData.timeTo)) {
+        return { success: false, error: 'Čas musí být ve formátu HH:mm (např. 08:30).' };
+      }
+      if (formData.timeFrom >= formData.timeTo) {
+        return { success: false, error: 'Čas do musí být po čase od!' };
+      }
     }
 
     const newRequest: AbsenceRequest = {
@@ -279,7 +288,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
     const { error } = await supabase.from('zadosti_o_absenci').update({
       stav: 'approved',
       schvalil: approverId,
-      schvaleno: approvedAt,
+      zpracovano: approvedAt,
       precteno_zamestnancem: false,
     }).eq('id', requestId);
 
@@ -322,12 +331,12 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       return { success: false, error: permissionCheck.error || 'Nemáte oprávnění zamítnout tuto žádost' };
     }
 
-    const approvedAt = new Date().toISOString();
+    const processedAt = new Date().toISOString();
     const supabase = createClient();
     const { error } = await supabase.from('zadosti_o_absenci').update({
       stav: 'rejected',
       schvalil: approverId,
-      schvaleno: approvedAt,
+      zpracovano: processedAt,
       precteno_zamestnancem: false,
     }).eq('id', requestId);
 
@@ -342,7 +351,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
               ...r,
               status: 'rejected' as AbsenceRequestStatus,
               approvedBy: approverId,
-              approvedAt,
+              approvedAt: processedAt,
               seenByUser: false,
             }
           : r

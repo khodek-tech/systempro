@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { encrypt } from '@/lib/email/encryption';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isValidPort(port: unknown): boolean {
-  if (port === undefined || port === null) return true; // defaults will be used
-  const n = Number(port);
-  return Number.isInteger(n) && n >= 1 && n <= 65535;
-}
+import { emailAccountCreateSchema, emailAccountUpdateSchema, parseBody } from '@/lib/api/schemas';
 
 export async function POST(request: NextRequest) {
   const { error: authError } = await requireAdmin();
@@ -20,19 +13,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, email, imapServer, imapPort, smtpServer, smtpPort, username, password } = body;
-
-    if (!name || !email || !imapServer || !smtpServer || !username || !password) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    const parsed = parseBody(emailAccountCreateSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
-
-    if (!EMAIL_RE.test(email)) {
-      return NextResponse.json({ success: false, error: 'Invalid email format' }, { status: 400 });
-    }
-
-    if (!isValidPort(imapPort) || !isValidPort(smtpPort)) {
-      return NextResponse.json({ success: false, error: 'Port must be 1-65535' }, { status: 400 });
-    }
+    const { name, email, imapServer, imapPort, smtpServer, smtpPort, username, password } = parsed.data;
 
     // Encrypt password
     const { encrypted, iv, tag } = encrypt(password);
@@ -76,19 +61,11 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { id, name, email, imapServer, imapPort, smtpServer, smtpPort, username, password, active } = body;
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Missing account id' }, { status: 400 });
+    const parsed = parseBody(emailAccountUpdateSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
-
-    if (email !== undefined && !EMAIL_RE.test(email)) {
-      return NextResponse.json({ success: false, error: 'Invalid email format' }, { status: 400 });
-    }
-
-    if (!isValidPort(imapPort) || !isValidPort(smtpPort)) {
-      return NextResponse.json({ success: false, error: 'Port must be 1-65535' }, { status: 400 });
-    }
+    const { id, name, email, imapServer, imapPort, smtpServer, smtpPort, username, password, active } = parsed.data;
 
     const supabase = await createClient();
 

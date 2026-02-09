@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 import ExcelJS from 'exceljs';
 import { requireAdmin } from '@/lib/supabase/api-auth';
+import { pohodaSkladyExportSchema, parseBody } from '@/lib/api/schemas';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -216,14 +217,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { url, username, password, ico, skladId } = body;
-
-    if (!url || !username || !password || !ico) {
-      return NextResponse.json(
-        { success: false, error: 'Chybi povinne udaje' },
-        { status: 400 }
-      );
+    const parsed = parseBody(pohodaSkladyExportSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { url, username, password, ico, skladId } = parsed.data;
 
     const mserverUrl = `${url.replace(/\/$/, '')}/xml`;
     const authHeader = createAuthHeader(username, password);

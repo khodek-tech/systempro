@@ -107,7 +107,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
         return { success: false, error: 'Příchod byl již zaznamenán.' };
       }
 
-      // INSERT new record
+      // INSERT new record (DB has unique partial index preventing duplicates)
       const { error } = await supabase.from('dochazka').insert({
         datum,
         prodejna: workplaceType === 'store' ? workplaceName : null,
@@ -119,6 +119,11 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
       });
 
       if (error) {
+        // Unique constraint violation = duplicate active check-in
+        if (error.code === '23505') {
+          toast.error('Dnešní příchod již byl zaznamenán.');
+          return { success: false, error: 'Příchod byl již zaznamenán.' };
+        }
         console.error('Failed to save check-in:', error);
         toast.error('Nepodařilo se zaznamenat příchod.');
         return { success: false, error: 'Chyba při ukládání příchodu.' };

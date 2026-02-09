@@ -2,6 +2,54 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.8.0] - 2026-02-09
+
+### Opraveno
+
+#### Docházka: Race condition při check-inu
+- DB migration: přidán UNIQUE partial index `(datum, zamestnanec) WHERE odchod IS NULL`
+- `attendance-store.ts`: detekce duplicitního check-inu přes PostgreSQL error code `23505`
+
+#### Absence: Validace času u typu Lékař
+- `absence-store.ts`: přidána regex validace `HH:mm` a kontrola `timeTo > timeFrom`
+
+#### Absence: Přejmenování sloupce schvaleno → zpracovano
+- DB migration: `ALTER TABLE zadosti_o_absenci RENAME COLUMN schvaleno TO zpracovano`
+- `mappers.ts` + `absence-store.ts`: aktualizovány DB mappery a store operace
+
+#### Úkoly: Monthly/yearly repeat date overflow
+- `tasks-store.ts`: nahrazeny ruční `setMonth()`/`setFullYear()` za `date-fns` `addMonths()`/`addYears()` — Jan 31 + 1 měsíc = Feb 28/29
+
+#### Úkoly: Circular dependency přes require()
+- `tasks-store.ts`: lazy `require('@/core/stores/modules-store')` nahrazen za `void import()` s pre-warm pattern
+
+#### Pohoda: Hardcoded interní URL
+- `pohoda-store.ts`: URL přesunuto do `process.env.NEXT_PUBLIC_POHODA_URL`
+- `.env.example`: přidána proměnná `NEXT_PUBLIC_POHODA_URL`
+
+#### IMAP: decrypt() bez try/catch
+- `imap-client.ts`: `decrypt()` obalen `try/catch` s českou chybovou zprávou
+- `email/send/route.ts`: decrypt failure vrací 500 s jasnou chybou
+
+#### Chat: Smazání skupiny není atomické
+- DB migration: přidán FK constraint `chat_stav_precteni_id_skupiny_fkey` s `ON DELETE CASCADE`
+- `chat-store.ts`: zjednodušen `deleteGroup()` — CASCADE řeší mazání child záznamů
+
+### Přidáno
+
+#### Zod validace API routes
+- `lib/api/schemas.ts`: nový soubor se Zod schématy pro všechny API endpointy
+- Validace přidána do: email/send, email/imap-action, email/sync, email/test-connection, email/backfill, email/accounts (POST+PUT), pohoda/test, pohoda/sklady/list, pohoda/sklady/export, pohoda/vsechny-sklady, pohoda/generate-order
+
+#### Email: Limit velikosti příloh
+- `email/send/route.ts`: server-side limit 25 MB
+- `email-store.ts`: client-side validace před odesláním
+
+### Změněno
+- Závislosti: přidány `date-fns` a `zod`
+
+---
+
 ## [1.7.0] - 2026-02-09
 
 ### Přidáno

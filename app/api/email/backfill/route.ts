@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { ImapFlow } from 'imapflow';
+import { emailBackfillSchema, parseBody } from '@/lib/api/schemas';
 
 // Walk MIME bodyStructure tree and return part IDs for text/plain and text/html (skip attachments)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +58,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { accountId, folderId, batchSize = 50 } = body;
+    const parsed = parseBody(emailBackfillSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
+    }
+    const { accountId, folderId, batchSize } = parsed.data;
 
     if (!accountId) {
       return NextResponse.json({ success: false, error: 'Missing accountId' }, { status: 400 });

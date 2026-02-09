@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 import { requireAdmin } from '@/lib/supabase/api-auth';
+import { pohodaCredentialsSchema, parseBody } from '@/lib/api/schemas';
 
 // Pomocna funkce pro vytvoreni autentizacni hlavicky
 function createAuthHeader(username: string, password: string): string {
@@ -20,15 +21,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { url, username, password, ico } = body;
-
-    // Validace vstupu
-    if (!url || !username || !password || !ico) {
-      return NextResponse.json(
-        { success: false, error: 'Chybi povinne udaje' },
-        { status: 400 }
-      );
+    const parsed = parseBody(pohodaCredentialsSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { url, username, password } = parsed.data;
 
     // Sestaveni URL pro status endpoint
     const statusUrl = `${url.replace(/\/$/, '')}/status?companyDetail`;

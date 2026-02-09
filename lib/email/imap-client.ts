@@ -38,7 +38,13 @@ export async function withImapConnection<T>(
   }
 
   const acc = account as AccountRow;
-  const password = decrypt(acc.heslo_sifrovane, acc.heslo_iv, acc.heslo_tag);
+  let password: string;
+  try {
+    password = decrypt(acc.heslo_sifrovane, acc.heslo_iv, acc.heslo_tag);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Nepodařilo se dešifrovat heslo emailového účtu (${detail}). Zkontrolujte EMAIL_ENCRYPTION_KEY.`);
+  }
 
   const client = new ImapFlow({
     host: acc.imap_server,

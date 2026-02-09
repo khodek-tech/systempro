@@ -3,7 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Task, TaskStatus, TaskPriority, TaskComment, TaskAttachment, ViewRoleMapping } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToTask, mapDbToTaskComment, mapTaskToDb, mapTaskCommentToDb } from '@/lib/supabase/mappers';
-
+import { addMonths, addYears } from 'date-fns';
 import { toast } from 'sonner';
 import {
   canViewTasksOfUser,
@@ -596,7 +596,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         }
 
         if (t.assigneeType === 'store' && !isMyTask && !iCreatedIt) {
-          const config = useModulesStoreRef().getModuleConfig('tasks');
+          const config = getModulesStoreState()?.getModuleConfig('tasks');
           const viewMapping = config?.viewMappings?.find((m: ViewRoleMapping) => m.viewerRoleId === viewerRoleId);
           canViewAssignee = (viewMapping?.visibleRoleIds.length || 0) > 0;
         }
@@ -854,9 +854,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
           const monthsSinceApproval = (now.getTime() - approvedAt.getTime()) / (1000 * 60 * 60 * 24 * 30);
           if (monthsSinceApproval >= 1) {
             shouldCreate = true;
-            const newDeadlineDate = new Date(taskDeadline);
-            newDeadlineDate.setMonth(newDeadlineDate.getMonth() + 1);
-            newDeadlineTime = newDeadlineDate.getTime();
+            newDeadlineTime = addMonths(taskDeadline, 1).getTime();
           }
           break;
         }
@@ -864,9 +862,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
           const yearsSinceApproval = (now.getTime() - approvedAt.getTime()) / (1000 * 60 * 60 * 24 * 365);
           if (yearsSinceApproval >= 1) {
             shouldCreate = true;
-            const newDeadlineDate = new Date(taskDeadline);
-            newDeadlineDate.setFullYear(newDeadlineDate.getFullYear() + 1);
-            newDeadlineTime = newDeadlineDate.getTime();
+            newDeadlineTime = addYears(taskDeadline, 1).getTime();
           }
           break;
         }
@@ -915,12 +911,12 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   },
 }));
 
-// Helper to get modules store without circular dependency (lazy singleton)
+// Helper to get modules store without circular dependency (lazy dynamic import)
 let _modulesStoreModule: typeof import('@/core/stores/modules-store') | null = null;
-const useModulesStoreRef = () => {
-  if (!_modulesStoreModule) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    _modulesStoreModule = require('@/core/stores/modules-store');
-  }
-  return _modulesStoreModule!.useModulesStore.getState();
+// Pre-warm on first tick so the sync getter always has data
+void import('@/core/stores/modules-store').then((m) => {
+  _modulesStoreModule = m;
+});
+const getModulesStoreState = () => {
+  return _modulesStoreModule?.useModulesStore.getState() ?? null;
 };

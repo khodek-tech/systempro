@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
+import { emailTestConnectionSchema, parseBody } from '@/lib/api/schemas';
 
 export async function POST(request: NextRequest) {
   const { user, error: authError } = await requireAuth();
@@ -13,9 +14,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const parsed = parseBody(emailTestConnectionSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
+    }
+
     let imapServer: string, imapPort: number, smtpServer: string, smtpPort: number, username: string, password: string;
 
-    if (body.accountId) {
+    if ('accountId' in parsed.data && parsed.data.accountId) {
       // Test existing account
       const supabase = await createClient();
       const { data: account, error: accError } = await supabase
@@ -35,17 +41,14 @@ export async function POST(request: NextRequest) {
       username = account.uzivatelske_jmeno;
       password = decrypt(account.heslo_sifrovane, account.heslo_iv, account.heslo_tag);
     } else {
-      // Test new credentials
-      imapServer = body.imapServer;
-      imapPort = body.imapPort ?? 993;
-      smtpServer = body.smtpServer;
-      smtpPort = body.smtpPort ?? 465;
-      username = body.username;
-      password = body.password;
-
-      if (!imapServer || !smtpServer || !username || !password) {
-        return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
-      }
+      // Test new credentials (already validated by Zod)
+      const creds = parsed.data as { imapServer: string; imapPort?: number; smtpServer: string; smtpPort?: number; username: string; password: string };
+      imapServer = creds.imapServer;
+      imapPort = creds.imapPort ?? 993;
+      smtpServer = creds.smtpServer;
+      smtpPort = creds.smtpPort ?? 465;
+      username = creds.username;
+      password = creds.password;
     }
 
     let imapOk = false;

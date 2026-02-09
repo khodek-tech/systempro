@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { ImapFlow } from 'imapflow';
+import { emailSyncSchema, parseBody } from '@/lib/api/schemas';
 
 // Translate raw IMAP errors to user-friendly Czech messages
 function friendlyError(msg: string): string {
@@ -182,11 +183,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { accountId, mode = 'incremental' } = body;
-
-    if (!accountId) {
-      return NextResponse.json({ success: false, error: 'Missing accountId' }, { status: 400 });
+    const parsed = parseBody(emailSyncSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { accountId, mode } = parsed.data;
 
     const isInitial = mode === 'initial';
     const batchSize = isInitial ? BATCH_SIZE_INITIAL : BATCH_SIZE_INCREMENTAL;

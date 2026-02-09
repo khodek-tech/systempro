@@ -73,7 +73,7 @@ interface PohodaActions {
 }
 
 const defaultCredentials: PohodaCredentials = {
-  url: 'http://2HSER.ipodnik.com:4444',
+  url: process.env.NEXT_PUBLIC_POHODA_URL || '',
   username: '',
   password: '',
   ico: '',

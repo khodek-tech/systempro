@@ -736,6 +736,16 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     }
 
     try {
+      // Validate attachment size on client side (max 25MB total)
+      if (data.attachments?.length) {
+        const MAX_SIZE = 25 * 1024 * 1024;
+        const totalSize = data.attachments.reduce((sum, f) => sum + f.size, 0);
+        if (totalSize > MAX_SIZE) {
+          toast.error('Celková velikost příloh nesmí překročit 25 MB.');
+          return { success: false, error: 'Celková velikost příloh nesmí překročit 25 MB.' };
+        }
+      }
+
       const formData = new FormData();
       formData.append('accountId', data.accountId);
       formData.append('to', JSON.stringify(data.to));

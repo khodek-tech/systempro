@@ -316,17 +316,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   deleteGroup: async (groupId) => {
     const supabase = createClient();
 
-    // Delete messages and read statuses first, then the group
-    const [msgsResult, readResult] = await Promise.all([
-      supabase.from('chat_zpravy').delete().eq('id_skupiny', groupId),
-      supabase.from('chat_stav_precteni').delete().eq('id_skupiny', groupId),
-    ]);
-
-    if (msgsResult.error || readResult.error) {
-      console.error('Failed to delete group data:', msgsResult.error, readResult.error);
-      return;
-    }
-
+    // CASCADE DELETE handles messages and read statuses automatically
     const { error } = await supabase.from('chat_skupiny').delete().eq('id', groupId);
     if (error) {
       console.error('Failed to delete group:', error);

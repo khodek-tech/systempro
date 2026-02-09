@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { withImapConnection } from '@/lib/email/imap-client';
-
-type ImapAction = 'move' | 'setRead' | 'setUnread' | 'setFlagged' | 'unsetFlagged' | 'delete';
+import { emailImapActionSchema, parseBody } from '@/lib/api/schemas';
 
 export async function POST(request: NextRequest) {
   const { user, error: authError } = await requireAuth();
@@ -13,16 +12,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action, messageId, accountId, targetFolderId } = body as {
-      action: ImapAction;
-      messageId: string;
-      accountId: string;
-      targetFolderId?: string;
-    };
-
-    if (!action || !messageId || !accountId) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    const parsed = parseBody(emailImapActionSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+    const { action, messageId, accountId, targetFolderId } = parsed.data;
 
     const supabase = await createClient();
 

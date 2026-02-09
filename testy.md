@@ -23,6 +23,7 @@
 14. [E-mail](#14-e-mail)
 15. [Produkční audit](#15-produkční-audit-v150)
 16. [DB Persistence audit](#16-db-persistence-audit-v160)
+17. [Produkční hardening audit](#17-produkční-hardening-audit-v180)
 
 ---
 
@@ -804,6 +805,64 @@
 - Odvody bez nastaveného pracoviště → chyba "Pracoviště není nastaveno"
 - Odchod bez příchodu (záznam nenalezen) → lokální state se změní, DB zůstane konzistentní
 - Refresh po příchodu → isInWork=false (lokální), ale DB záznam s prichod existuje
+
+---
+
+## 17. Produkční hardening audit (v1.8.0)
+
+### HARD-001: Docházka — duplicitní check-in
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přihlásit jako Prodavač, kliknout Příchod | Stav: V práci |
+| 2 | V novém tabu rychle kliknout Příchod znovu | Toast "Dnešní příchod již byl zaznamenán" |
+| 3 | Zkontrolovat DB | Pouze 1 záznam s odchod=NULL pro daný den a zaměstnance |
+
+### HARD-002: Absence Lékař — nevalidní čas
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít Hlášení absence, typ Lékař | Zobrazena sekce času |
+| 2 | Zadat čas od "99:99", čas do "10:00" | Chyba "Čas musí být ve formátu HH:mm" |
+| 3 | Zadat čas od "14:00", čas do "10:00" | Chyba "Čas do musí být po čase od" |
+| 4 | Zadat čas od "08:30", čas do "10:00" | Formulář projde validací |
+
+### HARD-003: Opakované úkoly — overflow měsíce
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Vytvořit úkol s deadline 31.1.2026, opakovani=monthly | Úkol vytvořen |
+| 2 | Schválit úkol, počkat na vygenerování opakování | Nový úkol vytvořen |
+| 3 | Zkontrolovat deadline nového úkolu | 28.2.2026 (ne 3.3.2026) |
+
+### HARD-004: Email — velká příloha
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít Email, kliknout Nový email | Composer zobrazen |
+| 2 | Přidat přílohu > 25 MB | Toast "Celková velikost příloh nesmí překročit 25 MB" |
+
+### HARD-005: Chat — smazání skupiny (CASCADE)
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Vytvořit chat skupinu, odeslat zprávy | Skupina s zprávami existuje |
+| 2 | Smazat skupinu | Skupina, zprávy i read statuses smazány z DB |
+| 3 | Zkontrolovat DB tabulky | Žádné sirotčí záznamy |
+
+### HARD-006: API validace — nevalidní request body
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | POST /api/email/imap-action s prázdným body | 400 + Zod error message |
+| 2 | POST /api/email/sync s `{accountId: ""}` | 400 + validation error |
+| 3 | POST /api/pohoda/test s chybějícím polem | 400 + validation error |
+
+### HARD-007: Decrypt chyba — srozumitelná hláška
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Nastavit špatný EMAIL_ENCRYPTION_KEY | Env proměnná změněna |
+| 2 | Pokusit se synchronizovat email | Chyba "Nepodařilo se dešifrovat heslo..." |
+
+### Edge cases
+- Absence zamítnutí: sloupec `zpracovano` obsahuje timestamp (ne `schvaleno`)
+- Pohoda URL: výchozí hodnota z NEXT_PUBLIC_POHODA_URL, prázdná pokud nenastaven
+- Rate limit na email send: 20/min per IP, 429 s Retry-After hlavičkou
+- CASCADE DELETE: smazání skupiny v jedné DB operaci (atomické)
 
 ---
 
