@@ -10,6 +10,7 @@ import { useTasksStore } from '@/features/tasks/tasks-store';
 import { useChatStore } from '@/features/chat/chat-store';
 import { useEmailStore } from '@/features/email/email-store';
 import { useAdminStore } from '@/admin/admin-store';
+import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
 import { toast } from 'sonner';
 
@@ -47,9 +48,11 @@ async function initializeStores() {
     useChatStore.getState().fetchChatData(),
     useEmailStore.getState().fetchEmailData(),
     useAdminStore.getState().fetchAttendanceRecords(),
+    useAttendanceStore.getState().fetchTodayAttendance(),
   ]);
 
   // Phase 4: Start Realtime subscriptions and auto-sync
+  useAttendanceStore.getState().subscribeRealtime();
   useEmailStore.getState().subscribeRealtime();
   useEmailStore.getState().startAutoSync();
   useChatStore.getState().subscribeRealtime();
@@ -63,6 +66,7 @@ async function initializeStores() {
  * Tear down Realtime subscriptions and auto-sync intervals.
  */
 export function cleanupSubscriptions() {
+  useAttendanceStore.getState().unsubscribeRealtime();
   useEmailStore.getState().unsubscribeRealtime();
   useEmailStore.getState().stopAutoSync();
   useChatStore.getState().unsubscribeRealtime();

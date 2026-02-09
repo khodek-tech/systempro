@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, KeyRound, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, KeyRound, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUsersStore } from '@/stores/users-store';
 import { useRolesStore } from '@/stores/roles-store';
@@ -26,6 +26,7 @@ export function EmployeesSettings() {
   const [deleteModalUser, setDeleteModalUser] = useState<User | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const handleAdd = () => {
     setEditingUser(null);
@@ -228,16 +229,23 @@ export function EmployeesSettings() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button
+                    disabled={togglingId === user.id}
                     onClick={async () => {
+                      setTogglingId(user.id);
                       try {
                         await toggleUserActive(user.id);
                       } catch {
                         toast.error('Nepodařilo se změnit stav zaměstnance.');
+                      } finally {
+                        setTogglingId(null);
                       }
                     }}
-                    className="inline-flex items-center justify-center"
+                    className="inline-flex items-center justify-center disabled:opacity-50"
+                    aria-label={user.active ? `Deaktivovat ${user.fullName}` : `Aktivovat ${user.fullName}`}
                   >
-                    {user.active ? (
+                    {togglingId === user.id ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                    ) : user.active ? (
                       <ToggleRight className="w-8 h-8 text-green-500" />
                     ) : (
                       <ToggleLeft className="w-8 h-8 text-slate-300" />
@@ -251,19 +259,21 @@ export function EmployeesSettings() {
                       variant="outline"
                       size="sm"
                       className="text-slate-600"
+                      aria-label={`Upravit ${user.fullName}`}
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <button
                       onClick={() => setResetPasswordUser(user)}
                       className="bg-orange-50 text-orange-600 p-2 rounded-lg hover:bg-orange-100 transition-colors"
-                      title="Resetovat heslo"
+                      aria-label={`Resetovat heslo ${user.fullName}`}
                     >
                       <KeyRound className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(user)}
                       className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
+                      aria-label={`Smazat ${user.fullName}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

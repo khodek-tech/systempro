@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useStoresStore } from '@/stores/stores-store';
 import { Store, StoreOpeningHours, DayOpeningHours } from '@/types';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface StoreFormModalProps {
   open: boolean;
@@ -70,7 +71,10 @@ export function StoreFormModal({ open, onClose, store }: StoreFormModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      toast.error('Vyplňte název prodejny');
+      return;
+    }
 
     const openingHours: StoreOpeningHours = sameAllWeek
       ? {
@@ -109,6 +113,7 @@ export function StoreFormModal({ open, onClose, store }: StoreFormModalProps) {
           </h2>
           <button
             onClick={onClose}
+            aria-label="Zavřít"
             className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <X className="w-6 h-6" />

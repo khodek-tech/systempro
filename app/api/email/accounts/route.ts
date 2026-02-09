@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/supabase/api-auth';
+import { requireAdmin } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { encrypt } from '@/lib/email/encryption';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidPort(port: unknown): boolean {
+  if (port === undefined || port === null) return true; // defaults will be used
+  const n = Number(port);
+  return Number.isInteger(n) && n >= 1 && n <= 65535;
+}
+
 export async function POST(request: NextRequest) {
-  const { user, error: authError } = await requireAuth();
-  if (authError || !user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  const { error: authError } = await requireAdmin();
+  if (authError) {
+    const status = authError === 'Forbidden' ? 403 : 401;
+    return NextResponse.json({ success: false, error: authError }, { status });
   }
 
   try {
@@ -15,6 +24,14 @@ export async function POST(request: NextRequest) {
 
     if (!name || !email || !imapServer || !smtpServer || !username || !password) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json({ success: false, error: 'Invalid email format' }, { status: 400 });
+    }
+
+    if (!isValidPort(imapPort) || !isValidPort(smtpPort)) {
+      return NextResponse.json({ success: false, error: 'Port must be 1-65535' }, { status: 400 });
     }
 
     // Encrypt password
@@ -51,9 +68,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const { user, error: authError } = await requireAuth();
-  if (authError || !user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  const { error: authError } = await requireAdmin();
+  if (authError) {
+    const status = authError === 'Forbidden' ? 403 : 401;
+    return NextResponse.json({ success: false, error: authError }, { status });
   }
 
   try {
@@ -62,6 +80,14 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'Missing account id' }, { status: 400 });
+    }
+
+    if (email !== undefined && !EMAIL_RE.test(email)) {
+      return NextResponse.json({ success: false, error: 'Invalid email format' }, { status: 400 });
+    }
+
+    if (!isValidPort(imapPort) || !isValidPort(smtpPort)) {
+      return NextResponse.json({ success: false, error: 'Port must be 1-65535' }, { status: 400 });
     }
 
     const supabase = await createClient();

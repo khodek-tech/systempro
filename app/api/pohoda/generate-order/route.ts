@@ -4,7 +4,8 @@ import ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 import iconv from 'iconv-lite';
-import { requireAuth } from '@/lib/supabase/api-auth';
+import { requireAdmin } from '@/lib/supabase/api-auth';
+import { checkRateLimit, getRateLimitKey } from '@/lib/rate-limit';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -356,10 +357,20 @@ async function createOutputExcel(
 }
 
 export async function POST(request: NextRequest) {
-  // Ověření přihlášení
-  const { user, error: authError } = await requireAuth()
-  if (authError || !user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  // Rate limit: 5 order generations per minute per IP
+  const rlKey = getRateLimitKey(request, 'pohoda-order');
+  const rl = checkRateLimit(rlKey, { limit: 5, windowSeconds: 60 });
+  if (!rl.success) {
+    return NextResponse.json(
+      { success: false, error: 'Příliš mnoho požadavků. Zkuste to za chvíli.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
+  const { error: authError } = await requireAdmin()
+  if (authError) {
+    const status = authError === 'Forbidden' ? 403 : 401
+    return NextResponse.json({ success: false, error: authError }, { status })
   }
 
   try {

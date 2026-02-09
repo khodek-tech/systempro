@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { requireAuth } from '@/lib/supabase/api-auth';
+import { requireAdmin } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 
 const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
 const BUCKET = 'attachments';
 
 export async function POST(request: NextRequest) {
-  // Ověření přihlášení
-  const { user, error: authError } = await requireAuth()
-  if (authError || !user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  const { error: authError } = await requireAdmin()
+  if (authError) {
+    const status = authError === 'Forbidden' ? 403 : 401
+    return NextResponse.json({ success: false, error: authError }, { status })
   }
 
   try {

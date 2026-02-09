@@ -36,7 +36,8 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     const redirectTo = request.nextUrl.pathname
     url.pathname = '/login'
-    if (redirectTo !== '/') {
+    // Only allow relative paths starting with / (prevent open redirect)
+    if (redirectTo !== '/' && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
       url.searchParams.set('redirectTo', redirectTo)
     }
     return NextResponse.redirect(url)

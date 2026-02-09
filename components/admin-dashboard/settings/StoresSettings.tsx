@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStoresStore } from '@/stores/stores-store';
 import { StoreFormModal } from './StoreFormModal';
@@ -20,6 +20,8 @@ export function StoresSettings() {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [deleteModalStore, setDeleteModalStore] = useState<Store | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -71,6 +73,7 @@ export function StoresSettings() {
 
   const handleConfirmDelete = async () => {
     if (deleteModalStore) {
+      setDeletingId(deleteModalStore.id);
       try {
         const result = await deleteStore(deleteModalStore.id);
         if (!result.success) {
@@ -78,6 +81,8 @@ export function StoresSettings() {
         }
       } catch {
         toast.error('Nepodařilo se smazat prodejnu.');
+      } finally {
+        setDeletingId(null);
       }
       setDeleteModalStore(null);
     }
@@ -159,16 +164,23 @@ export function StoresSettings() {
                 <td className="px-4 py-3 text-sm text-slate-600">{store.address}</td>
                 <td className="px-4 py-3 text-center">
                   <button
+                    disabled={togglingId === store.id}
                     onClick={async () => {
+                      setTogglingId(store.id);
                       try {
                         await toggleStoreActive(store.id);
                       } catch {
                         toast.error('Nepodařilo se změnit stav prodejny.');
+                      } finally {
+                        setTogglingId(null);
                       }
                     }}
-                    className="inline-flex items-center justify-center"
+                    className="inline-flex items-center justify-center disabled:opacity-50"
+                    aria-label={store.active ? `Deaktivovat ${store.name}` : `Aktivovat ${store.name}`}
                   >
-                    {store.active ? (
+                    {togglingId === store.id ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                    ) : store.active ? (
                       <ToggleRight className="w-8 h-8 text-green-500" />
                     ) : (
                       <ToggleLeft className="w-8 h-8 text-slate-300" />
@@ -185,14 +197,21 @@ export function StoresSettings() {
                       variant="outline"
                       size="sm"
                       className="text-slate-600"
+                      aria-label={`Upravit ${store.name}`}
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <button
                       onClick={() => handleDelete(store)}
-                      className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors"
+                      disabled={deletingId === store.id}
+                      className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                      aria-label={`Smazat ${store.name}`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {deletingId === store.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </td>

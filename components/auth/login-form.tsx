@@ -40,7 +40,9 @@ export function LoginForm() {
       return
     }
 
-    const redirectTo = searchParams.get('redirectTo') || '/'
+    const raw = searchParams.get('redirectTo') || '/'
+    // Only allow relative paths (prevent open redirect)
+    const redirectTo = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/'
     router.push(redirectTo)
     router.refresh()
   }

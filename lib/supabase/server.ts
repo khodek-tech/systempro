@@ -21,7 +21,8 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Server Component - ignorovat
+            // Server Component context: cookies are read-only, setting fails silently.
+            // This is expected behavior in Next.js Server Components.
           }
         },
       },

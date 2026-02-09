@@ -72,10 +72,28 @@ export function EmailComposer() {
     });
   };
 
+  const isValidEmail = (addr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr);
+
   const handleSend = async () => {
     if (!selectedAccountId || !to.trim()) {
       toast.error('Vyplňte příjemce');
       return;
+    }
+
+    // Validate all email addresses
+    const toAddrs = parseAddresses(to);
+    const invalidTo = toAddrs.filter((a) => !isValidEmail(a.address));
+    if (invalidTo.length > 0) {
+      toast.error(`Neplatná adresa: ${invalidTo[0].address}`);
+      return;
+    }
+    if (cc.trim()) {
+      const ccAddrs = parseAddresses(cc);
+      const invalidCc = ccAddrs.filter((a) => !isValidEmail(a.address));
+      if (invalidCc.length > 0) {
+        toast.error(`Neplatná adresa v kopii: ${invalidCc[0].address}`);
+        return;
+      }
     }
 
     setSending(true);
@@ -135,7 +153,7 @@ export function EmailComposer() {
             {composerMode === 'replyAll' && 'Odpovědět všem'}
             {composerMode === 'forward' && 'Přeposlat'}
           </h2>
-          <button onClick={closeComposer} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+          <button onClick={closeComposer} aria-label="Zavřít" className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>

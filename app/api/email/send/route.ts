@@ -3,10 +3,21 @@ import { requireAuth } from '@/lib/supabase/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { withImapConnection } from '@/lib/email/imap-client';
+import { checkRateLimit, getRateLimitKey } from '@/lib/rate-limit';
 import nodemailer from 'nodemailer';
 import MailComposer from 'nodemailer/lib/mail-composer';
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 20 emails per minute per IP
+  const rlKey = getRateLimitKey(request, 'email-send');
+  const rl = checkRateLimit(rlKey, { limit: 20, windowSeconds: 60 });
+  if (!rl.success) {
+    return NextResponse.json(
+      { success: false, error: 'Příliš mnoho požadavků. Zkuste to za chvíli.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   const { user, error: authError } = await requireAuth();
   if (authError || !user) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });

@@ -25,6 +25,7 @@ function SortHeader({ field, label, className }: { field: SortField; label: stri
   return (
     <button
       onClick={() => setEmailSort(field)}
+      aria-label={`Řadit podle ${label}${active ? (emailSortDirection === 'asc' ? ' vzestupně' : ' sestupně') : ''}`}
       className={cn(
         'flex items-center gap-0.5 text-xs transition-colors',
         active ? 'text-slate-800 font-semibold' : 'text-slate-500 font-medium hover:text-slate-700',
@@ -153,6 +154,7 @@ export function EmailMessageList() {
             checked={allSelected}
             ref={(el) => { if (el) el.indeterminate = someSelected; }}
             onChange={() => allSelected || someSelected ? clearSelection() : selectAllMessages()}
+            aria-label="Vybrat všechny zprávy"
             className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
           />
           <MoveDropdown />

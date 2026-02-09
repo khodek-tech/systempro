@@ -2,6 +2,7 @@ import { createClient } from './client';
 
 const BUCKET = 'attachments';
 const SIGNED_URL_EXPIRY = 3600; // 1 hour
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
 interface UploadResult {
   success: boolean;
@@ -16,6 +17,10 @@ interface UploadResult {
  * @param file - File object to upload
  */
 export async function uploadFile(folder: string, file: File): Promise<UploadResult> {
+  if (file.size > MAX_FILE_SIZE) {
+    return { success: false, error: `Soubor je příliš velký (max ${formatBytes(MAX_FILE_SIZE)})` };
+  }
+
   const supabase = createClient();
   const timestamp = Date.now();
   const uuid = crypto.randomUUID().slice(0, 8);

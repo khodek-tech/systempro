@@ -7,17 +7,22 @@ const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
   async headers() {
+    // In production, unsafe-inline for scripts is mitigated by strict-dynamic when nonce support is added.
+    // style-src unsafe-inline is required by Next.js for inline styles.
     const cspDirectives = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-      `style-src 'self' 'unsafe-inline'`,
+      isDev
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+        : "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
       `img-src 'self' data: blob:${supabaseDomain ? ` https://${supabaseDomain}` : ''}`,
-      `font-src 'self' data:`,
+      "font-src 'self' data:",
       `connect-src 'self'${supabaseDomain ? ` https://${supabaseDomain} wss://${supabaseDomain}` : ''}`,
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      "upgrade-insecure-requests",
     ];
 
     return [
