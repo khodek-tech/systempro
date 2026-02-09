@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { groupMessagesByDate } from '@/features/chat';
 import { ChatMessage } from './ChatMessage';
 import { ChatMessageInput } from './ChatMessageInput';
+import { uploadFiles } from '@/lib/supabase/storage';
+import { ChatAttachment } from '@/types';
+import { toast } from 'sonner';
 
 export function ChatConversation() {
   const {
@@ -20,6 +23,7 @@ export function ChatConversation() {
   } = useChatStore();
   const { currentUser } = useAuthStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const group = selectedGroupId ? getGroupById(selectedGroupId) : null;
   const messages = selectedGroupId ? getMessagesForGroup(selectedGroupId) : [];
@@ -37,8 +41,44 @@ export function ChatConversation() {
     }
   }, [selectedGroupId, currentUser, markGroupAsRead, messages.length]);
 
-  const handleSend = (text: string, attachments: typeof messages[0]['attachments']) => {
+  const handleSend = async (text: string, files: File[]) => {
     if (!selectedGroupId || !currentUser) return;
+
+    let attachments: ChatAttachment[] = [];
+
+    if (files.length > 0) {
+      setUploading(true);
+      const results = await uploadFiles(`chat/${selectedGroupId}`, files);
+      setUploading(false);
+
+      const failed = results.filter((r) => !r.success);
+      if (failed.length > 0) {
+        toast.error(`Nepodařilo se nahrát ${failed.length} soubor(ů)`);
+      }
+
+      attachments = results
+        .filter((r) => r.success && r.path)
+        .map((r, i) => {
+          const file = files[i];
+          let fileType: ChatAttachment['fileType'] = 'other';
+          if (file.type.startsWith('image/')) fileType = 'image';
+          else if (file.type === 'application/pdf') fileType = 'pdf';
+          else if (file.type.includes('spreadsheet') || file.type.includes('excel'))
+            fileType = 'excel';
+
+          return {
+            id: `att-${crypto.randomUUID()}`,
+            fileName: file.name,
+            fileType,
+            fileSize: file.size,
+            url: r.path!,
+            uploadedAt: new Date().toISOString(),
+          };
+        });
+
+      if (attachments.length === 0 && !text.trim()) return;
+    }
+
     sendMessage(selectedGroupId, currentUser.id, text, attachments);
   };
 
@@ -114,7 +154,7 @@ export function ChatConversation() {
       </div>
 
       {/* Input */}
-      <ChatMessageInput onSend={handleSend} />
+      <ChatMessageInput onSend={handleSend} disabled={uploading} />
     </div>
   );
 }

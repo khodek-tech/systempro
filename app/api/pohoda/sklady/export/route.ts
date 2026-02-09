@@ -229,8 +229,6 @@ export async function POST(request: NextRequest) {
     const authHeader = createAuthHeader(username, password);
     const xmlRequest = createSkladExportRequest(ico, skladId);
 
-    console.log('Fetching stock data from Pohoda...');
-
     const response = await fetch(mserverUrl, {
       method: 'POST',
       headers: {
@@ -249,9 +247,6 @@ export async function POST(request: NextRequest) {
     }
 
     const xmlText = await response.text();
-    console.log('Received response, length:', xmlText.length);
-    console.log('First 500 chars:', xmlText.substring(0, 500));
-    console.log('Parsing stock data...');
 
     // Zkontrolovat, zda odpoved obsahuje chybu
     if (xmlText.includes('<rdc:state>error</rdc:state>') || xmlText.includes('state="error"')) {
@@ -263,7 +258,6 @@ export async function POST(request: NextRequest) {
     }
 
     const items = parseStockItems(xmlText);
-    console.log(`Parsed ${items.length} stock items`);
 
     // Vytvoreni Excel souboru
     const excelBuffer = await createExcel(items, skladId || 'Vsechny sklady');

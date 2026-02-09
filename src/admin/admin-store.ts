@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { AttendanceRecord } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToAttendanceRecord } from '@/lib/supabase/mappers';
+import { getStorageUsage } from '@/lib/supabase/storage';
 import { toast } from 'sonner';
 
 type AdminSubView = 'main' | 'reports' | 'settings';
@@ -15,6 +16,7 @@ interface AdminState {
   monthFilter: string;
   yearFilter: string;
   attendanceRecords: AttendanceRecord[];
+  storageUsageBytes: number;
   _loaded: boolean;
   _loading: boolean;
 }
@@ -28,6 +30,7 @@ interface KpiData {
 interface AdminActions {
   // Fetch
   fetchAttendanceRecords: () => Promise<void>;
+  fetchStorageUsage: () => Promise<void>;
 
   // Navigation
   setSubView: (view: AdminSubView) => void;
@@ -58,6 +61,7 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   monthFilter: 'all',
   yearFilter: 'all',
   attendanceRecords: [],
+  storageUsageBytes: 0,
   _loaded: false,
   _loading: false,
 
@@ -73,6 +77,11 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
       toast.error('Nepodařilo se načíst docházku');
       set({ _loading: false });
     }
+  },
+
+  fetchStorageUsage: async () => {
+    const bytes = await getStorageUsage();
+    set({ storageUsageBytes: bytes });
   },
 
   // Navigation

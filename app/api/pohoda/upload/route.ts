@@ -47,14 +47,6 @@ export async function POST(request: NextRequest) {
     const filePath = path.join(EXPORT_DIR, sanitizedName);
     const gitFilePath = path.join('export', sanitizedName);
 
-    console.log('Upload:', {
-      originalName: file.name,
-      sanitizedName,
-      filePath,
-      exportDir: EXPORT_DIR,
-      projectRoot: PROJECT_ROOT,
-    });
-
     // Zajistit ze slozka existuje
     await mkdir(EXPORT_DIR, { recursive: true });
 
@@ -64,7 +56,6 @@ export async function POST(request: NextRequest) {
 
     // Ulozeni souboru
     await writeFile(filePath, buffer);
-    console.log('Soubor ulozen:', filePath);
 
     // Pridat do gitu, commitnout a pushnout
     try {
@@ -77,7 +68,6 @@ export async function POST(request: NextRequest) {
       try {
         await execAsync('git diff --staged --quiet', gitOptions);
         // Pokud projde bez chyby, nejsou zadne zmeny - soubor je stejny
-        console.log('Soubor je stejny, zadne zmeny k commitnuti');
       } catch {
         // Jsou staged zmeny - commitnout a pushnout
         await execAsync(
@@ -85,7 +75,6 @@ export async function POST(request: NextRequest) {
           gitOptions
         );
         await execAsync('git push', gitOptions);
-        console.log('Soubor uspesne commitnut a pushnut');
       }
     } catch (gitError) {
       console.error('Git error:', gitError);

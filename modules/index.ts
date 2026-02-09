@@ -5,7 +5,6 @@ export { AbsenceApprovalModule } from './AbsenceApprovalModule';
 export { TasksModule } from './TasksModule';
 export { KpiDashboardModule } from './KpiDashboardModule';
 export { ReportsModule } from './ReportsModule';
-export { PlaceholderModule } from './PlaceholderModule';
 export { ShiftsModule } from './ShiftsModule';
 export { PresenceModule } from './PresenceModule';
 export { ChatModule } from './ChatModule';

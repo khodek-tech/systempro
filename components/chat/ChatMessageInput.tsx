@@ -1,29 +1,40 @@
 'use client';
 
 import { useState, useRef, KeyboardEvent } from 'react';
-import { Send, Paperclip } from 'lucide-react';
-import { ChatAttachment } from '@/types';
-import { ChatAttachmentPreview } from './ChatAttachmentPreview';
+import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon } from 'lucide-react';
 
 interface ChatMessageInputProps {
-  onSend: (text: string, attachments: ChatAttachment[]) => void;
+  onSend: (text: string, files: File[]) => void;
   disabled?: boolean;
+}
+
+function getFileIcon(file: File) {
+  if (file.type.startsWith('image/')) return <ImageIcon className="w-4 h-4 text-green-500" />;
+  if (file.type === 'application/pdf') return <FileText className="w-4 h-4 text-red-500" />;
+  if (file.type.includes('spreadsheet') || file.type.includes('excel'))
+    return <FileSpreadsheet className="w-4 h-4 text-emerald-600" />;
+  return <FileIcon className="w-4 h-4 text-slate-500" />;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
 export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputProps) {
   const [text, setText] = useState('');
-  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
-    if (!text.trim() && attachments.length === 0) return;
+    if (!text.trim() && selectedFiles.length === 0) return;
 
-    onSend(text.trim(), attachments);
+    onSend(text.trim(), selectedFiles);
     setText('');
-    setAttachments([]);
+    setSelectedFiles([]);
 
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -39,7 +50,6 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   const handleTextChange = (value: string) => {
     setText(value);
 
-    // Auto-resize textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -50,57 +60,46 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
     const files = e.target.files;
     if (!files) return;
 
-    const newAttachments: ChatAttachment[] = Array.from(files).map((file) => {
-      let fileType: ChatAttachment['fileType'] = 'other';
-      if (file.type.startsWith('image/')) fileType = 'image';
-      else if (file.type === 'application/pdf') fileType = 'pdf';
-      else if (
-        file.type === 'application/vnd.ms-excel' ||
-        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      )
-        fileType = 'excel';
+    setSelectedFiles((prev) => [...prev, ...Array.from(files)]);
 
-      return {
-        id: `att-${crypto.randomUUID()}`,
-        fileName: file.name,
-        fileType,
-        fileSize: file.size,
-        url: URL.createObjectURL(file),
-        uploadedAt: new Date().toISOString(),
-      };
-    });
-
-    setAttachments((prev) => [...prev, ...newAttachments]);
-
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const removeAttachment = (id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
     <div className="border-t border-slate-200 bg-white p-4">
-      {/* Attachments preview */}
-      {attachments.length > 0 && (
+      {/* Files preview */}
+      {selectedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
-          {attachments.map((attachment) => (
-            <ChatAttachmentPreview
-              key={attachment.id}
-              attachment={attachment}
-              isEditable
-              onRemove={() => removeAttachment(attachment.id)}
-            />
+          {selectedFiles.map((file, index) => (
+            <div
+              key={`${file.name}-${index}`}
+              className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-w-xs"
+            >
+              <div className="flex-shrink-0">{getFileIcon(file)}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-700 truncate">{file.name}</p>
+                <p className="text-xs text-slate-400">{formatSize(file.size)}</p>
+              </div>
+              <button
+                onClick={() => removeFile(index)}
+                className="flex-shrink-0 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                title="Odebrat"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           ))}
         </div>
       )}
 
       {/* Input area */}
       <div className="flex items-end gap-2">
-        {/* Attachment button */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
@@ -115,10 +114,9 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           multiple
           onChange={handleFileSelect}
           className="hidden"
-          accept="image/*,.pdf,.xls,.xlsx"
+          accept="image/*,.pdf,.xls,.xlsx,.doc,.docx"
         />
 
-        {/* Text input */}
         <textarea
           ref={textareaRef}
           value={text}
@@ -130,10 +128,9 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           className="flex-1 resize-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-blue-300 transition-colors disabled:opacity-50 max-h-[120px]"
         />
 
-        {/* Send button */}
         <button
           onClick={handleSubmit}
-          disabled={disabled || (!text.trim() && attachments.length === 0)}
+          disabled={disabled || (!text.trim() && selectedFiles.length === 0)}
           className="flex-shrink-0 p-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:hover:bg-blue-500"
           title="Odeslat (Enter)"
         >

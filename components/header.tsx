@@ -262,6 +262,7 @@ export function Header() {
               type="button"
               onClick={() => {
                 cleanupSubscriptions();
+                useAuthStore.getState().resetAuth();
                 signOut();
               }}
               className="p-2.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"

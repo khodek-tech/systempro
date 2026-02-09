@@ -43,7 +43,6 @@ import { AbsenceApprovalModule } from './AbsenceApprovalModule';
 import { TasksModule } from './TasksModule';
 import { KpiDashboardModule } from './KpiDashboardModule';
 import { ReportsModule } from './ReportsModule';
-import { PlaceholderModule } from './PlaceholderModule';
 import { ShiftsModule } from './ShiftsModule';
 import { PresenceModule } from './PresenceModule';
 import { ChatModule } from './ChatModule';
@@ -59,7 +58,6 @@ export const MODULE_REGISTRY: Record<string, ComponentType> = {
   TasksModule,
   KpiDashboardModule,
   ReportsModule,
-  PlaceholderModule,
   ShiftsModule,
   PresenceModule,
   ChatModule,

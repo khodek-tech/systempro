@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { useEffect } from 'react';
+import { ArrowLeft, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KpiCards } from '@/components/admin-dashboard/kpi-cards';
 import { AttendanceTable } from '@/components/admin-dashboard/attendance-table';
@@ -23,6 +24,7 @@ import { useChatStore } from '@/stores/chat-store';
 import { useEmailStore } from '@/stores/email-store';
 import { useManualStore } from '@/stores/manual-store';
 import { usePresenceStore } from '@/stores/presence-store';
+import { formatBytes } from '@/lib/supabase/storage';
 
 export function AdminView() {
   const {
@@ -30,12 +32,14 @@ export function AdminView() {
     storeFilter,
     monthFilter,
     yearFilter,
+    storageUsageBytes,
     setSubView,
     setStoreFilter,
     setMonthFilter,
     setYearFilter,
     getFilteredData,
     getKpiData,
+    fetchStorageUsage,
   } = useAdminStore();
   const { approvalViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
@@ -46,6 +50,12 @@ export function AdminView() {
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
+
+  useEffect(() => {
+    if (subView === 'settings') {
+      fetchStorageUsage();
+    }
+  }, [subView, fetchStorageUsage]);
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
@@ -104,6 +114,10 @@ export function AdminView() {
               Zpět
             </Button>
             <h1 className="text-2xl font-bold text-slate-800">Nastavení</h1>
+            <span className="text-sm font-medium text-slate-400 flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4" />
+              {formatBytes(storageUsageBytes)}
+            </span>
           </div>
 
           {/* Settings content */}

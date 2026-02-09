@@ -42,6 +42,7 @@ interface AuthActions {
   getActiveRoleType: () => RoleType | null;
   canReportAbsence: () => boolean;
   isLoggedInAdmin: () => boolean;
+  resetAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -283,6 +284,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const { loggedInUser } = get();
     if (!loggedInUser) return false;
     return loggedInUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
+  },
+
+  resetAuth: () => {
+    set({ currentUser: null, loggedInUser: null, activeRoleId: null, activeStoreId: null });
+    localStorage.removeItem(STORAGE_KEYS.AUTH);
   },
     }),
     {

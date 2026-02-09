@@ -23,6 +23,29 @@ import {
 } from '@/lib/tasks-helpers';
 import type { TaskAttachment } from '@/types';
 import { cn } from '@/lib/utils';
+import { uploadFiles } from '@/lib/supabase/storage';
+import { useSignedUrl } from '@/lib/hooks/use-signed-url';
+import { toast } from 'sonner';
+
+function TaskAttachmentLink({ att }: { att: TaskAttachment }) {
+  const signedUrl = useSignedUrl(att.fileUrl);
+
+  return (
+    <a
+      href={signedUrl || '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      download={att.fileName}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-colors',
+        !signedUrl && 'pointer-events-none opacity-50'
+      )}
+    >
+      <FileText className="w-3.5 h-3.5 text-slate-400" />
+      <span className="max-w-[150px] truncate">{att.fileName}</span>
+    </a>
+  );
+}
 
 export function TaskDetailModal() {
   const {
@@ -204,29 +227,32 @@ export function TaskDetailModal() {
     }
   };
 
-  // Helper function to convert File to data URL
-  const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleAddComment = async () => {
     if (!commentText.trim() && selectedFiles.length === 0) return;
 
-    // Convert files to data URLs (demo purposes - in production would upload to server)
-    const attachments: TaskAttachment[] = await Promise.all(
-      selectedFiles.map(async (file) => ({
-        id: `att-${crypto.randomUUID()}`,
-        fileName: file.name,
-        fileType: file.type,
-        fileUrl: await fileToDataUrl(file),
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: currentUser.id,
-      }))
-    );
+    let attachments: TaskAttachment[] = [];
+
+    if (selectedFiles.length > 0) {
+      const results = await uploadFiles(`tasks/${task.id}`, selectedFiles);
+
+      const failed = results.filter((r) => !r.success);
+      if (failed.length > 0) {
+        toast.error(`Nepodařilo se nahrát ${failed.length} soubor(ů)`);
+      }
+
+      attachments = results
+        .filter((r) => r.success && r.path)
+        .map((r, i) => ({
+          id: `att-${crypto.randomUUID()}`,
+          fileName: selectedFiles[i].name,
+          fileType: selectedFiles[i].type,
+          fileUrl: r.path!,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: currentUser.id,
+        }));
+
+      if (attachments.length === 0 && !commentText.trim()) return;
+    }
 
     addComment(task.id, currentUser.id, commentText.trim(), attachments);
     setCommentText('');
@@ -566,17 +592,7 @@ export function TaskDetailModal() {
                       {comment.attachments.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {comment.attachments.map((att) => (
-                            <a
-                              key={att.id}
-                              href={att.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download={att.fileName}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-colors"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="max-w-[150px] truncate">{att.fileName}</span>
-                            </a>
+                            <TaskAttachmentLink key={att.id} att={att} />
                           ))}
                         </div>
                       )}
