@@ -2,6 +2,43 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.0.0] - 2026-02-09
+
+### Změněno
+
+#### Centralizace synchronizace: Vercel Cron Jobs místo browser polling
+- **Email sync**: Každý browser polloval 1x/min → **1 cron job 1x/5min** (`/api/cron/email-sync`)
+- **Tasks repeat check**: Každý browser polloval 1x/30s → **1 cron job 1x/5min** (`/api/cron/tasks-repeat`)
+- **Chat refresh**: Každý browser polloval 1x/15s → **pouze Supabase Realtime** (žádný polling)
+- S 30 uživateli ušetří ~3 CPU hodiny/hodinu (z ~180 requestů/min na 2 requesty/5min)
+
+### Přidáno
+
+#### Cron infrastruktura
+- `lib/supabase/admin.ts` — Supabase service role client pro cron joby (bypass RLS)
+- `lib/email/sync-core.ts` — extrahovaná IMAP sync logika sdílená mezi manual sync API a cron jobem
+- `app/api/cron/email-sync/route.ts` — GET endpoint pro centrální email sync (auth: CRON_SECRET)
+- `app/api/cron/tasks-repeat/route.ts` — GET endpoint pro centrální repeat check (auth: CRON_SECRET)
+- `vercel.json` — Vercel Cron schedule (`*/5 * * * *` pro oba joby)
+
+### Odstraněno
+
+#### Browser polling
+- `startAutoSync()` / `stopAutoSync()` odstraněny z email-store, tasks-store, chat-store
+- `_autoSyncInterval` state odstraněn ze všech tří stores
+- `checkAndCreateRepeatingTasks()` call z init.ts odstraněn (běží přes cron)
+- Všechny `startAutoSync()` / `stopAutoSync()` volání odstraněny z `lib/supabase/init.ts`
+
+### Změněno
+- `app/api/email/sync/route.ts` — refaktorováno na volání `syncAccount()` z `lib/email/sync-core.ts`
+- `middleware.ts` — `/api/cron/*` routes exempt z Supabase auth (používají vlastní CRON_SECRET)
+
+#### Nové env proměnné (nutno nastavit ručně)
+- `SUPABASE_SERVICE_ROLE_KEY` — z Supabase Dashboard → Settings → API
+- `CRON_SECRET` — random string, nastavit ve Vercel Dashboard → Environment Variables
+
+---
+
 ## [1.9.0] - 2026-02-09
 
 ### Vylepšeno

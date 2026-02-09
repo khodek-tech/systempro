@@ -47,7 +47,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, baseDelay = 1
  * Order matters: roles + stores first, then users (depends on roles/stores for validation),
  * then everything else in parallel.
  * Critical phases (1+2) are retried up to 3 times. Phase 3 (non-critical) continues on partial failure.
- * After init: start Realtime subscriptions and auto-sync.
+ * After init: start Realtime subscriptions (polling handled by Vercel Cron Jobs).
  */
 async function initializeStores() {
   // Phase 1: Core entities (no dependencies) — critical, retry
@@ -72,28 +72,21 @@ async function initializeStores() {
     useAttendanceStore.getState().fetchTodayAttendance(),
   ]);
 
-  // Phase 4: Start Realtime subscriptions and auto-sync
+  // Phase 4: Start Realtime subscriptions (polling removed — synced via Vercel Cron Jobs)
   useAttendanceStore.getState().subscribeRealtime();
   useEmailStore.getState().subscribeRealtime();
-  useEmailStore.getState().startAutoSync();
   useChatStore.getState().subscribeRealtime();
-  useChatStore.getState().startAutoSync();
   useTasksStore.getState().subscribeRealtime();
-  useTasksStore.getState().startAutoSync();
-  useTasksStore.getState().checkAndCreateRepeatingTasks();
 }
 
 /**
- * Tear down Realtime subscriptions and auto-sync intervals.
+ * Tear down Realtime subscriptions.
  */
 export function cleanupSubscriptions() {
   useAttendanceStore.getState().unsubscribeRealtime();
   useEmailStore.getState().unsubscribeRealtime();
-  useEmailStore.getState().stopAutoSync();
   useChatStore.getState().unsubscribeRealtime();
-  useChatStore.getState().stopAutoSync();
   useTasksStore.getState().unsubscribeRealtime();
-  useTasksStore.getState().stopAutoSync();
 }
 
 /**

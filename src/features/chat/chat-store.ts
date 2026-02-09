@@ -32,7 +32,6 @@ interface ChatState {
   isGroupFormOpen: boolean;
   editingGroupId: string | null;
   _realtimeChannel: RealtimeChannel | null;
-  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface ChatActions {
@@ -69,10 +68,6 @@ interface ChatActions {
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
 
-  // Auto-sync
-  startAutoSync: () => void;
-  stopAutoSync: () => void;
-
   // Getters
   getGroupsForUser: (userId: string) => ChatGroup[];
   getMessagesForGroup: (groupId: string) => ChatMessage[];
@@ -94,7 +89,6 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   isGroupFormOpen: false,
   editingGroupId: null,
   _realtimeChannel: null,
-  _autoSyncInterval: null,
 
   // Fetch
   fetchChatData: async () => {
@@ -435,55 +429,6 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   unsubscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
     set({ _realtimeChannel: null });
-  },
-
-  // Auto-sync
-  startAutoSync: () => {
-    const existing = get()._autoSyncInterval;
-    if (existing) clearInterval(existing);
-
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        const supabase = createClient();
-        Promise.all([
-          supabase.from('chat_zpravy').select('*'),
-          supabase.from('chat_stav_precteni').select('*'),
-        ]).then(([msgsResult, readResult]) => {
-          if (!msgsResult.error && msgsResult.data) {
-            const freshMessages = msgsResult.data.map(mapDbToChatMessage);
-            const current = get().messages;
-            const currentIds = new Set(current.map((m) => m.id));
-            const newMessages = freshMessages.filter((m) => !currentIds.has(m.id));
-            if (newMessages.length > 0) {
-              set({ messages: [...current, ...newMessages] });
-            }
-            // Also update existing messages (e.g. reactions)
-            const updatedMessages = freshMessages.filter(
-              (m) => currentIds.has(m.id),
-            );
-            if (updatedMessages.length > 0) {
-              const freshMap = new Map(updatedMessages.map((m) => [m.id, m]));
-              set({
-                messages: get().messages.map((m) => freshMap.get(m.id) ?? m),
-              });
-            }
-          }
-          if (!readResult.error && readResult.data) {
-            set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
-          }
-        }).catch(() => {
-          logger.error('[chat-autosync] refresh failed');
-        });
-      }
-    }, 15_000);
-
-    set({ _autoSyncInterval: interval });
-  },
-
-  stopAutoSync: () => {
-    const interval = get()._autoSyncInterval;
-    if (interval) clearInterval(interval);
-    set({ _autoSyncInterval: null });
   },
 
   // Getters

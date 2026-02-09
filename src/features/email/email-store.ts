@@ -74,9 +74,8 @@ interface EmailState {
   messagesTotal: number;
   messagesHasMore: boolean;
 
-  // Realtime & auto-sync (internal)
+  // Realtime (internal)
   _realtimeChannel: RealtimeChannel | null;
-  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface EmailActions {
@@ -124,11 +123,9 @@ interface EmailActions {
   updateRule: (ruleId: string, updates: Partial<EmailRule>) => Promise<void>;
   deleteRule: (ruleId: string) => Promise<void>;
 
-  // Realtime & auto-sync
+  // Realtime
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
-  startAutoSync: () => void;
-  stopAutoSync: () => void;
 
   // Getters
   getAccountsForUser: (userId: string) => EmailAccount[];
@@ -169,7 +166,6 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   messagesHasMore: false,
 
   _realtimeChannel: null,
-  _autoSyncInterval: null,
 
   // =========================================================================
   // Fetch
@@ -1019,27 +1015,6 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   unsubscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
     set({ _realtimeChannel: null });
-  },
-
-  startAutoSync: () => {
-    // Clear any existing interval
-    const existing = get()._autoSyncInterval;
-    if (existing) clearInterval(existing);
-
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        const accounts = get().accounts;
-        Promise.all(accounts.map((acc) => get().triggerSync(acc.id)));
-      }
-    }, 60_000);
-
-    set({ _autoSyncInterval: interval });
-  },
-
-  stopAutoSync: () => {
-    const interval = get()._autoSyncInterval;
-    if (interval) clearInterval(interval);
-    set({ _autoSyncInterval: null });
   },
 
   // =========================================================================

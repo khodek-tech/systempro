@@ -24,6 +24,7 @@
 15. [Produkční audit](#15-produkční-audit-v150)
 16. [DB Persistence audit](#16-db-persistence-audit-v160)
 17. [Produkční hardening audit](#17-produkční-hardening-audit-v180)
+18. [Centralizace synchronizace — Cron Jobs](#18-centralizace-synchronizace--cron-jobs-v200)
 
 ---
 
@@ -863,6 +864,55 @@
 - Pohoda URL: výchozí hodnota z NEXT_PUBLIC_POHODA_URL, prázdná pokud nenastaven
 - Rate limit na email send: 20/min per IP, 429 s Retry-After hlavičkou
 - CASCADE DELETE: smazání skupiny v jedné DB operaci (atomické)
+
+---
+
+## 18. Centralizace synchronizace — Cron Jobs (v2.0.0)
+
+### CRON-001: Email sync cron endpoint
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | `curl -H "Authorization: Bearer <CRON_SECRET>" /api/cron/email-sync` | 200 + JSON s accountsSynced, totalNew |
+| 2 | Zavolat bez auth headeru | 401 Unauthorized |
+| 3 | Zavolat se špatným tokenem | 401 Unauthorized |
+| 4 | Zkontrolovat emailovy_log v DB | Nový záznam s stav=success |
+
+### CRON-002: Tasks repeat cron endpoint
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Vytvořit úkol s opakovani=daily, schválit | Úkol ve stavu approved |
+| 2 | Počkat 24h (nebo manipulovat datum schválení) | Podmínka splněna |
+| 3 | `curl -H "Authorization: Bearer <CRON_SECRET>" /api/cron/tasks-repeat` | 200 + JSON s createdTasks=1 |
+| 4 | Zkontrolovat tabulku ukoly | Nový úkol s zdroj_opakovani = původní ID |
+
+### CRON-003: Browser polling odstraněn
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít app v prohlížeči | Přihlášen |
+| 2 | Otevřít Network tab, filtr: /api/email/sync | Žádné periodické requesty |
+| 3 | Počkat 2 minuty | Stále žádné sync requesty z browseru |
+| 4 | Zkontrolovat Realtime WebSocket | WS spojení aktivní (chat, email, tasks) |
+
+### CRON-004: Manuální sync stále funguje
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít Email modul | Zobrazí se |
+| 2 | Kliknout "Synchronizovat" | Spinner, pak toast "Synchronizace dokončena" |
+| 3 | Nové zprávy se zobrazí | Data aktualizována |
+
+### CRON-005: Realtime funguje bez pollingu
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít chat ve dvou oknech | Oba připojeni |
+| 2 | Uživatel A pošle zprávu | Zpráva se okamžitě zobrazí u B |
+| 3 | Zkontrolovat Network tab u B | Žádný polling, pouze WebSocket |
+
+### Edge cases
+- Cron bez `SUPABASE_SERVICE_ROLE_KEY` → chyba při inicializaci admin clienta
+- Cron bez `CRON_SECRET` → 401 na všechny cron requesty
+- Middleware exempt: `/api/cron/*` neprocházejí Supabase auth middleware
+- Email sync cron: sekvenční zpracování účtů (ne paralelní) — šetří IMAP connections
+- Tasks repeat cron: kontrola existujících non-approved opakování zabraňuje duplicitám
 
 ---
 
