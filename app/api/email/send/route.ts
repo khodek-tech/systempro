@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         user: account.uzivatelske_jmeno,
         pass: password,
       },
-      tls: { rejectUnauthorized: false },
+      tls: { rejectUnauthorized: process.env.EMAIL_REJECT_UNAUTHORIZED !== 'false' },
     });
 
     // Format addresses

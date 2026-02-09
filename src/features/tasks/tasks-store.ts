@@ -4,6 +4,7 @@ import { Task, TaskStatus, TaskPriority, TaskComment, TaskAttachment, ViewRoleMa
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToTask, mapDbToTaskComment, mapTaskToDb, mapTaskCommentToDb } from '@/lib/supabase/mappers';
 
+import { toast } from 'sonner';
 import {
   canViewTasksOfUser,
   isUserAssignedToTask,
@@ -100,6 +101,7 @@ async function updateTaskInDb(taskId: string, updates: Partial<Task>): Promise<b
   const { error } = await supabase.from('ukoly').update(dbData).eq('id', taskId);
   if (error) {
     console.error('Failed to update task:', error);
+    toast.error('Nepodařilo se uložit úkol');
     return false;
   }
   return true;
@@ -174,6 +176,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const { error } = await supabase.from('ukoly').insert(dbData);
     if (error) {
       console.error('Failed to create task:', error);
+      toast.error('Nepodařilo se vytvořit úkol');
       return;
     }
 
@@ -207,6 +210,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const { error } = await supabase.from('ukoly').delete().eq('id', taskId);
     if (error) {
       console.error('Failed to delete task:', error);
+      toast.error('Nepodařilo se smazat úkol');
       return;
     }
 
@@ -488,6 +492,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const { error } = await supabase.from('komentare_ukolu').insert(dbData);
     if (error) {
       console.error('Failed to add comment:', error);
+      toast.error('Nepodařilo se přidat komentář');
       return;
     }
 

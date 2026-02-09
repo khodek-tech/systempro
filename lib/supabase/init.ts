@@ -61,7 +61,7 @@ async function initializeStores() {
 /**
  * Tear down Realtime subscriptions and auto-sync intervals.
  */
-function cleanupSubscriptions() {
+export function cleanupSubscriptions() {
   useEmailStore.getState().unsubscribeRealtime();
   useEmailStore.getState().stopAutoSync();
   useChatStore.getState().unsubscribeRealtime();

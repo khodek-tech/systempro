@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Role, RoleType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToRole, mapRoleToDb } from '@/lib/supabase/mappers';
+import { toast } from 'sonner';
 import { getUsersWithRole } from './store-helpers';
 import { PROTECTED_ROLE_TYPES } from '@/lib/constants';
 
@@ -16,8 +17,8 @@ interface RolesActions {
   fetchRoles: () => Promise<void>;
 
   // CRUD
-  addRole: (role: Omit<Role, 'id'>) => Promise<void>;
-  updateRole: (id: string, updates: Partial<Omit<Role, 'id'>>) => Promise<void>;
+  addRole: (role: Omit<Role, 'id'>) => Promise<{ success: boolean; error?: string }>;
+  updateRole: (id: string, updates: Partial<Omit<Role, 'id'>>) => Promise<{ success: boolean; error?: string }>;
   toggleRoleActive: (id: string) => Promise<boolean>;
   deleteRole: (id: string) => Promise<{ success: boolean; error?: string }>;
 
@@ -58,12 +59,14 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const { error } = await supabase.from('role').insert(dbData);
     if (error) {
       console.error('Failed to add role:', error);
-      return;
+      toast.error('Nepodařilo se přidat roli');
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
       roles: [...state.roles, newRole],
     }));
+    return { success: true };
   },
 
   updateRole: async (id, updates) => {
@@ -74,12 +77,14 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const { error } = await supabase.from('role').update(dbData).eq('id', id);
     if (error) {
       console.error('Failed to update role:', error);
-      return;
+      toast.error('Nepodařilo se upravit roli');
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
       roles: state.roles.map((role) => (role.id === id ? { ...role, ...updates } : role)),
     }));
+    return { success: true };
   },
 
   toggleRoleActive: async (id) => {
@@ -97,6 +102,7 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const { error } = await supabase.from('role').update({ aktivni: newActive }).eq('id', id);
     if (error) {
       console.error('Failed to toggle role active:', error);
+      toast.error('Nepodařilo se změnit stav role');
       return false;
     }
 

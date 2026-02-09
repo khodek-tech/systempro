@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         pass: password,
       },
       logger: false,
-      tls: { rejectUnauthorized: false },
+      tls: { rejectUnauthorized: process.env.EMAIL_REJECT_UNAUTHORIZED !== 'false' },
       connectionTimeout: 30000,
       greetingTimeout: 16000,
       socketTimeout: 300000,

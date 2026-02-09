@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       secure: (account.imap_port ?? 993) === 993,
       auth: { user: account.uzivatelske_jmeno, pass: password },
       logger: false,
-      tls: { rejectUnauthorized: false },
+      tls: { rejectUnauthorized: process.env.EMAIL_REJECT_UNAUTHORIZED !== 'false' },
     });
 
     await client.connect();

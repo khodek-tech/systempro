@@ -21,6 +21,7 @@
 12. [Reporty](#12-reporty)
 13. [Nápověda (Manual)](#13-nápověda-manual)
 14. [E-mail](#14-e-mail)
+15. [Produkční audit](#15-produkční-audit-v150)
 
 ---
 
@@ -691,4 +692,57 @@
 
 ---
 
-*Poslední aktualizace: 2026-02-08*
+## 15. Produkční audit (v1.5.0)
+
+### AUDIT-001: Schválení absence z admin dashboardu
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přihlásit jako Admin | Dashboard zobrazen |
+| 2 | Otevřít Tržba a Docházka | Report view s absence panelem |
+| 3 | Vidět pending žádosti | Skutečné žádosti z DB (ne z docházky) |
+| 4 | Kliknout "Schválit" | Toast "Žádost schválena", žádost zmizí ze seznamu |
+
+### AUDIT-002: Export XLS
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přihlásit jako Admin | Dashboard zobrazen |
+| 2 | Otevřít Tržba a Docházka | Report view zobrazen |
+| 3 | Nastavit filtry (prodejna, měsíc) | Data filtrována |
+| 4 | Kliknout "Export .XLS" | Stáhne se soubor dochazka.xlsx |
+| 5 | Otevřít soubor | Hlavička + řádky odpovídají zobrazeným datům |
+
+### AUDIT-003: Cleanup subscriptions při odhlášení
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přihlásit se, otevřít chat/email | Realtime a auto-sync běží |
+| 2 | Kliknout odhlásit | Přesměrování na login |
+| 3 | Zkontrolovat Network tab | Žádné další WebSocket/fetch requesty |
+
+### AUDIT-004: Deaktivovaný uživatel nemůže používat app
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Admin deaktivuje uživatele v nastavení | Uživatel deaktivován |
+| 2 | Deaktivovaný uživatel obnoví stránku | Session cleared, přesměrování na login |
+
+### AUDIT-005: Toast notifikace při chybách
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Simulovat DB chybu (offline mode) | Operace selže |
+| 2 | Odeslat chat zprávu | Toast "Nepodařilo se odeslat zprávu" |
+| 3 | Vytvořit úkol | Toast "Nepodařilo se vytvořit úkol" |
+
+### AUDIT-006: Error Boundary
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Simulovat runtime error v komponentě | ErrorBoundary zachytí |
+| 2 | Vidět fallback UI | "Něco se pokazilo" + tlačítko "Obnovit stránku" |
+| 3 | Kliknout "Obnovit stránku" | Stránka se znovu načte |
+
+### Edge cases
+- Stub komponenty (LastPickups, Svozový status) jsou skryty — nezobrazují se v reportech
+- TLS rejectUnauthorized řízeno env proměnnou — default `true` (bezpečný), override `false` pro self-signed certs
+- IMAP best-effort operace (mark read/unread, flag) logují varování místo tichého selhání
+
+---
+
+*Poslední aktualizace: 2026-02-09*

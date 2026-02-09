@@ -18,6 +18,8 @@ import {
   mapEmailRuleToDb,
 } from '@/lib/supabase/mappers';
 
+import { toast } from 'sonner';
+
 const PAGE_SIZE = 50;
 
 type ImapAction = 'move' | 'setRead' | 'setUnread' | 'setFlagged' | 'unsetFlagged' | 'delete';
@@ -375,6 +377,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       });
     } else {
       console.error('Search failed:', error);
+      toast.error('Vyhledávání selhalo');
       set({ searchResults: [], _searchLoading: false });
     }
   },
@@ -483,7 +486,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
     // IMAP flag sync (best-effort — don't block DB update on failure)
     if (msg && msg.imapUid > 0) {
-      callImapAction('setRead', messageId, msg.accountId).catch(() => {});
+      callImapAction('setRead', messageId, msg.accountId).catch((e) => console.warn('IMAP setRead failed:', e));
     }
 
     const supabase = createClient();
@@ -519,7 +522,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
     // IMAP flag sync (best-effort)
     if (msg && msg.imapUid > 0) {
-      callImapAction('setUnread', messageId, msg.accountId).catch(() => {});
+      callImapAction('setUnread', messageId, msg.accountId).catch((e) => console.warn('IMAP setUnread failed:', e));
     }
 
     const supabase = createClient();
@@ -557,7 +560,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     // IMAP flag sync (best-effort)
     if (msg.imapUid > 0) {
       const action: ImapAction = msg.flagged ? 'unsetFlagged' : 'setFlagged';
-      callImapAction(action, messageId, msg.accountId).catch(() => {});
+      callImapAction(action, messageId, msg.accountId).catch((e) => console.warn(`IMAP ${action} failed:`, e));
     }
 
     const supabase = createClient();
@@ -584,6 +587,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       const imapResult = await callImapAction('move', messageId, msg.accountId, targetFolderId);
       if (!imapResult.success && !imapResult.skipped) {
         console.error('IMAP move failed:', imapResult.error);
+        toast.error('Nepodařilo se přesunout zprávu');
         return;
       }
       // Update imap_uid if IMAP returned a new UID after move
@@ -648,6 +652,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         const imapResult = await callImapAction('delete', messageId, msg.accountId);
         if (!imapResult.success && !imapResult.skipped) {
           console.error('IMAP delete failed:', imapResult.error);
+          toast.error('Nepodařilo se smazat zprávu');
           return;
         }
       }
@@ -822,6 +827,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       set({ rules: [...get().rules, fullRule] });
     } else {
       console.error('Failed to create rule:', error);
+      toast.error('Nepodařilo se vytvořit pravidlo');
     }
   },
 

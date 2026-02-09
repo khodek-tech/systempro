@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { ChevronDown, Settings, User, HelpCircle, LogOut } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
+import { cleanupSubscriptions } from '@/lib/supabase/init';
 import { AttendanceModule } from './attendance-module';
 import { LiveClock } from './live-clock';
 import { useAuthStore } from '@/stores/auth-store';
@@ -257,15 +258,17 @@ export function Header() {
         {_hydrated && (
           <>
             <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="p-2.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
-                aria-label="Odhlasit se"
-              >
-                <LogOut className="w-5 h-5" aria-hidden="true" />
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={() => {
+                cleanupSubscriptions();
+                signOut();
+              }}
+              className="p-2.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all"
+              aria-label="Odhlasit se"
+            >
+              <LogOut className="w-5 h-5" aria-hidden="true" />
+            </button>
           </>
         )}
       </div>

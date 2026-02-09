@@ -16,6 +16,7 @@ import {
   mapDbToChatReadStatus,
   mapChatReadStatusToDb,
 } from '@/lib/supabase/mappers';
+import { toast } from 'sonner';
 import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
 
 interface ChatState {
@@ -146,6 +147,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const { error } = await supabase.from('chat_zpravy').insert(dbData);
     if (error) {
       console.error('Failed to send message:', error);
+      toast.error('Nepodařilo se odeslat zprávu');
       return;
     }
 
@@ -278,6 +280,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const { error } = await supabase.from('chat_skupiny').insert(dbData);
     if (error) {
       console.error('Failed to create group:', error);
+      toast.error('Nepodařilo se vytvořit skupinu');
       return;
     }
 
@@ -297,6 +300,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const { error } = await supabase.from('chat_skupiny').update(dbUpdates).eq('id', groupId);
     if (error) {
       console.error('Failed to update group:', error);
+      toast.error('Nepodařilo se upravit skupinu');
       return;
     }
 
@@ -326,6 +330,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const { error } = await supabase.from('chat_skupiny').delete().eq('id', groupId);
     if (error) {
       console.error('Failed to delete group:', error);
+      toast.error('Nepodařilo se smazat skupinu');
       return;
     }
 

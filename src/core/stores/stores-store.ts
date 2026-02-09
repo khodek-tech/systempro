@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Store } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToStore, mapStoreToDb } from '@/lib/supabase/mappers';
+import { toast } from 'sonner';
 import { useUsersStore } from './users-store';
 
 interface StoresState {
@@ -15,9 +16,9 @@ interface StoresActions {
   fetchStores: () => Promise<void>;
 
   // CRUD
-  addStore: (store: Omit<Store, 'id'>) => Promise<void>;
-  updateStore: (id: string, updates: Partial<Omit<Store, 'id'>>) => Promise<void>;
-  toggleStoreActive: (id: string) => Promise<void>;
+  addStore: (store: Omit<Store, 'id'>) => Promise<{ success: boolean; error?: string }>;
+  updateStore: (id: string, updates: Partial<Omit<Store, 'id'>>) => Promise<{ success: boolean; error?: string }>;
+  toggleStoreActive: (id: string) => Promise<{ success: boolean; error?: string }>;
   deleteStore: (id: string) => Promise<{ success: boolean; error?: string }>;
 
   // Computed
@@ -55,12 +56,14 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
     const { error } = await supabase.from('prodejny').insert(dbData);
     if (error) {
       console.error('Failed to add store:', error);
-      return;
+      toast.error('Nepodařilo se přidat prodejnu');
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
       stores: [...state.stores, newStore],
     }));
+    return { success: true };
   },
 
   updateStore: async (id, updates) => {
@@ -71,24 +74,27 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
     const { error } = await supabase.from('prodejny').update(dbData).eq('id', id);
     if (error) {
       console.error('Failed to update store:', error);
-      return;
+      toast.error('Nepodařilo se upravit prodejnu');
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
       stores: state.stores.map((store) => (store.id === id ? { ...store, ...updates } : store)),
     }));
+    return { success: true };
   },
 
   toggleStoreActive: async (id) => {
     const store = get().getStoreById(id);
-    if (!store) return;
+    if (!store) return { success: false, error: 'Prodejna nenalezena' };
 
     const newActive = !store.active;
     const supabase = createClient();
     const { error } = await supabase.from('prodejny').update({ aktivni: newActive }).eq('id', id);
     if (error) {
       console.error('Failed to toggle store active:', error);
-      return;
+      toast.error('Nepodařilo se změnit stav prodejny');
+      return { success: false, error: error.message };
     }
 
     set((state) => ({
@@ -96,6 +102,7 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
         s.id === id ? { ...s, active: newActive } : s
       ),
     }));
+    return { success: true };
   },
 
   deleteStore: async (id) => {

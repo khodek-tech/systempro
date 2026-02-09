@@ -11,6 +11,7 @@ import { ObchodnikView } from '@/components/views/obchodnik-view';
 import { VedouciVelkoobchodView } from '@/components/views/vedouci-velkoobchod-view';
 import { MajitelView } from '@/components/views/majitel-view';
 import { ChangePasswordOverlay } from '@/components/auth/change-password-overlay';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAttendanceStore } from '@/stores/attendance-store';
@@ -97,13 +98,15 @@ export function HomePage({ slug }: HomePageProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <div className="flex-1 flex overflow-hidden">
-        {renderView()}
+    <ErrorBoundary>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex overflow-hidden">
+          {renderView()}
+        </div>
+        <Toaster richColors position="top-center" />
+        {mustChangePassword && authId && <ChangePasswordOverlay authId={authId} />}
       </div>
-      <Toaster richColors position="top-center" />
-      {mustChangePassword && authId && <ChangePasswordOverlay authId={authId} />}
-    </div>
+    </ErrorBoundary>
   );
 }

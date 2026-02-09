@@ -2,6 +2,30 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.5.0] - 2026-02-09
+
+### Opraveno
+
+#### Produkční audit — kritické opravy
+- **K1**: Tlačítko "Schválit" v admin dashboard nyní propojeno s `useAbsenceStore().approveAbsence()` — zobrazuje skutečné pending žádosti z DB
+- **K2**: Tlačítko "Export .XLS" nyní generuje Excel soubor s docházkovými daty (exceljs)
+- **K3**: Odhlášení nyní volá `cleanupSubscriptions()` — Realtime kanály a auto-sync intervaly se správně ukončí
+- **K4+K5**: Skryty stub komponenty LastPickups (hardcoded text) a KPI "Svozový status" (statická hodnota)
+
+#### Robustnost
+- **S1**: TLS `rejectUnauthorized` v 7 email souborech řízeno env proměnnou `EMAIL_REJECT_UNAUTHORIZED`
+- **S2**: Toast notifikace (sonner) přidány ke klíčovým chybám v chat-store, tasks-store, email-store, roles-store, stores-store, modules-store, users-store
+- **S3**: CRUD metody v roles-store, stores-store refaktorovány na návratový typ `{ success, error? }`
+- **S4**: IMAP silent failures (`.catch(() => {})`) nahrazeny `console.warn` s kontextem
+- **S5**: Auth rehydrace z localStorage nyní kontroluje `freshUser.active` — deaktivovaný uživatel je odhlášen
+
+### Přidáno
+- **N5**: React ErrorBoundary kolem hlavní komponenty — při crashe se zobrazí tlačítko "Obnovit stránku"
+- `lib/export-attendance.ts` — utilita pro export docházky do XLSX
+- `components/error-boundary.tsx` — ErrorBoundary komponenta
+
+---
+
 ## [1.4.1] - 2026-02-08
 
 ### Opraveno

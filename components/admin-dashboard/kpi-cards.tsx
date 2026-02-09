@@ -8,7 +8,7 @@ interface KpiCardsProps {
 
 export function KpiCards({ totalSales, totalCash, pendingAbsence }: KpiCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500" />
         <p className="text-sm font-medium text-slate-500 mb-1">
@@ -34,15 +34,6 @@ export function KpiCards({ totalSales, totalCash, pendingAbsence }: KpiCardsProp
         </p>
         <p className="text-2xl font-bold text-slate-900">
           {pendingAbsence}
-        </p>
-      </div>
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-purple-500" />
-        <p className="text-sm font-medium text-slate-500 mb-1">
-          Svozový status
-        </p>
-        <p className="text-xl font-bold text-purple-600">
-          V pořádku
         </p>
       </div>
     </div>

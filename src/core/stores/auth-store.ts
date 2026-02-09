@@ -299,8 +299,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // Refresh currentUser from DB data if available
           if (state.currentUser) {
             const freshUser = getUsers().find((u) => u.id === state.currentUser!.id);
-            if (freshUser) {
+            if (freshUser && freshUser.active) {
               state.currentUser = freshUser;
+            } else {
+              // User was deactivated or not found — clear session
+              state.currentUser = null;
+              state.activeRoleId = null;
+              state.activeStoreId = null;
             }
           }
 

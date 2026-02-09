@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ModuleDefinition, ModuleConfig } from '@/shared/types';
+import { toast } from 'sonner';
 import { DEFAULT_MODULE_DEFINITIONS, DEFAULT_MODULE_CONFIGS } from '@/config/default-modules';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToModuleDefinition, mapDbToModuleConfig, mapModuleConfigToDb } from '@/lib/supabase/mappers';
@@ -77,6 +78,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
     const { error } = await supabase.from('konfigurace_modulu').update(dbData).eq('id_modulu', moduleId);
     if (error) {
       console.error('Failed to update module config:', error);
+      toast.error('Nepodařilo se uložit nastavení modulu');
       return;
     }
 
@@ -100,6 +102,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
     const { error } = await supabase.from('konfigurace_modulu').update({ id_roli: newRoleIds }).eq('id_modulu', moduleId);
     if (error) {
       console.error('Failed to toggle role access:', error);
+      toast.error('Nepodařilo se změnit přístup role');
       return;
     }
 
@@ -116,6 +119,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
     const { error } = await supabase.from('konfigurace_modulu').update({ sloupec: column }).eq('id_modulu', moduleId);
     if (error) {
       console.error('Failed to set module column:', error);
+      toast.error('Nepodařilo se změnit pozici modulu');
       return;
     }
 
@@ -135,6 +139,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
     const { error } = await supabase.from('konfigurace_modulu').update({ aktivni: newEnabled }).eq('id_modulu', moduleId);
     if (error) {
       console.error('Failed to toggle module enabled:', error);
+      toast.error('Nepodařilo se změnit stav modulu');
       return;
     }
 
@@ -197,6 +202,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
     const { error } = await supabase.from('konfigurace_modulu').update({ mapovani_schvalovani: updatedMappings }).eq('id_modulu', moduleId);
     if (error) {
       console.error('Failed to toggle subordinate role:', error);
+      toast.error('Nepodařilo se změnit nastavení schvalování');
       return;
     }
 
@@ -245,6 +251,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
     const { error } = await supabase.from('konfigurace_modulu').update({ mapovani_zobrazeni: updatedMappings }).eq('id_modulu', moduleId);
     if (error) {
       console.error('Failed to toggle viewable role:', error);
+      toast.error('Nepodařilo se změnit nastavení zobrazení');
       return;
     }
 

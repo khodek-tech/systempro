@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { User } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToUser, mapUserToDb } from '@/lib/supabase/mappers';
+import { toast } from 'sonner';
 import { getRoles } from './store-helpers';
 
 interface UsersState {
@@ -147,6 +148,7 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
     const { error } = await supabase.from('zamestnanci').update({ aktivni: newActive }).eq('id', id);
     if (error) {
       console.error('Failed to toggle user active:', error);
+      toast.error('Nepodařilo se změnit stav zaměstnance');
       return;
     }
 

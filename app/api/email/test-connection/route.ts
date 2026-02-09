@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         secure: imapPort === 993,
         auth: { user: username, pass: password },
         logger: false,
-        tls: { rejectUnauthorized: false },
+        tls: { rejectUnauthorized: process.env.EMAIL_REJECT_UNAUTHORIZED !== 'false' },
       });
       await client.connect();
       await client.logout();
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         secure: smtpPort === 465,
         ...(smtpPort !== 465 && { requireTLS: true }),
         auth: { user: username, pass: password },
-        tls: { rejectUnauthorized: false },
+        tls: { rejectUnauthorized: process.env.EMAIL_REJECT_UNAUTHORIZED !== 'false' },
       });
       await transporter.verify();
       smtpOk = true;

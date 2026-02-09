@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { KpiCards } from '@/components/admin-dashboard/kpi-cards';
 import { AttendanceTable } from '@/components/admin-dashboard/attendance-table';
 import { SalesTable } from '@/components/admin-dashboard/sales-table';
-import { LastPickups } from '@/components/admin-dashboard/last-pickups';
 import { AbsenceRequests } from '@/components/admin-dashboard/absence-requests';
 import { AdminSettingsView } from '@/components/admin-dashboard/settings/AdminSettingsView';
 import { ModuleRenderer } from '@/components/ModuleRenderer';
@@ -15,6 +14,7 @@ import { ChatFullView } from '@/components/views/chat-full-view';
 import { EmailFullView } from '@/components/views/email-full-view';
 import { PresenceFullView } from '@/components/views/presence-full-view';
 import { ManualFullView } from '@/components/views/manual-full-view';
+import { exportAttendanceToXls } from '@/lib/export-attendance';
 import { adminStores, months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
 import { useAbsenceStore } from '@/stores/absence-store';
@@ -36,7 +36,6 @@ export function AdminView() {
     setYearFilter,
     getFilteredData,
     getKpiData,
-    getVisibleStores,
   } = useAdminStore();
   const { approvalViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
@@ -47,7 +46,6 @@ export function AdminView() {
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
-  const visibleStores = getVisibleStores();
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
@@ -163,7 +161,10 @@ export function AdminView() {
                 </option>
               ))}
             </select>
-            <Button className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-medium ml-2 shadow-sm hover:bg-green-700">
+            <Button
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-medium ml-2 shadow-sm hover:bg-green-700"
+              onClick={() => exportAttendanceToXls(filteredData)}
+            >
               Export .XLS
             </Button>
           </div>
@@ -181,9 +182,8 @@ export function AdminView() {
         <SalesTable data={filteredData} />
 
         {/* Bottom panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <LastPickups stores={visibleStores} />
-          <AbsenceRequests data={filteredData} />
+        <div className="grid grid-cols-1 gap-6">
+          <AbsenceRequests />
         </div>
       </div>
     </main>

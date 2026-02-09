@@ -49,7 +49,7 @@ export async function withImapConnection<T>(
       pass: password,
     },
     logger: false,
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: process.env.EMAIL_REJECT_UNAUTHORIZED !== 'false' },
     connectionTimeout: 30000,
     greetingTimeout: 16000,
     socketTimeout: 60000,
