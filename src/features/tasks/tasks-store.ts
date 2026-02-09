@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { mapDbToTask, mapDbToTaskComment, mapTaskToDb, mapTaskCommentToDb } from '@/lib/supabase/mappers';
 import { addMonths, addYears } from 'date-fns';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import {
   canViewTasksOfUser,
   isUserAssignedToTask,
@@ -100,7 +101,7 @@ async function updateTaskInDb(taskId: string, updates: Partial<Task>): Promise<b
   const supabase = createClient();
   const { error } = await supabase.from('ukoly').update(dbData).eq('id', taskId);
   if (error) {
-    console.error('Failed to update task:', error);
+    logger.error('Failed to update task');
     toast.error('Nepodařilo se uložit úkol');
     return false;
   }
@@ -140,7 +141,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       });
       set({ tasks, _loaded: true, _loading: false });
     } else {
-      console.error('Failed to fetch tasks:', tasksResult.error);
+      logger.error('Failed to fetch tasks');
       set({ _loading: false });
     }
   },
@@ -175,7 +176,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const supabase = createClient();
     const { error } = await supabase.from('ukoly').insert(dbData);
     if (error) {
-      console.error('Failed to create task:', error);
+      logger.error('Failed to create task');
       toast.error('Nepodařilo se vytvořit úkol');
       return { success: false, error: error.message };
     }
@@ -206,13 +207,13 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     // Delete comments first due to FK
     const { error: commentsError } = await supabase.from('komentare_ukolu').delete().eq('id_ukolu', taskId);
     if (commentsError) {
-      console.error('Failed to delete task comments:', commentsError);
+      logger.error('Failed to delete task comments');
       toast.error('Nepodařilo se smazat komentáře úkolu');
       return { success: false, error: commentsError.message };
     }
     const { error } = await supabase.from('ukoly').delete().eq('id', taskId);
     if (error) {
-      console.error('Failed to delete task:', error);
+      logger.error('Failed to delete task');
       toast.error('Nepodařilo se smazat úkol');
       return { success: false, error: error.message };
     }
@@ -495,7 +496,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const supabase = createClient();
     const { error } = await supabase.from('komentare_ukolu').insert(dbData);
     if (error) {
-      console.error('Failed to add comment:', error);
+      logger.error('Failed to add comment');
       toast.error('Nepodařilo se přidat komentář');
       return { success: false, error: error.message };
     }
@@ -527,7 +528,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       }
       const { error: seenError } = await supabase.from('ukoly').update(seenUpdates).eq('id', taskId);
       if (seenError) {
-        console.error('Failed to update seen flags after comment:', seenError);
+        logger.error('Failed to update seen flags after comment');
       }
     }
     return { success: true };
@@ -703,7 +704,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       const supabase = createClient();
       const { error } = await supabase.from('ukoly').update(dbUpdates).eq('id', taskId);
       if (error) {
-        console.error('Failed to mark task as seen:', error);
+        logger.error('Failed to mark task as seen');
       }
     }
 
@@ -781,7 +782,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         },
       )
       .subscribe((status, err) => {
-        if (err) console.error('[tasks-realtime]', status, err);
+        if (err) logger.error(`[tasks-realtime] ${status}`);
         // Re-fetch tasks after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           get().fetchTasks();
@@ -900,7 +901,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       const dbRows = newTasks.map((t) => mapTaskToDb(t));
       const { error } = await supabase.from('ukoly').insert(dbRows);
       if (error) {
-        console.error('Failed to create repeating tasks:', error);
+        logger.error('Failed to create repeating tasks');
         return;
       }
 

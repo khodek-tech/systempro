@@ -3,6 +3,7 @@ import { User } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToUser, mapUserToDb } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { getRoles } from './store-helpers';
 
 interface UsersState {
@@ -46,7 +47,7 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
     if (!error && data) {
       set({ users: data.map(mapDbToUser), _loaded: true, _loading: false });
     } else {
-      console.error('Failed to fetch users:', error);
+      logger.error('Failed to fetch users');
       toast.error('Nepodařilo se načíst uživatele');
       set({ _loading: false });
     }
@@ -148,7 +149,7 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
     const supabase = createClient();
     const { error } = await supabase.from('zamestnanci').update({ aktivni: newActive }).eq('id', id);
     if (error) {
-      console.error('Failed to toggle user active:', error);
+      logger.error('Failed to toggle user active');
       toast.error('Nepodařilo se změnit stav zaměstnance');
       return;
     }

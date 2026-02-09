@@ -261,7 +261,7 @@
 |----|---------|-------------------|
 | ABS-R-E001 | Jednodenní absence | Datum od = datum do funguje |
 | ABS-R-E002 | Prázdná poznámka | Odeslání povoleno |
-| ABS-R-E003 | Překrývající se žádosti | Systém nekontroluje (potenciální bug) |
+| ABS-R-E003 | Překrývající se žádosti | Chyba: "Na vybrané dny již existuje žádost o absenci!" |
 | ABS-R-E005 | Zrušení schválené žádosti | Ikona koše se nezobrazuje, nelze zrušit |
 
 ---

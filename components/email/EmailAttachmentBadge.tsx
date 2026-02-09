@@ -43,6 +43,7 @@ export function EmailAttachmentBadge({
         onClick={handleDownload}
         className="p-1 rounded hover:bg-slate-200 transition-colors flex-shrink-0"
         title="Stáhnout"
+        aria-label="Stáhnout přílohu"
       >
         <Download className="w-4 h-4 text-slate-500" />
       </button>

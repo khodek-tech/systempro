@@ -17,6 +17,7 @@ import {
   mapChatReadStatusToDb,
 } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
 
 interface ChatState {
@@ -117,7 +118,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         _loading: false,
       });
     } else {
-      console.error('Failed to fetch chat data:', groupsResult.error, messagesResult.error, readStatusResult.error);
+      logger.error('Failed to fetch chat data');
       set({ _loading: false });
     }
   },
@@ -146,7 +147,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('chat_zpravy').insert(dbData);
     if (error) {
-      console.error('Failed to send message:', error);
+      logger.error('Failed to send message');
       toast.error('Nepodařilo se odeslat zprávu');
       return;
     }
@@ -182,7 +183,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('chat_zpravy').update({ reakce: updatedReactions }).eq('id', messageId);
     if (error) {
-      console.error('Failed to add reaction:', error);
+      logger.error('Failed to add reaction');
       return;
     }
 
@@ -205,7 +206,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('chat_zpravy').update({ reakce: updatedReactions }).eq('id', messageId);
     if (error) {
-      console.error('Failed to remove reaction:', error);
+      logger.error('Failed to remove reaction');
       return;
     }
 
@@ -236,7 +237,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       onConflict: 'id_skupiny,id_uzivatele',
     });
     if (error) {
-      console.error('Failed to mark group as read:', error);
+      logger.error('Failed to mark group as read');
       return;
     }
 
@@ -279,7 +280,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('chat_skupiny').insert(dbData);
     if (error) {
-      console.error('Failed to create group:', error);
+      logger.error('Failed to create group');
       toast.error('Nepodařilo se vytvořit skupinu');
       return;
     }
@@ -299,7 +300,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const supabase = createClient();
     const { error } = await supabase.from('chat_skupiny').update(dbUpdates).eq('id', groupId);
     if (error) {
-      console.error('Failed to update group:', error);
+      logger.error('Failed to update group');
       toast.error('Nepodařilo se upravit skupinu');
       return;
     }
@@ -319,7 +320,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     // CASCADE DELETE handles messages and read statuses automatically
     const { error } = await supabase.from('chat_skupiny').delete().eq('id', groupId);
     if (error) {
-      console.error('Failed to delete group:', error);
+      logger.error('Failed to delete group');
       toast.error('Nepodařilo se smazat skupinu');
       return;
     }
@@ -401,7 +402,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         },
       )
       .subscribe((status, err) => {
-        if (err) console.error('[chat-realtime]', status, err);
+        if (err) logger.error(`[chat-realtime] ${status}`);
         // Re-fetch data after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           const supabaseRefresh = createClient();
@@ -422,8 +423,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
             if (!readResult.error && readResult.data) {
               set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
             }
-          }).catch((err) => {
-            console.error('[chat-realtime] reconnect refresh failed:', err);
+          }).catch(() => {
+            logger.error('[chat-realtime] reconnect refresh failed');
           });
         }
       });
@@ -470,8 +471,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
           if (!readResult.error && readResult.data) {
             set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
           }
-        }).catch((err) => {
-          console.error('[chat-autosync] refresh failed:', err);
+        }).catch(() => {
+          logger.error('[chat-autosync] refresh failed');
         });
       }
     }, 15_000);

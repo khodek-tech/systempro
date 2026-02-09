@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { formatCzechDate } from '@/shared/utils';
 
 const createEmptyRow = (): ExtraRow => ({
@@ -77,7 +78,7 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
       });
       set({ cashToCollect: total, _loaded: true, _loading: false });
     } else {
-      console.error('Failed to fetch cash to collect:', error);
+      logger.error('Failed to fetch cash to collect');
       set({ _loading: false });
     }
   },
@@ -252,7 +253,7 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     });
 
     if (error) {
-      console.error('Failed to save sales to DB:', error);
+      logger.error('Failed to save sales to DB');
       toast.error('Nepodařilo se uložit tržby do databáze.');
       return { valid: false, error: 'Chyba při ukládání do databáze.' };
     }
@@ -296,7 +297,7 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
       .or('vybrano.eq.false,vybrano.is.null');
 
     if (error) {
-      console.error('Failed to update collection in DB:', error);
+      logger.error('Failed to update collection in DB');
       toast.error('Nepodařilo se zaznamenat odvod.');
       return { success: false, error: 'Chyba při ukládání do databáze.' };
     }

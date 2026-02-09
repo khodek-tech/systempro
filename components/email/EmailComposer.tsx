@@ -208,7 +208,7 @@ export function EmailComposer() {
                 <div key={i} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
                   <Paperclip className="w-3 h-3 text-slate-400" />
                   <span className="text-slate-700">{file.name}</span>
-                  <button onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500">
+                  <button onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500" aria-label="Odebrat přílohu">
                     <X className="w-3 h-3" />
                   </button>
                 </div>

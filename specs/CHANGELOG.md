@@ -2,6 +2,28 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.9.0] - 2026-02-09
+
+### Vylepšeno
+
+#### Produkční bezpečnost: logger místo console.error/warn (79 výskytů)
+- Všech 13 souborů (`src/` stores + `lib/` utilities) nyní používá `logger` z `lib/logger.ts`
+- V produkci se loguje pouze zpráva bez citlivých error objektů a stack traces
+
+#### Inicializace: retry logika s exponenciálním backoff
+- `lib/supabase/init.ts`: kritické fáze (Phase 1+2) se retryují max 3× s exponenciálním backoff
+- Phase 3 (nekritické moduly) používá `Promise.allSettled()` — částečné selhání neblokuje aplikaci
+
+#### Absence: validace překrývajících se žádostí
+- `absence-store.ts`: před vytvořením žádosti se kontroluje overlap s existujícími pending/approved žádostmi
+- `absence-report.spec.yaml`: přidáno acceptance criterion pro overlap validaci
+
+#### Přístupnost: ARIA labely na icon-only tlačítkách
+- Přidány `aria-label` atributy na 11 icon-only tlačítek v chat a email komponentách
+
+#### Email: paralelní auto-sync
+- `email-store.ts`: `forEach` nahrazeno za `Promise.all()` v auto-sync intervalu
+
 ## [1.8.0] - 2026-02-09
 
 ### Opraveno

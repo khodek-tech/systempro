@@ -83,6 +83,7 @@ export function EmailDetail() {
                 onClick={() => toggleFlagged(message.id)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                 title={message.flagged ? 'Odoznačit' : 'Označit hvězdičkou'}
+                aria-label={message.flagged ? 'Odoznačit' : 'Označit hvězdičkou'}
               >
                 <Star className={`w-4 h-4 ${message.flagged ? 'text-amber-400 fill-amber-400' : 'text-slate-400'}`} />
               </button>
@@ -90,6 +91,7 @@ export function EmailDetail() {
                 onClick={() => markAsUnread(message.id)}
                 className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                 title="Označit jako nepřečtené"
+                aria-label="Označit jako nepřečtené"
               >
                 {message.read ? <MailOpen className="w-4 h-4 text-slate-400" /> : <Mail className="w-4 h-4 text-sky-500" />}
               </button>
@@ -97,6 +99,7 @@ export function EmailDetail() {
                 onClick={() => deleteMessage(message.id)}
                 className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                 title="Smazat"
+                aria-label="Smazat zprávu"
               >
                 <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
               </button>

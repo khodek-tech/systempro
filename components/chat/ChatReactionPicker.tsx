@@ -39,6 +39,7 @@ export function ChatReactionPicker({ onSelect }: ChatReactionPickerProps) {
         onClick={() => setIsOpen(!isOpen)}
         className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
         title="Přidat reakci"
+        aria-label="Přidat reakci"
       >
         <SmilePlus className="w-4 h-4" />
       </button>

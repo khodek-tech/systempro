@@ -19,6 +19,7 @@ import {
 } from '@/lib/supabase/mappers';
 
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 const PAGE_SIZE = 50;
 
@@ -196,12 +197,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         _loading: false,
       });
     } else {
-      console.error('Failed to fetch email data:', {
-        accounts: accountsResult.error,
-        access: accessResult.error,
-        folders: foldersResult.error,
-        rules: rulesResult.error,
-      });
+      logger.error('Failed to fetch email data');
       set({ _loading: false });
     }
   },
@@ -252,10 +248,10 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
           ),
         });
         supabase.from('emailove_slozky').update({ pocet_neprectenych: unreadCount }).eq('id', folderId)
-          .then(({ error: folderErr }) => { if (folderErr) console.error('Failed to persist folder unread count:', folderErr); });
+          .then(({ error: folderErr }) => { if (folderErr) logger.error('Failed to persist folder unread count'); });
       }
     } else {
-      console.error('Failed to fetch messages:', error);
+      logger.error('Failed to fetch messages');
       set({ _messagesLoading: false });
     }
   },
@@ -385,7 +381,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         _searchLoading: false,
       });
     } else {
-      console.error('Search failed:', error);
+      logger.error('Search failed');
       toast.error('Vyhledávání selhalo');
       set({ searchResults: [], _searchLoading: false });
     }
@@ -440,13 +436,13 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       if (msg.imapUid > 0) {
         const imapResult = await callImapAction('move', msg.id, msg.accountId, targetFolderId);
         if (!imapResult.success && !imapResult.skipped) {
-          console.error(`IMAP move failed for ${msg.id}:`, imapResult.error);
+          logger.error(`IMAP move failed for ${msg.id}`);
         }
         // Update imap_uid if IMAP returned a new UID after move
         if (imapResult.newUid) {
           const sb = createClient();
           const { error: uidErr } = await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', msg.id);
-          if (uidErr) console.error(`Failed to update IMAP UID for ${msg.id}:`, uidErr);
+          if (uidErr) logger.error(`Failed to update IMAP UID for ${msg.id}`);
         }
       }
     }
@@ -458,7 +454,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .in('id', ids);
 
     if (error) {
-      console.error('Failed to move messages:', error);
+      logger.error('Failed to move messages');
       toast.error('Nepodařilo se přesunout zprávy');
       return;
     }
@@ -500,7 +496,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
     // IMAP flag sync (best-effort — don't block DB update on failure)
     if (msg && msg.imapUid > 0) {
-      callImapAction('setRead', messageId, msg.accountId).catch((e) => console.warn('IMAP setRead failed:', e));
+      callImapAction('setRead', messageId, msg.accountId).catch(() => logger.warn('IMAP setRead failed'));
     }
 
     const supabase = createClient();
@@ -527,8 +523,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
             folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
           });
           supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId)
-            .then(({ error: folderErr }) => { if (folderErr) console.error('Failed to persist folder unread count:', folderErr); });
-        }).catch((e) => console.error('Failed to recount unread (markAsRead):', e));
+            .then(({ error: folderErr }) => { if (folderErr) logger.error('Failed to persist folder unread count'); });
+        }).catch(() => logger.error('Failed to recount unread (markAsRead)'));
       }
     }
   },
@@ -538,7 +534,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
 
     // IMAP flag sync (best-effort)
     if (msg && msg.imapUid > 0) {
-      callImapAction('setUnread', messageId, msg.accountId).catch((e) => console.warn('IMAP setUnread failed:', e));
+      callImapAction('setUnread', messageId, msg.accountId).catch(() => logger.warn('IMAP setUnread failed'));
     }
 
     const supabase = createClient();
@@ -565,8 +561,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
             folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
           });
           supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId)
-            .then(({ error: folderErr }) => { if (folderErr) console.error('Failed to persist folder unread count:', folderErr); });
-        }).catch((e) => console.error('Failed to recount unread (markAsUnread):', e));
+            .then(({ error: folderErr }) => { if (folderErr) logger.error('Failed to persist folder unread count'); });
+        }).catch(() => logger.error('Failed to recount unread (markAsUnread)'));
       }
     }
   },
@@ -578,7 +574,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     // IMAP flag sync (best-effort)
     if (msg.imapUid > 0) {
       const action: ImapAction = msg.flagged ? 'unsetFlagged' : 'setFlagged';
-      callImapAction(action, messageId, msg.accountId).catch((e) => console.warn(`IMAP ${action} failed:`, e));
+      callImapAction(action, messageId, msg.accountId).catch(() => logger.warn(`IMAP ${action} failed`));
     }
 
     const supabase = createClient();
@@ -604,7 +600,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     if (msg.imapUid > 0) {
       const imapResult = await callImapAction('move', messageId, msg.accountId, targetFolderId);
       if (!imapResult.success && !imapResult.skipped) {
-        console.error('IMAP move failed:', imapResult.error);
+        logger.error('IMAP move failed');
         toast.error('Nepodařilo se přesunout zprávu');
         return;
       }
@@ -612,7 +608,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       if (imapResult.newUid) {
         const sb = createClient();
         const { error: uidErr } = await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', messageId);
-        if (uidErr) console.error(`Failed to update IMAP UID for ${messageId}:`, uidErr);
+        if (uidErr) logger.error(`Failed to update IMAP UID for ${messageId}`);
       }
     }
 
@@ -670,7 +666,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       if (msg.imapUid > 0) {
         const imapResult = await callImapAction('delete', messageId, msg.accountId);
         if (!imapResult.success && !imapResult.skipped) {
-          console.error('IMAP delete failed:', imapResult.error);
+          logger.error('IMAP delete failed');
           toast.error('Nepodařilo se smazat zprávu');
           return;
         }
@@ -869,7 +865,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     if (!error) {
       set({ rules: [...get().rules, fullRule] });
     } else {
-      console.error('Failed to create rule:', error);
+      logger.error('Failed to create rule');
       toast.error('Nepodařilo se vytvořit pravidlo');
     }
   },
@@ -905,7 +901,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     if (!error) {
       set({ rules: get().rules.filter((r) => r.id !== ruleId) });
     } else {
-      console.error('Failed to delete email rule:', error);
+      logger.error('Failed to delete email rule');
       toast.error('Nepodařilo se smazat pravidlo');
     }
   },
@@ -998,7 +994,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         },
       )
       .subscribe((status, err) => {
-        if (err) console.error('[email-realtime]', status, err);
+        if (err) logger.error(`[email-realtime] ${status}`);
         // Re-fetch data after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           const { selectedAccountId, selectedFolderId } = get();
@@ -1011,8 +1007,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
             if (data) {
               set({ folders: data.map(mapDbToEmailFolder) });
             }
-          }).catch((err) => {
-            console.error('[email-realtime] reconnect folder refresh failed:', err);
+          }).catch(() => {
+            logger.error('[email-realtime] reconnect folder refresh failed');
           });
         }
       });
@@ -1033,7 +1029,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         const accounts = get().accounts;
-        accounts.forEach((acc) => get().triggerSync(acc.id));
+        Promise.all(accounts.map((acc) => get().triggerSync(acc.id)));
       }
     }, 60_000);
 

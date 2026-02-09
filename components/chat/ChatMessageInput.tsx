@@ -90,6 +90,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
                 onClick={() => removeFile(index)}
                 className="flex-shrink-0 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                 title="Odebrat"
+                aria-label="Odebrat soubor"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -105,6 +106,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           disabled={disabled}
           className="flex-shrink-0 p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
           title="Přidat přílohu"
+          aria-label="Přidat přílohu"
         >
           <Paperclip className="w-5 h-5" />
         </button>
@@ -133,6 +135,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           disabled={disabled || (!text.trim() && selectedFiles.length === 0)}
           className="flex-shrink-0 p-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:hover:bg-blue-500"
           title="Odeslat (Enter)"
+          aria-label="Odeslat zprávu"
         >
           <Send className="w-5 h-5" />
         </button>

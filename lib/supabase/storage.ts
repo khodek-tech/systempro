@@ -1,4 +1,5 @@
 import { createClient } from './client';
+import { logger } from '@/lib/logger';
 
 const BUCKET = 'attachments';
 const SIGNED_URL_EXPIRY = 3600; // 1 hour
@@ -30,7 +31,7 @@ export async function uploadFile(folder: string, file: File): Promise<UploadResu
   const { error } = await supabase.storage.from(BUCKET).upload(path, file);
 
   if (error) {
-    console.error('Storage upload error:', error);
+    logger.error('Storage upload error');
     return { success: false, error: error.message };
   }
 
@@ -52,7 +53,7 @@ export async function deleteFile(path: string): Promise<{ success: boolean; erro
   const { error } = await supabase.storage.from(BUCKET).remove([path]);
 
   if (error) {
-    console.error('Storage delete error:', error);
+    logger.error('Storage delete error');
     return { success: false, error: error.message };
   }
 
@@ -69,7 +70,7 @@ export async function getSignedUrl(path: string): Promise<string | null> {
     .createSignedUrl(path, SIGNED_URL_EXPIRY);
 
   if (error) {
-    console.error('Signed URL error:', error);
+    logger.error('Signed URL error');
     return null;
   }
 
@@ -84,7 +85,7 @@ export async function getStorageUsage(): Promise<number> {
   const { data, error } = await supabase.rpc('get_storage_usage');
 
   if (error) {
-    console.error('Storage usage error:', error);
+    logger.error('Storage usage error');
     return 0;
   }
 

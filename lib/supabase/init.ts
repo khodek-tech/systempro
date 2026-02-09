@@ -13,6 +13,7 @@ import { useAdminStore } from '@/admin/admin-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 /**
  * Clean up legacy localStorage keys from when stores used persist middleware.
@@ -25,23 +26,43 @@ function cleanupLegacyStorage() {
 }
 
 /**
+ * Retry a function with exponential backoff.
+ */
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, baseDelay = 1000): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      logger.warn(`Init attempt ${attempt}/${maxAttempts} failed, retrying in ${delay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('withRetry: unreachable');
+}
+
+/**
  * Initialize all stores by fetching data from Supabase.
  * Order matters: roles + stores first, then users (depends on roles/stores for validation),
  * then everything else in parallel.
+ * Critical phases (1+2) are retried up to 3 times. Phase 3 (non-critical) continues on partial failure.
  * After init: start Realtime subscriptions and auto-sync.
  */
 async function initializeStores() {
-  // Phase 1: Core entities (no dependencies)
-  await Promise.all([
-    useRolesStore.getState().fetchRoles(),
-    useStoresStore.getState().fetchStores(),
-  ]);
+  // Phase 1: Core entities (no dependencies) — critical, retry
+  await withRetry(() =>
+    Promise.all([
+      useRolesStore.getState().fetchRoles(),
+      useStoresStore.getState().fetchStores(),
+    ])
+  );
 
-  // Phase 2: Users (may reference roles/stores)
-  await useUsersStore.getState().fetchUsers();
+  // Phase 2: Users (may reference roles/stores) — critical, retry
+  await withRetry(() => useUsersStore.getState().fetchUsers());
 
-  // Phase 3: Everything else in parallel
-  await Promise.all([
+  // Phase 3: Everything else in parallel — non-critical, best-effort
+  await Promise.allSettled([
     useModulesStore.getState().fetchModules(),
     useAbsenceStore.getState().fetchAbsenceRequests(),
     useTasksStore.getState().fetchTasks(),
@@ -94,7 +115,7 @@ export function useInitializeData() {
         }
       })
       .catch((err) => {
-        console.error('Failed to initialize stores:', err);
+        logger.error('Failed to initialize stores');
         if (!cancelled) {
           const message = err instanceof Error ? err.message : 'Nepodařilo se načíst data';
           setError(message);

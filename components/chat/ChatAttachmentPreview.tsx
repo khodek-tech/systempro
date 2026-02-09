@@ -47,6 +47,7 @@ export function ChatAttachmentPreview({
           }}
           className="flex-shrink-0 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
           title="Odebrat"
+          aria-label="Odebrat přílohu"
         >
           <X className="w-4 h-4" />
         </button>

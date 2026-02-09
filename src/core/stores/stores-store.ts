@@ -3,6 +3,7 @@ import { Store } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToStore, mapStoreToDb } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { useUsersStore } from './users-store';
 
 interface StoresState {
@@ -41,7 +42,7 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
     if (!error && data) {
       set({ stores: data.map(mapDbToStore), _loaded: true, _loading: false });
     } else {
-      console.error('Failed to fetch stores:', error);
+      logger.error('Failed to fetch stores');
       set({ _loading: false });
     }
   },
@@ -55,7 +56,7 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
     const supabase = createClient();
     const { error } = await supabase.from('prodejny').insert(dbData);
     if (error) {
-      console.error('Failed to add store:', error);
+      logger.error('Failed to add store');
       toast.error('Nepodařilo se přidat prodejnu');
       return { success: false, error: error.message };
     }
@@ -73,7 +74,7 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
     const supabase = createClient();
     const { error } = await supabase.from('prodejny').update(dbData).eq('id', id);
     if (error) {
-      console.error('Failed to update store:', error);
+      logger.error('Failed to update store');
       toast.error('Nepodařilo se upravit prodejnu');
       return { success: false, error: error.message };
     }
@@ -92,7 +93,7 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
     const supabase = createClient();
     const { error } = await supabase.from('prodejny').update({ aktivni: newActive }).eq('id', id);
     if (error) {
-      console.error('Failed to toggle store active:', error);
+      logger.error('Failed to toggle store active');
       toast.error('Nepodařilo se změnit stav prodejny');
       return { success: false, error: error.message };
     }

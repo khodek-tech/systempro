@@ -3,6 +3,7 @@ import { Role, RoleType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToRole, mapRoleToDb } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { getUsersWithRole } from './store-helpers';
 import { PROTECTED_ROLE_TYPES } from '@/lib/constants';
 
@@ -44,7 +45,7 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     if (!error && data) {
       set({ roles: data.map(mapDbToRole), _loaded: true, _loading: false });
     } else {
-      console.error('Failed to fetch roles:', error);
+      logger.error('Failed to fetch roles');
       set({ _loading: false });
     }
   },
@@ -58,7 +59,7 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const supabase = createClient();
     const { error } = await supabase.from('role').insert(dbData);
     if (error) {
-      console.error('Failed to add role:', error);
+      logger.error('Failed to add role');
       toast.error('Nepodařilo se přidat roli');
       return { success: false, error: error.message };
     }
@@ -76,7 +77,7 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const supabase = createClient();
     const { error } = await supabase.from('role').update(dbData).eq('id', id);
     if (error) {
-      console.error('Failed to update role:', error);
+      logger.error('Failed to update role');
       toast.error('Nepodařilo se upravit roli');
       return { success: false, error: error.message };
     }
@@ -101,7 +102,7 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const supabase = createClient();
     const { error } = await supabase.from('role').update({ aktivni: newActive }).eq('id', id);
     if (error) {
-      console.error('Failed to toggle role active:', error);
+      logger.error('Failed to toggle role active');
       toast.error('Nepodařilo se změnit stav role');
       return false;
     }

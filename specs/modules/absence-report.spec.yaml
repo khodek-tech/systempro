@@ -56,6 +56,8 @@ features:
       - Pro typ "Lékař" povinný čas od-do
       - Poznámka (volitelná)
       - Validace: datum od <= datum do
+      - Validace: nelze podat žádost na datum v minulosti
+      - Validace: překrývající se datumový rozsah s existující pending/approved žádostí
       - Po odeslání reset formuláře
 
   - id: view_my_requests

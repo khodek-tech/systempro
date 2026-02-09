@@ -3,6 +3,7 @@ import { WorkplaceType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { formatCzechDate } from '@/shared/utils';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -55,7 +56,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
       .eq('datum', today);
 
     if (error) {
-      console.error('[attendance] Failed to fetch today attendance:', error);
+      logger.error('[attendance] Failed to fetch today attendance');
       return;
     }
 
@@ -124,7 +125,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
           toast.error('Dnešní příchod již byl zaznamenán.');
           return { success: false, error: 'Příchod byl již zaznamenán.' };
         }
-        console.error('Failed to save check-in:', error);
+        logger.error('Failed to save check-in');
         toast.error('Nepodařilo se zaznamenat příchod.');
         return { success: false, error: 'Chyba při ukládání příchodu.' };
       }
@@ -142,7 +143,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
         .limit(1);
 
       if (fetchError || !records || records.length === 0) {
-        console.error('Failed to find check-in record:', fetchError);
+        logger.error('Failed to find check-in record');
         set({ isInWork: false, kasaConfirmed: false });
         return { success: true };
       }
@@ -165,7 +166,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
         .eq('id', record.id);
 
       if (error) {
-        console.error('Failed to save check-out:', error);
+        logger.error('Failed to save check-out');
         toast.error('Nepodařilo se zaznamenat odchod.');
         return { success: false, error: 'Chyba při ukládání odchodu.' };
       }

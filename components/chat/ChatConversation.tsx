@@ -117,6 +117,7 @@ export function ChatConversation() {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded"
+                aria-label="Vymazat vyhledávání"
               >
                 <X className="w-3 h-3" />
               </button>

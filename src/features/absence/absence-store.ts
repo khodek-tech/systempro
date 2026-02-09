@@ -3,6 +3,7 @@ import { AbsenceType, AbsenceFormData, AbsenceRequest, AbsenceRequestStatus, Rol
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToAbsenceRequest, mapAbsenceRequestToDb } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import {
   getUserPrimaryRoleType,
   canApproveUser,
@@ -110,7 +111,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
     if (!error && data) {
       set({ absenceRequests: data.map(mapDbToAbsenceRequest), _loaded: true, _loading: false });
     } else {
-      console.error('Failed to fetch absence requests:', error);
+      logger.error('Failed to fetch absence requests');
       set({ _loading: false });
     }
   },
@@ -190,6 +191,21 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       return { success: false, error: 'Datum od nemůže být po datu do!' };
     }
 
+    // Check for overlapping requests (pending or approved)
+    const { absenceRequests } = get();
+    const newFrom = new Date(formData.dateFrom).getTime();
+    const newTo = new Date(formData.dateTo).getTime();
+    const overlapping = absenceRequests.find(
+      (r) =>
+        r.userId === userId &&
+        (r.status === 'pending' || r.status === 'approved') &&
+        new Date(r.dateFrom).getTime() <= newTo &&
+        new Date(r.dateTo).getTime() >= newFrom
+    );
+    if (overlapping) {
+      return { success: false, error: 'Na vybrané dny již existuje žádost o absenci!' };
+    }
+
     if (formData.type === 'Lékař') {
       if (!formData.timeFrom || !formData.timeTo) {
         return { success: false, error: 'Vyplňte čas od a do!' };
@@ -252,7 +268,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
     const { error } = await supabase.from('zadosti_o_absenci').delete().eq('id', requestId);
 
     if (error) {
-      console.error('Failed to delete absence request:', error);
+      logger.error('Failed to delete absence request');
       toast.error('Nepodařilo se zrušit žádost');
       return { success: false, error: error.message };
     }
@@ -475,7 +491,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       .neq('stav', 'pending');
 
     if (error) {
-      console.error('Failed to mark absence requests as seen:', error);
+      logger.error('Failed to mark absence requests as seen');
       toast.error('Nepodařilo se označit žádosti jako přečtené');
       return;
     }
