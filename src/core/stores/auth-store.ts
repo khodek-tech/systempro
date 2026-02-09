@@ -80,19 +80,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const user = getUsers().find((u) => u.authId === authId);
     if (!user) return;
 
-    set({ loggedInUser: user });
-
-    // Non-admin users are locked to their own dashboard
-    const isAdmin = user.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
-    if (!isAdmin) {
-      const defaultRoleId = user.defaultRoleId ?? user.roleIds[0] ?? null;
-      const defaultStoreId = user.defaultStoreId ?? user.storeIds[0] ?? null;
-      set({
-        currentUser: user,
-        activeRoleId: defaultRoleId,
-        activeStoreId: defaultStoreId,
-      });
-    }
+    const defaultRoleId = user.defaultRoleId ?? user.roleIds[0] ?? null;
+    const defaultStoreId = user.defaultStoreId ?? user.storeIds[0] ?? null;
+    set({
+      loggedInUser: user,
+      currentUser: user,
+      activeRoleId: defaultRoleId,
+      activeStoreId: defaultStoreId,
+    });
   },
 
   setActiveRole: (roleId) => {
