@@ -28,6 +28,7 @@ const REPEAT_OPTIONS: { value: TaskRepeat; label: string }[] = [
   { value: 'daily', label: 'Denně' },
   { value: 'weekly', label: 'Týdně' },
   { value: 'monthly', label: 'Měsíčně' },
+  { value: 'yearly', label: 'Ročně' },
 ];
 
 export function TaskFormModal() {

@@ -42,7 +42,7 @@ data_model:
     assigneeType: employee | store
     assigneeId: string  # userId nebo storeId
     deadline: ISO8601
-    repeat: none | daily | weekly | monthly
+    repeat: none | daily | weekly | monthly | yearly
     repeatSourceId?: string  # ID původního úkolu pro opakované
     completedBy?: string
     completedAt?: ISO8601

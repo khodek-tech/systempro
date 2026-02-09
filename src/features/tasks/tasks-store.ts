@@ -794,6 +794,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         get().fetchTasks();
+        get().checkAndCreateRepeatingTasks();
       }
     }, 30_000);
 
@@ -845,6 +846,16 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
             shouldCreate = true;
             const newDeadlineDate = new Date(taskDeadline);
             newDeadlineDate.setMonth(newDeadlineDate.getMonth() + 1);
+            newDeadlineTime = newDeadlineDate.getTime();
+          }
+          break;
+        }
+        case 'yearly': {
+          const yearsSinceApproval = (now.getTime() - approvedAt.getTime()) / (1000 * 60 * 60 * 24 * 365);
+          if (yearsSinceApproval >= 1) {
+            shouldCreate = true;
+            const newDeadlineDate = new Date(taskDeadline);
+            newDeadlineDate.setFullYear(newDeadlineDate.getFullYear() + 1);
             newDeadlineTime = newDeadlineDate.getTime();
           }
           break;

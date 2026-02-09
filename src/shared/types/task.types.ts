@@ -11,7 +11,7 @@ export type TaskStatus =
   | 'pending-approval'
   | 'returned'
   | 'approved';
-export type TaskRepeat = 'none' | 'daily' | 'weekly' | 'monthly';
+export type TaskRepeat = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type TaskAssigneeType = 'employee' | 'store';
 
 export interface TaskAttachment {

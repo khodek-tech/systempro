@@ -226,6 +226,7 @@ export function getRepeatLabel(repeat: Task['repeat']): string {
     daily: 'Denně',
     weekly: 'Týdně',
     monthly: 'Měsíčně',
+    yearly: 'Ročně',
   };
 
   return labels[repeat];

@@ -55,6 +55,7 @@ async function initializeStores() {
   useChatStore.getState().startAutoSync();
   useTasksStore.getState().subscribeRealtime();
   useTasksStore.getState().startAutoSync();
+  useTasksStore.getState().checkAndCreateRepeatingTasks();
 }
 
 /**
