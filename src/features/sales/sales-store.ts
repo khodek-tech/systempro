@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { ExtraRow, SalesFormData } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/core/stores/auth-store';
+import { useAttendanceStore } from '@/features/attendance/attendance-store';
+import { toast } from 'sonner';
 
 const createEmptyRow = (): ExtraRow => ({
   id: crypto.randomUUID(),
@@ -38,8 +41,8 @@ interface SalesActions {
 
   // Submit actions
   validateForm: () => { valid: boolean; error?: string };
-  submitSales: () => { valid: boolean; error?: string };
-  submitCollection: (driverName: string) => { success: boolean; error?: string };
+  submitSales: () => Promise<{ valid: boolean; error?: string }>;
+  submitCollection: (driverName: string) => Promise<{ success: boolean; error?: string }>;
   resetForm: () => void;
 }
 
@@ -188,11 +191,63 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     return { valid: true };
   },
 
-  submitSales: () => {
+  submitSales: async () => {
     const { validateForm, formData } = get();
     const validation = validateForm();
     if (!validation.valid) {
       return validation;
+    }
+
+    const currentUser = useAuthStore.getState().currentUser;
+    const attendance = useAttendanceStore.getState();
+
+    if (!currentUser) {
+      return { valid: false, error: 'Uživatel není přihlášen.' };
+    }
+
+    // Build net flow from incomes/expenses
+    const flows: string[] = [];
+    formData.incomes.forEach((i) => {
+      if (i.amount > 0) flows.push(`+${i.amount}`);
+    });
+    formData.expenses.forEach((e) => {
+      if (e.amount > 0) flows.push(`-${e.amount}`);
+    });
+    const pohyby = flows.join(', ') || null;
+
+    // Build notes from income/expense rows
+    const notes: string[] = [];
+    formData.incomes.forEach((i) => {
+      if (i.note.trim()) notes.push(`+${i.amount}: ${i.note.trim()}`);
+    });
+    formData.expenses.forEach((e) => {
+      if (e.note.trim()) notes.push(`-${e.amount}: ${e.note.trim()}`);
+    });
+    const poznamkaTrzba = notes.join('; ') || null;
+
+    const now = new Date();
+    const datum = `${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()}`;
+
+    const supabase = createClient();
+    const { error } = await supabase.from('dochazka').insert({
+      datum,
+      prodejna: attendance.workplaceType === 'store' ? attendance.workplaceName : null,
+      typ_pracoviste: attendance.workplaceType,
+      id_pracoviste: attendance.workplaceId,
+      nazev_pracoviste: attendance.workplaceName,
+      zamestnanec: currentUser.fullName,
+      hotovost: formData.cash,
+      karta: formData.card,
+      partner: formData.partner,
+      pohyby: pohyby,
+      poznamka_trzba: poznamkaTrzba,
+      vybrano: 'false',
+    });
+
+    if (error) {
+      console.error('Failed to save sales to DB:', error);
+      toast.error('Nepodařilo se uložit tržby do databáze.');
+      return { valid: false, error: 'Chyba při ukládání do databáze.' };
     }
 
     set((state) => ({
@@ -206,14 +261,41 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
       },
     }));
 
+    toast.success('Tržby uloženy do systému.');
     return { valid: true };
   },
 
-  submitCollection: (driverName) => {
+  submitCollection: async (driverName) => {
     if (!driverName.trim()) {
       return { success: false, error: 'Vyplňte jméno řidiče!' };
     }
+
+    const attendance = useAttendanceStore.getState();
+    const storeId = attendance.workplaceId;
+
+    if (!storeId) {
+      return { success: false, error: 'Pracoviště není nastaveno.' };
+    }
+
+    const now = new Date();
+    const datum = `${now.getDate()}. ${now.getMonth() + 1}. ${now.getFullYear()}`;
+    const vybranoValue = `${driverName.trim()} - ${datum}`;
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('dochazka')
+      .update({ vybrano: vybranoValue })
+      .eq('id_pracoviste', storeId)
+      .or('vybrano.eq.false,vybrano.is.null');
+
+    if (error) {
+      console.error('Failed to update collection in DB:', error);
+      toast.error('Nepodařilo se zaznamenat odvod.');
+      return { success: false, error: 'Chyba při ukládání do databáze.' };
+    }
+
     set({ cashToCollect: 0 });
+    toast.success('Hotovost odevzdána.');
     return { success: true };
   },
 

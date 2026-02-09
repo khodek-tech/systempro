@@ -38,19 +38,21 @@ data_model:
 features:
   - id: check_in
     name: Příchod
-    description: Zaznamenání příchodu do práce
+    description: Zaznamenání příchodu do práce s DB persistencí
     acceptance_criteria:
       - Toggle tlačítko pro příchod
+      - INSERT do tabulky dochazka (datum, pracoviště, zaměstnanec, příchod)
       - Nastaví isInWork=true
       - Přidá userId do checkedInUsers
       - Zobrazí aktuální pracoviště
 
   - id: check_out
     name: Odchod
-    description: Zaznamenání odchodu z práce
+    description: Zaznamenání odchodu z práce s DB persistencí
     acceptance_criteria:
       - Toggle tlačítko pro odchod
       - Pokud requiresKasa=true, vyžaduje potvrzení stavu kasy
+      - UPDATE dochazka SET odchod, hodiny WHERE dnešní záznam
       - Nastaví isInWork=false
       - Odebere userId z checkedInUsers
 
@@ -91,6 +93,7 @@ scenarios:
     expected:
       - isInWork=true
       - userId je v checkedInUsers
+      - Záznam příchodu uložen v DB (tabulka dochazka)
       - Zobrazí se v modulu Přítomnost
 
   - id: ATT-002
@@ -165,7 +168,7 @@ edge_cases:
     name: Reset při refresh/reload
     description: Uživatel refreshne stránku
     expected: >
-      State se nepersistuje (není v persist).
+      isInWork state se nepersistuje (není v persist).
       Po refreshu isInWork=false.
       Uživatel musí znovu potvrdit příchod.
-      (Potenciální vylepšení: persist)
+      Ale data příchodu/odchodu jsou uložena v DB a přetrvávají.

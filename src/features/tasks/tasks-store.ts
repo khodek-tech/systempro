@@ -915,9 +915,12 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   },
 }));
 
-// Helper to get modules store without circular dependency
+// Helper to get modules store without circular dependency (lazy singleton)
+let _modulesStoreModule: typeof import('@/core/stores/modules-store') | null = null;
 const useModulesStoreRef = () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useModulesStore } = require('@/core/stores/modules-store');
-  return useModulesStore.getState();
+  if (!_modulesStoreModule) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _modulesStoreModule = require('@/core/stores/modules-store');
+  }
+  return _modulesStoreModule!.useModulesStore.getState();
 };

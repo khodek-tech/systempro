@@ -2,6 +2,27 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [1.6.0] - 2026-02-09
+
+### Opraveno
+
+#### DB persistence pro nedotažené moduly
+- **Tržby (submitSales)**: INSERT do `dochazka` s hotovost, karta, partner, pohyby, poznamka_trzba — data přetrvávají po refreshi
+- **Odvody (submitCollection)**: UPDATE `dochazka` SET `vybrano` = řidič+datum WHERE nevybráno — odvod se zaznamenává do DB
+- **Docházka (toggleAttendance)**: Příchod → INSERT do `dochazka` s prichod; Odchod → UPDATE SET odchod, hodiny
+- **Email (sendEmail)**: Přidána validace canSend oprávnění před odesláním e-mailu
+
+### Změněno
+- `sales-store.ts`: submitSales a submitCollection nyní async, píší do DB
+- `attendance-store.ts`: toggleAttendance nyní async, INSERT/UPDATE do DB
+- `email-store.ts`: sendEmail ověřuje accountAccess.canSend
+- `tasks-store.ts`: require() refaktorován na lazy singleton (odstranění eslint-disable)
+- `sales-modal.tsx`, `collect-modal.tsx`: onSubmit typy → async
+- `attendance-module.tsx`: onToggleAttendance typ → async
+- `header.tsx`: handleToggleAttendance → async
+
+---
+
 ## [1.5.0] - 2026-02-09
 
 ### Opraveno

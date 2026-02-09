@@ -10,7 +10,7 @@ interface AttendanceModuleProps {
   kasaConfirmed: boolean;
   workplaceName: string;
   activeRole: Role | null;
-  onToggleAttendance: () => { success: boolean; error?: string };
+  onToggleAttendance: () => Promise<{ success: boolean; error?: string }>;
   onKasaConfirm: (confirmed: boolean) => void;
 }
 
@@ -22,8 +22,8 @@ export function AttendanceModule({
   onToggleAttendance,
   onKasaConfirm,
 }: AttendanceModuleProps) {
-  const handleAttendanceClick = () => {
-    const result = onToggleAttendance();
+  const handleAttendanceClick = async () => {
+    const result = await onToggleAttendance();
     if (!result.success && result.error) {
       toast.error(result.error);
     }

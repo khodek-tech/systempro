@@ -67,12 +67,13 @@ features:
 
   - id: submit_sales
     name: Odeslání tržby
-    description: Uložení denní tržby
+    description: Uložení denní tržby do DB (tabulka dochazka)
     acceptance_criteria:
       - Validace povinných poznámek
-      - Přičtení cash k cashToCollect
+      - INSERT do tabulky dochazka (hotovost, karta, partner, pohyby, poznamka_trzba)
+      - Přičtení cash k cashToCollect (lokální state)
       - Reset formuláře po odeslání
-      - Potvrzující zpráva
+      - Toast potvrzení / error
 
 notifications:
   badge:
@@ -95,8 +96,9 @@ scenarios:
       - Formulář se vyčistí
       - CashToCollect se zvýší o 5000
     expected:
-      - Tržba je evidována
+      - Tržba je evidována v DB (tabulka dochazka)
       - Hotovost se přičte k odvodu
+      - Data přetrvají po refreshi stránky
 
   - id: SALES-002
     name: Tržba s mimořádným příjmem

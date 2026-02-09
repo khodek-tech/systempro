@@ -712,6 +712,20 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   // =========================================================================
 
   sendEmail: async (data) => {
+    // Validate that the current user has send permission for this account
+    const { useAuthStore } = await import('@/core/stores/auth-store');
+    const currentUserId = useAuthStore.getState().currentUser?.id;
+
+    if (currentUserId) {
+      const access = get().accountAccess.find(
+        (a) => a.accountId === data.accountId && a.employeeId === currentUserId
+      );
+      if (!access || !access.canSend) {
+        toast.error('Nemáte oprávnění odesílat z tohoto účtu.');
+        return { success: false, error: 'Nemáte oprávnění odesílat z tohoto účtu.' };
+      }
+    }
+
     try {
       const formData = new FormData();
       formData.append('accountId', data.accountId);

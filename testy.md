@@ -22,6 +22,7 @@
 13. [Nápověda (Manual)](#13-nápověda-manual)
 14. [E-mail](#14-e-mail)
 15. [Produkční audit](#15-produkční-audit-v150)
+16. [DB Persistence audit](#16-db-persistence-audit-v160)
 
 ---
 
@@ -742,6 +743,55 @@
 - Stub komponenty (LastPickups, Svozový status) jsou skryty — nezobrazují se v reportech
 - TLS rejectUnauthorized řízeno env proměnnou — default `true` (bezpečný), override `false` pro self-signed certs
 - IMAP best-effort operace (mark read/unread, flag) logují varování místo tichého selhání
+
+---
+
+## 16. DB Persistence audit (v1.6.0)
+
+### PERSIST-001: Tržby — zápis do DB
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přihlásit jako Prodavač, příchod | V práci na prodejně |
+| 2 | Otevřít Tržby, zadat hotovost 5000, karta 3000, partner 1000 | Formulář vyplněn |
+| 3 | Přidat příjem 500 s poznámkou "Vratka" | Řádek přidán |
+| 4 | Kliknout "Uložit do systému" | Toast "Tržby uloženy", formulář resetován |
+| 5 | Zkontrolovat tabulku `dochazka` v Supabase | Nový řádek s hotovost=5000, karta=3000, partner=1000, pohyby="+500" |
+| 6 | Refreshnout stránku | cashToCollect se načte z DB |
+
+### PERSIST-002: Odvody — update DB
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít Odvody (cashToCollect > 0) | Částka zobrazena |
+| 2 | Zadat jméno řidiče "Jan Novák" | Jméno vyplněno |
+| 3 | Kliknout "Potvrdit odvod řidiči" | Toast "Hotovost odevzdána", cashToCollect = 0 |
+| 4 | Zkontrolovat tabulku `dochazka` v Supabase | Sloupec `vybrano` obsahuje "Jan Novák - {datum}" |
+
+### PERSIST-003: Docházka příchod — INSERT do DB
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Přihlásit jako Prodavač | V dashboardu |
+| 2 | Kliknout "Příchod" | Stav: V práci |
+| 3 | Zkontrolovat tabulku `dochazka` v Supabase | Nový řádek s prichod=aktuální čas, odchod=NULL |
+
+### PERSIST-004: Docházka odchod — UPDATE v DB
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Být V práci (po příchodu) | Status: V práci |
+| 2 | Potvrdit kasu (checkbox) | Kasa potvrzena |
+| 3 | Kliknout "Odchod" | Stav: Mimo práci |
+| 4 | Zkontrolovat tabulku `dochazka` v Supabase | Záznam aktualizován: odchod=aktuální čas, hodiny=vypočtené |
+
+### PERSIST-005: Email — validace oprávnění k odeslání
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Otevřít Email jako uživatel bez canSend | Email modul zobrazen |
+| 2 | Pokusit se odeslat email | Toast "Nemáte oprávnění odesílat z tohoto účtu" |
+
+### Edge cases
+- Tržby bez přihlášeného uživatele → chyba "Uživatel není přihlášen"
+- Odvody bez nastaveného pracoviště → chyba "Pracoviště není nastaveno"
+- Odchod bez příchodu (záznam nenalezen) → lokální state se změní, DB zůstane konzistentní
+- Refresh po příchodu → isInWork=false (lokální), ale DB záznam s prichod existuje
 
 ---
 

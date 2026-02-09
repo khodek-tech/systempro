@@ -16,7 +16,7 @@ interface CollectModalProps {
   onOpenChange: (open: boolean) => void;
   amount: number;
   period: string;
-  onSubmit: (driverName: string) => { success: boolean; error?: string };
+  onSubmit: (driverName: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function CollectModal({
@@ -28,10 +28,9 @@ export function CollectModal({
 }: CollectModalProps) {
   const { driverName, setDriverName, resetForm } = useCollectStore();
 
-  const handleSubmit = () => {
-    const result = onSubmit(driverName);
+  const handleSubmit = async () => {
+    const result = await onSubmit(driverName);
     if (result.success) {
-      toast.success('Hotovost odevzdána.');
       resetForm();
       onOpenChange(false);
     } else if (result.error) {

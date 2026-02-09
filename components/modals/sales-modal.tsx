@@ -30,7 +30,7 @@ interface SalesModalProps {
   onUpdateExpense: (id: string, field: 'amount' | 'note', value: number | string) => void;
   onRemoveIncome: (id: string) => void;
   onRemoveExpense: (id: string) => void;
-  onSubmit: () => { valid: boolean; error?: string };
+  onSubmit: () => Promise<{ valid: boolean; error?: string }>;
 }
 
 export function SalesModal({
@@ -47,10 +47,9 @@ export function SalesModal({
   onRemoveExpense,
   onSubmit,
 }: SalesModalProps) {
-  const handleSubmit = () => {
-    const result = onSubmit();
+  const handleSubmit = async () => {
+    const result = await onSubmit();
     if (result.valid) {
-      toast.success('Výkaz uložen.');
       onOpenChange(false);
     } else if (result.error) {
       toast.error(result.error);

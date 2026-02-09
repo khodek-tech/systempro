@@ -26,7 +26,7 @@ access:
     access_management: [role-2]
 
   per_account_permissions:
-    can_send: boolean   # Může odesílat e-maily z účtu
+    can_send: boolean   # Může odesílat e-maily z účtu (validováno na klientu i serveru)
     can_delete: boolean # Může mazat e-maily
 
 data_model:

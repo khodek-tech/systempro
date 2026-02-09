@@ -79,8 +79,8 @@ export function Header() {
   }, [_hydrated, activeRoleId, activeStoreId, syncWorkplaceWithRole, setWorkplace]);
 
   // Wrapped toggle that also tracks global check-in state
-  const handleToggleAttendance = () => {
-    const result = toggleAttendance();
+  const handleToggleAttendance = async () => {
+    const result = await toggleAttendance();
     if (result.success && currentUser) {
       if (isInWork) {
         // Was in work, now checking out

@@ -44,12 +44,13 @@ features:
 
   - id: submit_collection
     name: Provedení odvodu
-    description: Zaznamenání odvodu hotovosti
+    description: Zaznamenání odvodu hotovosti do DB
     acceptance_criteria:
       - Povinné jméno řidiče
+      - UPDATE dochazka SET vybrano = '{řidič} - {datum}' WHERE nevybráno
       - Reset cashToCollect na 0
       - Reset driverName
-      - Potvrzující zpráva
+      - Toast potvrzení / error
 
 notifications:
   badge:
@@ -72,8 +73,9 @@ scenarios:
       - Částka k odvodu se vynuluje
       - Jméno řidiče se vymaže
     expected:
-      - Odvod je zaznamenán
+      - Odvod je zaznamenán v DB (sloupec vybrano aktualizován)
       - cashToCollect = 0
+      - Data přetrvají po refreshi stránky
 
   - id: COLL-002
     name: Odvod bez jména řidiče
