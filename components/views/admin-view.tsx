@@ -16,8 +16,9 @@ import { EmailFullView } from '@/components/views/email-full-view';
 import { PresenceFullView } from '@/components/views/presence-full-view';
 import { ManualFullView } from '@/components/views/manual-full-view';
 import { exportAttendanceToXls } from '@/lib/export-attendance';
-import { adminStores, months, years } from '@/lib/mock-data';
+import { months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
+import { useStoresStore } from '@/stores/stores-store';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
@@ -41,6 +42,7 @@ export function AdminView() {
     getKpiData,
     fetchStorageUsage,
   } = useAdminStore();
+  const { stores } = useStoresStore();
   const { approvalViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
   const { chatViewMode } = useChatStore();
@@ -147,9 +149,10 @@ export function AdminView() {
               onChange={(e) => setStoreFilter(e.target.value)}
               className="bg-slate-50 font-medium text-xs rounded-lg px-3 py-2 outline-none border border-slate-200"
             >
-              {adminStores.map((store) => (
-                <option key={store.value} value={store.value}>
-                  {store.label}
+              <option value="all">VŠECHNY PRODEJNY</option>
+              {stores.filter((s) => s.active).map((store) => (
+                <option key={store.id} value={store.name.toLowerCase()}>
+                  {store.name.toUpperCase()}
                 </option>
               ))}
             </select>

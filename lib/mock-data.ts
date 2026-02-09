@@ -3,21 +3,6 @@
  * All entity data (users, roles, stores, etc.) is now loaded from Supabase.
  */
 
-// Admin stores dropdown filter
-export const adminStores = [
-  { value: 'all', label: 'VŠECHNY PRODEJNY' },
-  { value: 'bohnice', label: 'BOHNICE' },
-  { value: 'butovice', label: 'BUTOVICE' },
-  { value: 'brno', label: 'BRNO' },
-  { value: 'č most', label: 'Č MOST' },
-  { value: 'oc šestka', label: 'OC ŠESTKA' },
-  { value: 'prosek', label: 'PROSEK' },
-  { value: 'ústí', label: 'ÚSTÍ' },
-  { value: 'chodov', label: 'CHODOV' },
-  { value: 'vysočany', label: 'VYSOČANY' },
-  { value: 'zličín', label: 'ZLIČÍN' },
-];
-
 export const months = [
   { value: 'all', label: 'Měsíc: Vše' },
   { value: '01', label: 'Leden' },

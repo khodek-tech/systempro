@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import path from 'path';
 import { requireAuth } from '@/lib/supabase/api-auth';
-
-const execAsync = promisify(exec);
+import { createClient } from '@/lib/supabase/server';
 
 const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
-// Absolutni cesta k export slozce
-const PROJECT_ROOT = path.resolve(process.cwd());
-const EXPORT_DIR = path.join(PROJECT_ROOT, 'export');
+const BUCKET = 'attachments';
 
 export async function POST(request: NextRequest) {
   // Ověření přihlášení
@@ -44,41 +38,24 @@ export async function POST(request: NextRequest) {
 
     // Sanitizace nazvu souboru
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filePath = path.join(EXPORT_DIR, sanitizedName);
-    const gitFilePath = path.join('export', sanitizedName);
+    const timestamp = Date.now();
+    const storagePath = `pohoda/${timestamp}-${sanitizedName}`;
 
-    // Zajistit ze slozka existuje
-    await mkdir(EXPORT_DIR, { recursive: true });
+    // Upload do Supabase Storage
+    const supabase = await createClient();
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(storagePath, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+      });
 
-    // Prevod souboru na buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Ulozeni souboru
-    await writeFile(filePath, buffer);
-
-    // Pridat do gitu, commitnout a pushnout
-    try {
-      const gitOptions = { cwd: PROJECT_ROOT };
-
-      // Pridat soubor do staged
-      await execAsync(`git add "${gitFilePath}"`, gitOptions);
-
-      // Zkontrolovat jestli jsou nejake staged zmeny
-      try {
-        await execAsync('git diff --staged --quiet', gitOptions);
-        // Pokud projde bez chyby, nejsou zadne zmeny - soubor je stejny
-      } catch {
-        // Jsou staged zmeny - commitnout a pushnout
-        await execAsync(
-          `git commit -m "Upload: ${sanitizedName}" --author="System <system@local>"`,
-          gitOptions
-        );
-        await execAsync('git push', gitOptions);
-      }
-    } catch (gitError) {
-      console.error('Git error:', gitError);
-      // Soubor je ulozen, ale git selhal - stale vratime uspech
+    if (uploadError) {
+      console.error('Pohoda upload error:', uploadError);
+      return NextResponse.json(
+        { success: false, error: 'Chyba pri nahravani souboru do uloziste' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

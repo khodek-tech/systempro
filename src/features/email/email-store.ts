@@ -251,7 +251,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
             f.id === folderId ? { ...f, unreadCount } : f
           ),
         });
-        await supabase.from('emailove_slozky').update({ pocet_neprectenych: unreadCount }).eq('id', folderId);
+        supabase.from('emailove_slozky').update({ pocet_neprectenych: unreadCount }).eq('id', folderId)
+          .then(({ error: folderErr }) => { if (folderErr) console.error('Failed to persist folder unread count:', folderErr); });
       }
     } else {
       console.error('Failed to fetch messages:', error);
@@ -442,7 +443,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         // Update imap_uid if IMAP returned a new UID after move
         if (imapResult.newUid) {
           const sb = createClient();
-          await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', msg.id);
+          const { error: uidErr } = await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', msg.id);
+          if (uidErr) console.error(`Failed to update IMAP UID for ${msg.id}:`, uidErr);
         }
       }
     }
@@ -506,23 +508,25 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .eq('id', messageId);
 
     if (!error) {
+      set({
+        messages: get().messages.map((m) => m.id === messageId ? { ...m, read: true } : m),
+      });
       if (msg) {
-        // Recount unread from DB and persist to folder
-        const { count } = await supabase
-          .from('emailove_zpravy')
-          .select('id', { count: 'exact', head: true })
-          .eq('id_slozky', msg.folderId)
-          .eq('precteno', false);
-        const newCount = count ?? 0;
-        await supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId);
-        set({
-          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: true } : m),
-          folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
-        });
-      } else {
-        set({
-          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: true } : m),
-        });
+        // Recount unread from DB and persist to folder (non-blocking)
+        Promise.resolve(
+          supabase
+            .from('emailove_zpravy')
+            .select('id', { count: 'exact', head: true })
+            .eq('id_slozky', msg.folderId)
+            .eq('precteno', false)
+        ).then(({ count }) => {
+          const newCount = count ?? 0;
+          set({
+            folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
+          });
+          supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId)
+            .then(({ error: folderErr }) => { if (folderErr) console.error('Failed to persist folder unread count:', folderErr); });
+        }).catch((e) => console.error('Failed to recount unread (markAsRead):', e));
       }
     }
   },
@@ -542,23 +546,25 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       .eq('id', messageId);
 
     if (!error) {
+      set({
+        messages: get().messages.map((m) => m.id === messageId ? { ...m, read: false } : m),
+      });
       if (msg) {
-        // Recount unread from DB and persist to folder
-        const { count } = await supabase
-          .from('emailove_zpravy')
-          .select('id', { count: 'exact', head: true })
-          .eq('id_slozky', msg.folderId)
-          .eq('precteno', false);
-        const newCount = count ?? 0;
-        await supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId);
-        set({
-          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: false } : m),
-          folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
-        });
-      } else {
-        set({
-          messages: get().messages.map((m) => m.id === messageId ? { ...m, read: false } : m),
-        });
+        // Recount unread from DB and persist to folder (non-blocking)
+        Promise.resolve(
+          supabase
+            .from('emailove_zpravy')
+            .select('id', { count: 'exact', head: true })
+            .eq('id_slozky', msg.folderId)
+            .eq('precteno', false)
+        ).then(({ count }) => {
+          const newCount = count ?? 0;
+          set({
+            folders: get().folders.map((f) => f.id === msg.folderId ? { ...f, unreadCount: newCount } : f),
+          });
+          supabase.from('emailove_slozky').update({ pocet_neprectenych: newCount }).eq('id', msg.folderId)
+            .then(({ error: folderErr }) => { if (folderErr) console.error('Failed to persist folder unread count:', folderErr); });
+        }).catch((e) => console.error('Failed to recount unread (markAsUnread):', e));
       }
     }
   },
@@ -603,7 +609,8 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       // Update imap_uid if IMAP returned a new UID after move
       if (imapResult.newUid) {
         const sb = createClient();
-        await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', messageId);
+        const { error: uidErr } = await sb.from('emailove_zpravy').update({ imap_uid: imapResult.newUid }).eq('id', messageId);
+        if (uidErr) console.error(`Failed to update IMAP UID for ${messageId}:`, uidErr);
       }
     }
 

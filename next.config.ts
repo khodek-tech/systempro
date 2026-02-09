@@ -1,7 +1,23 @@
 import type { NextConfig } from "next";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const supabaseDomain = supabaseUrl ? new URL(supabaseUrl).hostname : '';
+
 const nextConfig: NextConfig = {
   async headers() {
+    const cspDirectives = [
+      "default-src 'self'",
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+      `style-src 'self' 'unsafe-inline'`,
+      `img-src 'self' data: blob:${supabaseDomain ? ` https://${supabaseDomain}` : ''}`,
+      `font-src 'self' data:`,
+      `connect-src 'self'${supabaseDomain ? ` https://${supabaseDomain} wss://${supabaseDomain}` : ''}`,
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ];
+
     return [
       {
         source: "/(.*)",
@@ -17,6 +33,10 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: cspDirectives.join('; '),
           },
         ],
       },
