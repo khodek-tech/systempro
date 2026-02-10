@@ -6,6 +6,14 @@ import { useAuthStore } from '@/stores/auth-store';
 import type { EmailFolder } from '@/shared/types';
 import { cn } from '@/lib/utils';
 
+const FOLDER_NAMES: Record<string, string> = {
+  inbox: 'Doručená pošta',
+  sent: 'Odeslaná',
+  drafts: 'Koncepty',
+  spam: 'Spam',
+  trash: 'Koš',
+};
+
 const FOLDER_ICONS: Record<string, typeof Inbox> = {
   inbox: Inbox,
   sent: Send,
@@ -100,7 +108,7 @@ function FolderItem({ folder, isSelected, onClick }: {
       )}
     >
       <Icon className="w-4 h-4 flex-shrink-0" />
-      <span className="flex-1 text-left truncate">{folder.name}</span>
+      <span className="flex-1 text-left truncate">{FOLDER_NAMES[folder.type] || folder.name}</span>
       {folder.unreadCount > 0 && (
         <span className={cn(
           'inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold',

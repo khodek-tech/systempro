@@ -1033,7 +1033,10 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   getFoldersForAccount: (accountId) => {
     return get().folders
       .filter((f) => f.accountId === accountId)
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => {
+        if (a.order !== b.order) return a.order - b.order;
+        return a.name.localeCompare(b.name, 'cs');
+      });
   },
 
   getUnreadCountForUser: (userId) => {
