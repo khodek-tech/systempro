@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
 
       if (folders) {
         for (const folder of folders) {
+          // Priority 1: missing HTML bodies
           const { count } = await supabase
             .from('emailove_zpravy')
             .select('id', { count: 'exact', head: true })
@@ -123,6 +124,23 @@ export async function POST(request: NextRequest) {
             break;
           }
         }
+
+        // Priority 2: emails with unresolved cid: references
+        if (!targetFolderId) {
+          for (const folder of folders) {
+            const { count } = await supabase
+              .from('emailove_zpravy')
+              .select('id', { count: 'exact', head: true })
+              .eq('id_slozky', folder.id)
+              .ilike('telo_html', '%cid:%');
+
+            if (count && count > 0) {
+              targetFolderId = folder.id;
+              targetImapPath = folder.imap_cesta;
+              break;
+            }
+          }
+        }
       }
     }
 
@@ -130,12 +148,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, processed: 0, remaining: 0, message: 'No folders need backfill' });
     }
 
-    // Get messages needing backfill (missing HTML)
+    // Get messages needing backfill (missing HTML or unresolved cid: references)
     const { data: missingMsgs, count: totalMissing } = await supabase
       .from('emailove_zpravy')
       .select('id, imap_uid', { count: 'exact' })
       .eq('id_slozky', targetFolderId)
-      .is('telo_html', null)
+      .or('telo_html.is.null,telo_html.ilike.%cid:%')
       .order('datum', { ascending: false })
       .limit(batchSize);
 
