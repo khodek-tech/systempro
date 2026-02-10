@@ -12,6 +12,13 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Cleanup stuck logs older than 10 minutes
+  await supabase
+    .from('emailovy_log')
+    .update({ stav: 'timeout', zprava: 'Sync exceeded time limit' })
+    .eq('stav', 'running')
+    .lt('vytvoreno', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
   // Fetch all active email accounts
   const { data: accounts, error } = await supabase
     .from('emailove_ucty')
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
   // Sync accounts sequentially to avoid IMAP connection overload
   for (const account of accounts) {
     try {
-      const result = await syncAccount(supabase, account.id, 'incremental', 50);
+      const result = await syncAccount(supabase, account.id, 'incremental', 50, 120000);
       results.push({
         accountId: account.id,
         name: account.nazev,

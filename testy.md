@@ -24,7 +24,7 @@
 15. [Produkční audit](#15-produkční-audit-v150)
 16. [DB Persistence audit](#16-db-persistence-audit-v160)
 17. [Produkční hardening audit](#17-produkční-hardening-audit-v180)
-18. [Centralizace synchronizace — Cron Jobs](#18-centralizace-synchronizace--cron-jobs-v200)
+18. [Centralizace synchronizace — Cron Jobs](#18-centralizace-synchronizace--cron-jobs-v200--v210)
 
 ---
 
@@ -867,7 +867,7 @@
 
 ---
 
-## 18. Centralizace synchronizace — Cron Jobs (v2.0.0)
+## 18. Centralizace synchronizace — Cron Jobs (v2.0.0 + v2.1.0)
 
 ### CRON-001: Email sync cron endpoint
 | Krok | Akce | Očekávaný výsledek |
@@ -907,13 +907,40 @@
 | 2 | Uživatel A pošle zprávu | Zpráva se okamžitě zobrazí u B |
 | 3 | Zkontrolovat Network tab u B | Žádný polling, pouze WebSocket |
 
+### CRON-006: Reconciliace ghost messages
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Smazat/přesunout zprávu přímo na IMAP serveru (např. přes jiný klient) | Zpráva zmizí z IMAP |
+| 2 | Počkat na cron sync (nebo spustit manuálně) | Sync proběhne |
+| 3 | Zkontrolovat DB tabulku `emailove_zpravy` | Ghost zpráva odstraněna z DB |
+| 4 | Zkontrolovat UI | Zpráva se nezobrazuje |
+
+### CRON-007: Timeout ochrana syncu
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Spustit sync účtu s mnoha složkami (>50) | Sync začne |
+| 2 | Počkat na timeout (2 min per account v cron) | Sync se zastaví po timeoutu |
+| 3 | Zkontrolovat `emailovy_log` | Záznam se stavem `timeout`, ne `running` |
+| 4 | Složky zpracované před timeoutem | Data uložena korektně |
+
+### CRON-008: Stuck log cleanup
+| Krok | Akce | Očekávaný výsledek |
+|------|------|--------------------|
+| 1 | Simulovat stuck log (stav=running, vytvoreno < 10 min) | Log existuje v DB |
+| 2 | Spustit cron email-sync | Cron se spustí |
+| 3 | Zkontrolovat stuck log | Stav změněn na `timeout` |
+
 ### Edge cases
 - Cron bez `SUPABASE_SERVICE_ROLE_KEY` → chyba při inicializaci admin clienta
 - Cron bez `CRON_SECRET` → 401 na všechny cron requesty
 - Middleware exempt: `/api/cron/*` neprocházejí Supabase auth middleware
 - Email sync cron: sekvenční zpracování účtů (ne paralelní) — šetří IMAP connections
 - Tasks repeat cron: kontrola existujících non-approved opakování zabraňuje duplicitám
+- Reconciliace: přeskočena pro složky >10000 zpráv (výkonnostní limit)
+- Reconciliace: běží pouze v incremental mode (ne initial sync)
+- Timeout: per-account 120s v cron, per-folder error neukončí celý sync
+- Stuck log cleanup: logy starší 10 min ve stavu `running` → automaticky `timeout`
 
 ---
 
-*Poslední aktualizace: 2026-02-09*
+*Poslední aktualizace: 2026-02-10*

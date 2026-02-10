@@ -2,6 +2,37 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.1.0] - 2026-02-10
+
+### Opraveno
+
+#### Ghost messages — reconciliace IMAP vs DB
+- `lib/email/sync-core.ts`: po stažení nových zpráv se porovnají IMAP UIDs s DB UIDs
+- Zprávy v DB které už neexistují na IMAP serveru (smazané/přesunuté) se odstraní
+- Reconciliace běží pouze v `incremental` mode a pro složky s ≤10000 zprávami
+
+#### Timeout ochrana pro email sync
+- `lib/email/sync-core.ts`: nový parametr `timeoutMs` — kontrola před každou složkou
+- Per-folder try/catch — selhání jedné složky neukončí celý sync
+- `finally` blok vždy aktualizuje log (i při timeout)
+- DB migrace: přidán stav `'timeout'` do check constraint na `emailovy_log.stav`
+
+#### Stuck sync logs
+- `app/api/cron/email-sync/route.ts`: na začátku každého cron běhu vyčistí logy starší 10 min ve stavu `running` → `timeout`
+- Jednorázový cleanup: 1513 stuck logů Obchod účtu vyčištěno
+
+### Změněno
+
+#### Cron interval 5→10 min
+- `vercel.json`: oba cron joby (`email-sync`, `tasks-repeat`) běží každých 10 min místo 5 min
+- Šetří Vercel Pro execution time, 10 min stačí pro 2 účty s timeout ochranou
+
+#### Cron endpoint — per-account timeout
+- `app/api/cron/email-sync/route.ts`: `syncAccount()` dostává `timeoutMs: 120000` (2 min per account)
+- S 2 účty = max 4 min, bezpečně pod 5 min Vercel limit
+
+---
+
 ## [2.0.0] - 2026-02-09
 
 ### Změněno
