@@ -5,6 +5,7 @@
 
 import { ImapFlow } from 'imapflow';
 import { decrypt } from '@/lib/email/encryption';
+import { resolveInlineImages } from '@/lib/email/imap-helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
@@ -219,7 +220,15 @@ async function processMessage(
       }
       if (htmlPart) {
         const { content } = await client.download(String(msg.uid), htmlPart, { uid: true });
-        if (content) bodyHtml = (await streamToString(content)).substring(0, 100000) || null;
+        if (content) bodyHtml = (await streamToString(content)) || null;
+      }
+      // Resolve inline CID images to base64 data URIs
+      if (bodyHtml && bodyHtml.includes('cid:')) {
+        bodyHtml = await resolveInlineImages(bodyHtml, client, String(msg.uid), msg.bodyStructure);
+      }
+      // Apply size limit after inline image resolution
+      if (bodyHtml && bodyHtml.length > 500000) {
+        bodyHtml = bodyHtml.substring(0, 500000);
       }
     } catch (dlErr) {
       console.error(`Error downloading body parts for UID ${msg.uid}:`, dlErr);

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { decrypt } from '@/lib/email/encryption';
 import { ImapFlow } from 'imapflow';
 import { emailBackfillSchema, parseBody } from '@/lib/api/schemas';
+import { resolveInlineImages } from '@/lib/email/imap-helpers';
 
 // Walk MIME bodyStructure tree and return part IDs for text/plain and text/html (skip attachments)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -185,7 +186,15 @@ export async function POST(request: NextRequest) {
               }
               if (htmlPart) {
                 const { content } = await client.download(String(msg.imap_uid), htmlPart, { uid: true });
-                if (content) html = (await streamToString(content)).substring(0, 100000) || null;
+                if (content) html = (await streamToString(content)) || null;
+              }
+              // Resolve inline CID images to base64 data URIs
+              if (html && html.includes('cid:')) {
+                html = await resolveInlineImages(html, client, String(msg.imap_uid), fetched.bodyStructure);
+              }
+              // Apply size limit after inline image resolution
+              if (html && html.length > 500000) {
+                html = html.substring(0, 500000);
               }
 
               if (text || html) {
