@@ -237,20 +237,39 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     const datum = formatCzechDate(now);
 
     const supabase = createClient();
-    const { error } = await supabase.from('dochazka').insert({
-      datum,
-      prodejna: attendance.workplaceType === 'store' ? attendance.workplaceName : null,
-      typ_pracoviste: attendance.workplaceType,
-      id_pracoviste: attendance.workplaceId,
-      nazev_pracoviste: attendance.workplaceName,
-      zamestnanec: currentUser.fullName,
+
+    // Check if employee already has an open attendance record today (checked in, not checked out)
+    const { data: existing } = await supabase
+      .from('dochazka')
+      .select('id')
+      .eq('datum', datum)
+      .eq('zamestnanec', currentUser.fullName)
+      .is('odchod', null)
+      .limit(1)
+      .single();
+
+    const salesData = {
       hotovost: formData.cash,
       karta: formData.card,
       partner: formData.partner,
       pohyby: pohyby,
       poznamka_trzba: poznamkaTrzba,
       vybrano: null,
-    });
+    };
+
+    const { error } = existing
+      ? // Update existing open attendance record with sales data
+        await supabase.from('dochazka').update(salesData).eq('id', existing.id)
+      : // No open record — insert a new row
+        await supabase.from('dochazka').insert({
+          datum,
+          prodejna: attendance.workplaceType === 'store' ? attendance.workplaceName : null,
+          typ_pracoviste: attendance.workplaceType,
+          id_pracoviste: attendance.workplaceId,
+          nazev_pracoviste: attendance.workplaceName,
+          zamestnanec: currentUser.fullName,
+          ...salesData,
+        });
 
     if (error) {
       logger.error('Failed to save sales to DB');
