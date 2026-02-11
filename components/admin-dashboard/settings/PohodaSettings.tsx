@@ -44,6 +44,7 @@ export function PohodaSettings() {
     lastUploadedFile,
     pohodaView,
     setCredentials,
+    savePohodaConfig,
     setConnectionStatus,
     setSklady,
     setIsTestingConnection,
@@ -624,6 +625,7 @@ export function PohodaSettings() {
               type="text"
               value={credentials.url}
               onChange={(e) => setCredentials({ url: e.target.value })}
+              onBlur={() => savePohodaConfig()}
               placeholder="http://server:4444"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-blue-300 transition-all"
             />
@@ -642,6 +644,7 @@ export function PohodaSettings() {
               type="text"
               value={credentials.ico}
               onChange={(e) => setCredentials({ ico: e.target.value })}
+              onBlur={() => savePohodaConfig()}
               placeholder="12345678"
               maxLength={8}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-blue-300 transition-all"
@@ -658,6 +661,7 @@ export function PohodaSettings() {
               type="text"
               value={credentials.username}
               onChange={(e) => setCredentials({ username: e.target.value })}
+              onBlur={() => savePohodaConfig()}
               placeholder="api_user"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-blue-300 transition-all"
             />
@@ -674,6 +678,7 @@ export function PohodaSettings() {
                 type={showPassword ? 'text' : 'password'}
                 value={credentials.password}
                 onChange={(e) => setCredentials({ password: e.target.value })}
+                onBlur={() => savePohodaConfig()}
                 placeholder="••••••••"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 pr-12 text-base font-medium outline-none focus:border-blue-300 transition-all"
               />

@@ -604,3 +604,29 @@ export function mapDbToEmailSyncLog(row: any): EmailSyncLog {
     createdAt: row.vytvoreno,
   };
 }
+
+// =============================================================================
+// POHODA CONFIG (pohoda_konfigurace)
+// =============================================================================
+
+import type { PohodaCredentials } from '@/features/pohoda/pohoda-store';
+
+export function mapDbToPohodaCredentials(row: any): PohodaCredentials {
+  return {
+    url: row.url ?? '',
+    username: row.uzivatel ?? '',
+    password: row.heslo ?? '',
+    ico: row.ico ?? '',
+  };
+}
+
+export function mapPohodaCredentialsToDb(creds: PohodaCredentials) {
+  return {
+    id: 1,
+    url: creds.url,
+    uzivatel: creds.username,
+    heslo: creds.password,
+    ico: creds.ico,
+    aktualizovano: new Date().toISOString(),
+  };
+}

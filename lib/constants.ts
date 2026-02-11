@@ -99,4 +99,5 @@ export const LEGACY_STORAGE_KEYS = [
   'systempro-shifts',
   'systempro-tasks',
   'systempro-chat',
+  'pohoda-credentials',
 ] as const;

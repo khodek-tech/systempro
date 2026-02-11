@@ -11,6 +11,7 @@ import { useChatStore } from '@/features/chat/chat-store';
 import { useEmailStore } from '@/features/email/email-store';
 import { useAdminStore } from '@/admin/admin-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
+import { usePohodaStore } from '@/features/pohoda/pohoda-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
@@ -70,6 +71,7 @@ async function initializeStores() {
     useEmailStore.getState().fetchEmailData(),
     useAdminStore.getState().fetchAttendanceRecords(),
     useAttendanceStore.getState().fetchTodayAttendance(),
+    usePohodaStore.getState().fetchPohodaConfig(),
   ]);
 
   // Phase 4: Start Realtime subscriptions (polling removed — synced via Vercel Cron Jobs)
