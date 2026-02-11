@@ -234,7 +234,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         _messagesLoading: false,
       });
 
-      // Correct folder unread count from actual DB data
+      // Correct folder unread count from actual DB data (local state only)
       const { count: unreadCount } = await supabase
         .from('emailove_zpravy')
         .select('id', { count: 'exact', head: true })
@@ -246,8 +246,7 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
             f.id === folderId ? { ...f, unreadCount } : f
           ),
         });
-        supabase.from('emailove_slozky').update({ pocet_neprectenych: unreadCount }).eq('id', folderId)
-          .then(({ error: folderErr }) => { if (folderErr) logger.error('Failed to persist folder unread count'); });
+        // DB pocet_neprectenych is updated only from IMAP sync (source of truth)
       }
     } else {
       logger.error('Failed to fetch messages');

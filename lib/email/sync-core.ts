@@ -279,6 +279,8 @@ const BATCH_SIZE_INITIAL = 100;
 const BATCH_SIZE_INCREMENTAL = 50;
 const RECONCILIATION_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 const MAX_RECONCILIATION_FOLDERS = 3;
+const MAX_FLAG_SYNC_FOLDERS = 5;
+const FLAG_SYNC_MAX_MESSAGES = 10000;
 
 interface FolderDbRecord {
   id: string;
@@ -398,6 +400,79 @@ export async function syncAccount(
 }
 
 /**
+ * Sync IMAP \Seen flags for a folder: detect read/unread mismatches between
+ * IMAP and DB and batch-update DB to match IMAP (source of truth).
+ */
+async function syncFolderFlags(
+  client: ImapFlow,
+  supabase: SupabaseClient,
+  mailboxPath: string,
+  folderDbId: string,
+): Promise<void> {
+  const lock = await client.getMailboxLock(mailboxPath);
+  try {
+    // 1. Fetch UID + flags for all messages (lightweight — no body content)
+    const imapFlags = new Map<number, boolean>(); // uid → isSeen
+    try {
+      for await (const msg of client.fetch('1:*', { uid: true, flags: true }, { uid: true })) {
+        imapFlags.set(msg.uid, msg.flags?.has('\\Seen') ?? false);
+      }
+    } catch {
+      // Empty folder or fetch error — nothing to sync
+      return;
+    }
+
+    // 2. Load all messages from DB for this folder
+    const { data: dbMessages } = await supabase
+      .from('emailove_zpravy')
+      .select('id, imap_uid, precteno')
+      .eq('id_slozky', folderDbId);
+
+    if (!dbMessages || dbMessages.length === 0) return;
+
+    // 3. Find mismatches
+    const toMarkRead: string[] = [];
+    const toMarkUnread: string[] = [];
+
+    for (const dbMsg of dbMessages) {
+      const imapSeen = imapFlags.get(dbMsg.imap_uid);
+      if (imapSeen === undefined) continue; // message doesn't exist on IMAP
+      if (imapSeen && !dbMsg.precteno) toMarkRead.push(dbMsg.id);
+      if (!imapSeen && dbMsg.precteno) toMarkUnread.push(dbMsg.id);
+    }
+
+    // 4. Batch update (chunks of 200 for Supabase limit)
+    for (let i = 0; i < toMarkRead.length; i += 200) {
+      await supabase.from('emailove_zpravy')
+        .update({ precteno: true })
+        .in('id', toMarkRead.slice(i, i + 200));
+    }
+    for (let i = 0; i < toMarkUnread.length; i += 200) {
+      await supabase.from('emailove_zpravy')
+        .update({ precteno: false })
+        .in('id', toMarkUnread.slice(i, i + 200));
+    }
+
+    if (toMarkRead.length > 0 || toMarkUnread.length > 0) {
+      console.log(`[email-sync] Flag sync ${mailboxPath}: ${toMarkRead.length} marked read, ${toMarkUnread.length} marked unread`);
+    }
+
+    // 5. Recount and update folder
+    const { count } = await supabase
+      .from('emailove_zpravy')
+      .select('id', { count: 'exact', head: true })
+      .eq('id_slozky', folderDbId)
+      .eq('precteno', false);
+
+    await supabase.from('emailove_slozky')
+      .update({ pocet_neprectenych: count ?? 0 })
+      .eq('id', folderDbId);
+  } finally {
+    lock.release();
+  }
+}
+
+/**
  * Incremental sync using smart change detection:
  * 1. LIST with statusQuery to get all folder statuses in ~1 IMAP command
  * 2. Load all folders from DB in 1 query
@@ -430,6 +505,7 @@ async function syncIncremental(
   // Step 3: Compare and classify folders
   const foldersToSync: typeof mailboxes = [];
   const foldersToReconcile: typeof mailboxes = [];
+  const foldersToFlagSync: { mailbox: typeof mailboxes[0]; dbFolderId: string }[] = [];
   const folderCountUpdates: { id: string; pocet_zprav: number; pocet_neprectenych: number; uid_next: number; uid_validity: number }[] = [];
   const newFolders: typeof mailboxes = [];
 
@@ -473,6 +549,11 @@ async function syncIncremental(
     // Check if messages decreased → possible deletions, needs reconciliation
     if (imapMessages < dbFolder.pocet_zprav) {
       foldersToReconcile.push(mailbox);
+    }
+
+    // Check if unread count differs → flags changed externally, needs flag sync
+    if (imapUnseen !== dbFolder.pocet_neprectenych && imapMessages <= FLAG_SYNC_MAX_MESSAGES) {
+      foldersToFlagSync.push({ mailbox, dbFolderId: dbFolder.id });
     }
   }
 
@@ -547,6 +628,20 @@ async function syncIncremental(
       }).eq('id', dbFolder.id);
     } catch (err) {
       console.error(`[email-sync] Error syncing folder ${mailbox.path}:`, err);
+    }
+  }
+
+  // Step 4b: Flag sync — update read/unread state for folders where IMAP unseen differs from DB
+  let flagSyncCount = 0;
+  for (const { mailbox, dbFolderId } of foldersToFlagSync) {
+    if (flagSyncCount >= MAX_FLAG_SYNC_FOLDERS) break;
+    if (deadline && Date.now() >= deadline) break;
+
+    try {
+      await syncFolderFlags(client, supabase, mailbox.path, dbFolderId);
+      flagSyncCount++;
+    } catch (err) {
+      console.error(`[email-sync] Flag sync error in ${mailbox.path}:`, err);
     }
   }
 
