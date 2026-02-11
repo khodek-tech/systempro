@@ -48,6 +48,17 @@
 
 :root {
   --radius: 0.5rem;
+
+  /* Module grid dvh scaling */
+  --module-gap: clamp(1rem, 2dvh, 2.5rem);
+  --module-card-h: calc((100dvh - 15.5rem - var(--module-gap) * 2) / 2);
+  --module-icon-size: clamp(5rem, calc(var(--module-card-h) * 0.34), 9rem);
+  --module-icon-inner: clamp(2.5rem, calc(var(--module-icon-size) * 0.5), 4.5rem);
+  --module-icon-radius: clamp(1.5rem, calc(var(--module-icon-size) * 0.25), 2.25rem);
+  --module-card-pad: clamp(1.25rem, calc(var(--module-card-h) * 0.065), 2.5rem);
+  --module-card-radius: clamp(1.5rem, calc(var(--module-card-h) * 0.1), 2.5rem);
+  --module-title-size: clamp(1.125rem, calc(var(--module-card-h) * 0.07), 1.875rem);
+  --module-inner-gap: clamp(0.75rem, calc(var(--module-card-h) * 0.05), 2rem);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

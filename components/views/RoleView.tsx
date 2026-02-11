@@ -142,7 +142,7 @@ export function RoleView({
   const content = customContent ?? <ModuleRenderer isWarehouse={isWarehouse} />;
 
   // Base classes for main element
-  const baseClasses = 'flex-1 flex flex-col items-center p-8 relative overflow-y-auto';
+  const baseClasses = 'flex-1 flex flex-col items-center p-8 relative overflow-y-auto lg:overflow-hidden';
   const bgClass = isWarehouse ? '' : 'bg-slate-50';
   const containerClass = isWarehouse ? 'w-full px-6' : 'w-full mt-6 px-6';
 

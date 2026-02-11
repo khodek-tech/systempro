@@ -38,7 +38,7 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
   const allInLeft = rightModules.length === 0 && fullModules.length === 0;
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-10">
+    <div className="w-full max-w-5xl mx-auto space-y-4 lg:space-y-[var(--module-gap)]">
       {/* Top banner modules */}
       {topModules.map((module) => {
         const Component = getModuleComponent(module.component);
@@ -66,8 +66,8 @@ export function ModuleRenderer({ isWarehouse }: ModuleRendererProps) {
         <div
           className={
             allInLeft
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10'
-              : 'grid grid-cols-1 lg:grid-cols-2 gap-10'
+              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-[var(--module-gap)]'
+              : 'grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-[var(--module-gap)]'
           }
         >
           {/* Left column */}

@@ -18,24 +18,24 @@ export function ChatModule() {
     <button
       onClick={handleClick}
       aria-label={unreadCount > 0 ? `Chat - ${unreadCount} nepřečtených` : 'Otevřít chat'}
-      className="group relative bg-white border border-slate-100 rounded-[40px] p-10 flex flex-col items-center justify-center space-y-8 transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)] hover:-translate-y-2 active:scale-95 w-full aspect-square md:aspect-auto md:min-h-[380px] overflow-hidden"
+      className="group relative bg-white border border-slate-100 rounded-[24px] sm:rounded-[32px] lg:rounded-[var(--module-card-radius)] p-6 sm:p-8 lg:p-[var(--module-card-pad)] flex flex-col items-center justify-center space-y-4 sm:space-y-6 lg:space-y-[var(--module-inner-gap)] transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)] hover:-translate-y-2 active:scale-95 w-full aspect-square md:aspect-auto md:min-h-[280px] lg:min-h-0 lg:h-[var(--module-card-h)] overflow-hidden"
     >
       <div
         className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
         aria-hidden="true"
       />
       <div
-        className="relative bg-rose-50 w-32 h-32 sm:w-36 sm:h-36 rounded-[36px] flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 z-10"
+        className="relative bg-rose-50 w-20 h-20 sm:w-28 sm:h-28 lg:w-[var(--module-icon-size)] lg:h-[var(--module-icon-size)] rounded-2xl sm:rounded-3xl lg:rounded-[var(--module-icon-radius)] flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 z-10"
         aria-hidden="true"
       >
         <div className="absolute inset-0 blur-3xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full bg-rose-50" />
         <div className="relative text-rose-500 transition-transform duration-500 group-hover:scale-110">
-          <MessagesSquare className="w-[72px] h-[72px]" strokeWidth={1.2} />
+          <MessagesSquare className="w-10 h-10 sm:w-14 sm:h-14 lg:w-[var(--module-icon-inner)] lg:h-[var(--module-icon-inner)]" strokeWidth={1.2} />
         </div>
       </div>
       <div className="flex flex-col items-center space-y-3 z-10">
         <div className="flex items-center gap-3">
-          <span className="text-3xl font-extrabold tracking-tight transition-colors duration-300 text-rose-600">
+          <span className="text-xl sm:text-2xl lg:text-[length:var(--module-title-size)] font-extrabold tracking-tight transition-colors duration-300 text-rose-600">
             Chat
           </span>
           {unreadCount > 0 && (

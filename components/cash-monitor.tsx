@@ -16,7 +16,7 @@ export function CashMonitor({ cashToCollect }: CashMonitorProps) {
   const cashBase = store?.cashBase ?? 2000;
 
   return (
-    <div className="w-full max-w-5xl mb-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 py-6">
+    <div className="w-full max-w-5xl bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 py-4 lg:py-3">
       <div className="flex items-center space-x-5 mb-4 md:mb-0">
         <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
           <Landmark className="w-7 h-7 text-blue-500" />
@@ -25,7 +25,7 @@ export function CashMonitor({ cashToCollect }: CashMonitorProps) {
           <p className="text-base text-slate-500 font-medium">
             Hotovost k odevzdání (v trezoru)
           </p>
-          <h3 className="text-3xl font-bold text-slate-800">
+          <h3 className="text-2xl lg:text-xl font-bold text-slate-800">
             {cashToCollect.toLocaleString('cs-CZ')}{' '}
             <span className="text-xl font-semibold text-slate-400">Kč</span>
           </h3>
