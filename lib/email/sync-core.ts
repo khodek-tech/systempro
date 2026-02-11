@@ -278,10 +278,10 @@ async function updateLog(supabase: SupabaseClient, logId: number | undefined, st
 const BATCH_SIZE_INITIAL = 100;
 const BATCH_SIZE_INCREMENTAL = 50;
 const RECONCILIATION_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
-const MAX_RECONCILIATION_FOLDERS = 3;
-const MAX_FLAG_SYNC_FOLDERS = 5;
+const MAX_RECONCILIATION_FOLDERS = 2;
+const MAX_FLAG_SYNC_FOLDERS = 3;
 const FLAG_SYNC_MAX_MESSAGES = 10000;
-const FLAG_SYNC_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
+const FLAG_SYNC_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 interface FolderDbRecord {
   id: string;
@@ -476,6 +476,101 @@ async function syncFolderFlags(
 }
 
 /**
+ * Flush dirty flags to IMAP: find messages with dirty_flags=true for this account,
+ * group by folder, and batch-update IMAP flags. Called at the start of each incremental sync.
+ */
+async function flushDirtyFlags(
+  client: ImapFlow,
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<void> {
+  // Load all dirty messages for this account
+  const { data: dirtyMessages } = await supabase
+    .from('emailove_zpravy')
+    .select('id, id_slozky, imap_uid, precteno, oznaceno')
+    .eq('id_uctu', accountId)
+    .eq('dirty_flags', true);
+
+  if (!dirtyMessages || dirtyMessages.length === 0) return;
+
+  // Load folders to get IMAP paths
+  const folderIds = [...new Set(dirtyMessages.map((m: { id_slozky: string }) => m.id_slozky))];
+  const { data: folders } = await supabase
+    .from('emailove_slozky')
+    .select('id, imap_cesta')
+    .in('id', folderIds);
+
+  if (!folders) return;
+
+  const folderPathMap = new Map<string, string>();
+  for (const f of folders) {
+    folderPathMap.set(f.id, f.imap_cesta);
+  }
+
+  // Group messages by folder
+  const byFolder = new Map<string, typeof dirtyMessages>();
+  for (const msg of dirtyMessages) {
+    const list = byFolder.get(msg.id_slozky) ?? [];
+    list.push(msg);
+    byFolder.set(msg.id_slozky, list);
+  }
+
+  const flushedIds: string[] = [];
+
+  for (const [folderId, msgs] of byFolder) {
+    const folderPath = folderPathMap.get(folderId);
+    if (!folderPath) continue;
+
+    let lock;
+    try {
+      lock = await client.getMailboxLock(folderPath);
+
+      for (const msg of msgs) {
+        if (msg.imap_uid <= 0) {
+          flushedIds.push(msg.id);
+          continue;
+        }
+
+        try {
+          // Sync \Seen flag
+          if (msg.precteno) {
+            await client.messageFlagsAdd(String(msg.imap_uid), ['\\Seen'], { uid: true });
+          } else {
+            await client.messageFlagsRemove(String(msg.imap_uid), ['\\Seen'], { uid: true });
+          }
+
+          // Sync \Flagged flag
+          if (msg.oznaceno) {
+            await client.messageFlagsAdd(String(msg.imap_uid), ['\\Flagged'], { uid: true });
+          } else {
+            await client.messageFlagsRemove(String(msg.imap_uid), ['\\Flagged'], { uid: true });
+          }
+
+          flushedIds.push(msg.id);
+        } catch (err) {
+          console.error(`[email-sync] Failed to flush flags for UID ${msg.imap_uid}:`, err);
+        }
+      }
+    } catch (err) {
+      console.error(`[email-sync] Failed to open folder ${folderPath} for flag flush:`, err);
+    } finally {
+      lock?.release();
+    }
+  }
+
+  // Reset dirty_flags for flushed messages
+  if (flushedIds.length > 0) {
+    for (let i = 0; i < flushedIds.length; i += 200) {
+      await supabase
+        .from('emailove_zpravy')
+        .update({ dirty_flags: false })
+        .in('id', flushedIds.slice(i, i + 200));
+    }
+    console.log(`[email-sync] Flushed ${flushedIds.length} dirty flags to IMAP for account ${accountId}`);
+  }
+}
+
+/**
  * Incremental sync using smart change detection:
  * 1. LIST with statusQuery to get all folder statuses in ~1 IMAP command
  * 2. Load all folders from DB in 1 query
@@ -489,6 +584,13 @@ async function syncIncremental(
   effectiveBatchSize: number,
   deadline: number | null,
 ): Promise<number> {
+  // Step 0: Flush any dirty flags to IMAP before syncing
+  try {
+    await flushDirtyFlags(client, supabase, accountId);
+  } catch (err) {
+    console.error(`[email-sync] flushDirtyFlags failed for ${accountId}:`, err);
+  }
+
   // Step 1: Get status of ALL mailboxes in one IMAP command
   const mailboxes = await client.list({
     statusQuery: { messages: true, uidNext: true, unseen: true, uidValidity: true },

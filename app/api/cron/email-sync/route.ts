@@ -4,9 +4,9 @@ import { syncAccount } from '@/lib/email/sync-core';
 
 export const maxDuration = 300; // 5 min max for Vercel serverless
 
-const MAX_ACCOUNTS_PER_RUN = 3;
+const MAX_ACCOUNTS_PER_RUN = 8;
 const HEARTBEAT_WINDOW_MIN = 20;
-const DEDUP_GUARD_MIN = 8;
+const DEDUP_GUARD_MIN = 5;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch active accounts that have completed initial sync (posledni_sync IS NOT NULL)
-  // Order by oldest sync first (round-robin)
   const { data: accounts, error } = await supabase
     .from('emailove_ucty')
     .select('id, nazev, posledni_sync')
@@ -59,8 +58,47 @@ export async function GET(request: NextRequest) {
     return new Date(acc.posledni_sync).getTime() < dedupCutoff;
   });
 
-  // Take only MAX_ACCOUNTS_PER_RUN
-  const accountsToSync = eligibleAccounts.slice(0, MAX_ACCOUNTS_PER_RUN);
+  // Priority scheduling: hot → warm → cold
+  // Hot: account has heartbeat < 10 min (someone is actively viewing it)
+  // Warm: account has heartbeat < 2h
+  // Cold: no recent activity
+  const HOT_WINDOW_MS = 10 * 60 * 1000;
+  const WARM_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+  const { data: accountHeartbeats } = await supabase
+    .from('email_aktivita')
+    .select('id_uctu, posledni_aktivita')
+    .neq('id_uctu', '');
+
+  const heartbeatMap = new Map<string, number>();
+  if (accountHeartbeats) {
+    for (const hb of accountHeartbeats) {
+      const ts = new Date(hb.posledni_aktivita).getTime();
+      const existing = heartbeatMap.get(hb.id_uctu);
+      if (!existing || ts > existing) {
+        heartbeatMap.set(hb.id_uctu, ts);
+      }
+    }
+  }
+
+  const now = Date.now();
+  const hot: typeof eligibleAccounts = [];
+  const warm: typeof eligibleAccounts = [];
+  const cold: typeof eligibleAccounts = [];
+
+  for (const acc of eligibleAccounts) {
+    const lastActivity = heartbeatMap.get(acc.id);
+    if (lastActivity && now - lastActivity < HOT_WINDOW_MS) {
+      hot.push(acc);
+    } else if (lastActivity && now - lastActivity < WARM_WINDOW_MS) {
+      warm.push(acc);
+    } else {
+      cold.push(acc);
+    }
+  }
+
+  // Take hot first, then warm, then cold — up to MAX_ACCOUNTS_PER_RUN
+  const accountsToSync = [...hot, ...warm, ...cold].slice(0, MAX_ACCOUNTS_PER_RUN);
 
   if (accountsToSync.length === 0) {
     return NextResponse.json({
@@ -75,7 +113,7 @@ export async function GET(request: NextRequest) {
   // Sync accounts sequentially to avoid IMAP connection overload
   for (const account of accountsToSync) {
     try {
-      const result = await syncAccount(supabase, account.id, 'incremental', 50, 120000);
+      const result = await syncAccount(supabase, account.id, 'incremental', 50, 30000);
       results.push({
         accountId: account.id,
         name: account.nazev,

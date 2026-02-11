@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, RefreshCw, PenSquare, Loader2, X, Wrench } from 'lucide-react';
+import { ArrowLeft, RefreshCw, PenSquare, Loader2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useEmailStore } from '@/stores/email-store';
@@ -12,13 +12,12 @@ import { EmailComposer } from '@/components/email/EmailComposer';
 
 export function EmailFullView() {
   const {
-    closeEmailView, selectedAccountId, selectedFolderId, selectedMessageId, selectMessage,
-    openComposer, composerOpen, triggerSync, triggerBackfill, getAccountsForUser,
-    sendHeartbeat, accounts,
+    closeEmailView, selectedAccountId, selectedMessageId, selectMessage,
+    openComposer, composerOpen, triggerSync, getAccountsForUser,
+    sendHeartbeat,
   } = useEmailStore();
   const { currentUser } = useAuthStore();
   const [syncing, setSyncing] = useState(false);
-  const [backfilling, setBackfilling] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const userAccounts = useMemo(
@@ -45,22 +44,10 @@ export function EmailFullView() {
     }
   }, [selectedAccountId, userAccounts]);
 
-  // Heartbeat + auto-sync on mount
+  // Heartbeat on mount + interval
   useEffect(() => {
-    // Send heartbeat immediately
     sendHeartbeat();
 
-    // Auto-sync accounts whose last sync is older than 10 minutes
-    for (const acc of accounts) {
-      if (!acc.lastSync) continue;
-      const age = Date.now() - new Date(acc.lastSync).getTime();
-      if (age > 10 * 60 * 1000) {
-        triggerSync(acc.id);
-        break; // Only trigger one to avoid overload
-      }
-    }
-
-    // Heartbeat every 5 minutes
     const interval = setInterval(() => {
       sendHeartbeat();
     }, 5 * 60 * 1000);
@@ -82,22 +69,6 @@ export function EmailFullView() {
     setTimeout(() => setSyncMessage(null), 5000);
   };
 
-  const handleBackfill = async () => {
-    if (!selectedAccountId || backfilling) return;
-    setBackfilling(true);
-    setSyncMessage(null);
-    const result = await triggerBackfill(selectedAccountId, selectedFolderId ?? undefined);
-    setBackfilling(false);
-    if (result.success) {
-      const msg = result.processed
-        ? `Opraveno ${result.processed} zpráv${result.remaining ? `, zbývá ${result.remaining}` : ''}`
-        : 'Žádné zprávy k opravě';
-      setSyncMessage({ type: 'success', text: msg });
-    } else {
-      setSyncMessage({ type: 'error', text: result.error || 'Chyba při opravě těl' });
-    }
-    setTimeout(() => setSyncMessage(null), 8000);
-  };
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
@@ -116,25 +87,14 @@ export function EmailFullView() {
 
         <div className="flex items-center gap-2">
           {selectedAccountId && (
-            <>
-              <button
-                onClick={handleBackfill}
-                disabled={backfilling}
-                className="flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-slate-200 transition-all disabled:opacity-50"
-                title="Doplnit chybějící HTML těla e-mailů"
-              >
-                {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
-                Opravit těla
-              </button>
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-slate-200 transition-all disabled:opacity-50"
-              >
-                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                Sync
-              </button>
-            </>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-slate-200 transition-all disabled:opacity-50"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Sync
+            </button>
           )}
           <button
             onClick={() => openComposer('new')}

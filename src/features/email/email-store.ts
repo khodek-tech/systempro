@@ -316,6 +316,18 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
         set({ selectedFolderId: inbox.id });
         get().fetchMessages(accountId, inbox.id);
       }
+
+      // Sync-on-open: trigger background sync if lastSync > 5 min
+      const account = get().accounts.find((a) => a.id === accountId);
+      if (account?.lastSync) {
+        const age = Date.now() - new Date(account.lastSync).getTime();
+        if (age > 5 * 60 * 1000) {
+          get().triggerSync(accountId).catch(() => {});
+        }
+      } else if (account && !account.lastSync) {
+        // Never synced — trigger sync
+        get().triggerSync(accountId).catch(() => {});
+      }
     }
   },
 
@@ -492,15 +504,10 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   markAsRead: async (messageId) => {
     const msg = get().messages.find((m) => m.id === messageId);
 
-    // IMAP flag sync (best-effort — don't block DB update on failure)
-    if (msg && msg.imapUid > 0) {
-      callImapAction('setRead', messageId, msg.accountId).catch(() => logger.warn('IMAP setRead failed'));
-    }
-
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
-      .update({ precteno: true })
+      .update({ precteno: true, dirty_flags: true })
       .eq('id', messageId);
 
     if (!error) {
@@ -530,15 +537,10 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
   markAsUnread: async (messageId) => {
     const msg = get().messages.find((m) => m.id === messageId);
 
-    // IMAP flag sync (best-effort)
-    if (msg && msg.imapUid > 0) {
-      callImapAction('setUnread', messageId, msg.accountId).catch(() => logger.warn('IMAP setUnread failed'));
-    }
-
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
-      .update({ precteno: false })
+      .update({ precteno: false, dirty_flags: true })
       .eq('id', messageId);
 
     if (!error) {
@@ -569,16 +571,10 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     const msg = get().messages.find((m) => m.id === messageId);
     if (!msg) return;
 
-    // IMAP flag sync (best-effort)
-    if (msg.imapUid > 0) {
-      const action: ImapAction = msg.flagged ? 'unsetFlagged' : 'setFlagged';
-      callImapAction(action, messageId, msg.accountId).catch(() => logger.warn(`IMAP ${action} failed`));
-    }
-
     const supabase = createClient();
     const { error } = await supabase
       .from('emailove_zpravy')
-      .update({ oznaceno: !msg.flagged })
+      .update({ oznaceno: !msg.flagged, dirty_flags: true })
       .eq('id', messageId);
 
     if (!error) {
@@ -913,9 +909,11 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
       const { useAuthStore } = await import('@/core/stores/auth-store');
       const userId = useAuthStore.getState().currentUser?.id;
       if (!userId) return;
+      const accountId = get().selectedAccountId ?? '';
       const supabase = createClient();
       await supabase.from('email_aktivita').upsert({
         id_zamestnance: userId,
+        id_uctu: accountId,
         posledni_aktivita: new Date().toISOString(),
       });
     } catch {
