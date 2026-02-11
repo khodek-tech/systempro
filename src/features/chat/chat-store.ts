@@ -18,6 +18,8 @@ import {
 } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { useAuthStore } from '@/core/stores/auth-store';
+import { ROLE_IDS } from '@/lib/constants';
 import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
 
 interface ChatState {
@@ -434,7 +436,10 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   // Getters
   getGroupsForUser: (userId) => {
     const { groups, messages } = get();
-    const userGroups = groups.filter((g) => g.memberIds.includes(userId));
+    const isAdmin = useAuthStore.getState().activeRoleId === ROLE_IDS.ADMINISTRATOR;
+    const userGroups = isAdmin
+      ? groups
+      : groups.filter((g) => g.memberIds.includes(userId));
     return sortGroupsByLastMessage(userGroups, messages);
   },
 
