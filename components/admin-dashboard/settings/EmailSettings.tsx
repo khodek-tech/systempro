@@ -88,7 +88,7 @@ function AccountCard({
 }: {
   account: EmailAccount;
   access: EmailAccountAccess[];
-  users: { id: string; fullName: string }[];
+  users: { id: string; fullName: string; active: boolean }[];
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -240,25 +240,7 @@ function AccountCard({
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
               Přístupy ({access.length})
             </div>
-            {access.length === 0 ? (
-              <p className="text-sm text-slate-400">Žádné přístupy</p>
-            ) : (
-              <div className="space-y-1">
-                {access.map((a) => {
-                  const userName = users.find((u) => u.id === a.employeeId)?.fullName || a.employeeId;
-                  return (
-                    <div key={a.employeeId} className="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2">
-                      <span className="font-medium text-slate-700">{userName}</span>
-                      <div className="flex items-center gap-3 text-xs text-slate-500">
-                        {a.canSend && <span className="text-green-600">Odesílání</span>}
-                        {a.canDelete && <span className="text-red-600">Mazání</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <AccessManager accountId={account.id} existingAccess={access} onSaved={onRefetch} />
+            <AccessManager accountId={account.id} existingAccess={access} users={users} onSaved={onRefetch} />
           </div>
 
           {/* Sync logs */}
@@ -305,13 +287,13 @@ function AccountCard({
 // =============================================================================
 
 function AccessManager({
-  accountId, existingAccess, onSaved,
+  accountId, existingAccess, users, onSaved,
 }: {
   accountId: string;
   existingAccess: EmailAccountAccess[];
+  users: { id: string; fullName: string; active: boolean }[];
   onSaved: () => void;
 }) {
-  const { users } = useUsersStore();
   const [showAdd, setShowAdd] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
   const [canSend, setCanSend] = useState(true);
@@ -355,10 +337,36 @@ function AccessManager({
 
   return (
     <div className="mt-2">
+      {existingAccess.length === 0 ? (
+        <p className="text-sm text-slate-400">Žádné přístupy</p>
+      ) : (
+        <div className="space-y-1">
+          {existingAccess.map((a) => {
+            const userName = users.find((u) => u.id === a.employeeId)?.fullName || a.employeeId;
+            return (
+              <div key={a.employeeId} className="group flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2">
+                <span className="font-medium text-slate-700">{userName}</span>
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  {a.canSend && <span className="text-green-600">Odesílání</span>}
+                  {a.canDelete && <span className="text-red-600">Mazání</span>}
+                  <button
+                    onClick={() => handleRemove(a.employeeId)}
+                    className="hidden group-hover:inline-flex p-1 rounded hover:bg-red-50 transition-colors"
+                    title="Odebrat přístup"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-400 hover:text-red-600" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {!showAdd ? (
         <button
           onClick={() => setShowAdd(true)}
-          className="text-xs font-medium text-sky-600 hover:text-sky-700"
+          className="text-xs font-medium text-sky-600 hover:text-sky-700 mt-2"
         >
           + Přidat přístup
         </button>
@@ -394,18 +402,6 @@ function AccessManager({
           <button onClick={() => setShowAdd(false)} className="text-xs text-slate-500">Zrušit</button>
         </div>
       )}
-
-      {/* Remove buttons for existing access */}
-      {existingAccess.map((a) => (
-        <button
-          key={a.employeeId}
-          onClick={() => handleRemove(a.employeeId)}
-          className="hidden group-hover:inline-flex"
-          title="Odebrat přístup"
-        >
-          <Trash2 className="w-3 h-3 text-red-400" />
-        </button>
-      ))}
     </div>
   );
 }
