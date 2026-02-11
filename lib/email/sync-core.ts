@@ -281,6 +281,7 @@ const RECONCILIATION_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 const MAX_RECONCILIATION_FOLDERS = 3;
 const MAX_FLAG_SYNC_FOLDERS = 5;
 const FLAG_SYNC_MAX_MESSAGES = 10000;
+const FLAG_SYNC_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 interface FolderDbRecord {
   id: string;
@@ -291,6 +292,7 @@ interface FolderDbRecord {
   pocet_zprav: number;
   pocet_neprectenych: number;
   posledni_reconciliace: string | null;
+  posledni_flag_sync: string | null;
 }
 
 /**
@@ -466,7 +468,7 @@ async function syncFolderFlags(
       .eq('precteno', false);
 
     await supabase.from('emailove_slozky')
-      .update({ pocet_neprectenych: count ?? 0 })
+      .update({ pocet_neprectenych: count ?? 0, posledni_flag_sync: new Date().toISOString() })
       .eq('id', folderDbId);
   } finally {
     lock.release();
@@ -495,7 +497,7 @@ async function syncIncremental(
   // Step 2: Load ALL folder records from DB in one query
   const { data: dbFolders } = await supabase
     .from('emailove_slozky')
-    .select('id, imap_cesta, posledni_uid, uid_next, uid_validity, pocet_zprav, pocet_neprectenych, posledni_reconciliace')
+    .select('id, imap_cesta, posledni_uid, uid_next, uid_validity, pocet_zprav, pocet_neprectenych, posledni_reconciliace, posledni_flag_sync')
     .eq('id_uctu', accountId);
 
   const dbFolderMap = new Map<string, FolderDbRecord>();
@@ -552,9 +554,13 @@ async function syncIncremental(
       foldersToReconcile.push(mailbox);
     }
 
-    // Check if unread count differs → flags changed externally, needs flag sync
-    if (imapUnseen !== dbFolder.pocet_neprectenych && imapMessages <= FLAG_SYNC_MAX_MESSAGES) {
-      foldersToFlagSync.push({ mailbox, dbFolderId: dbFolder.id });
+    // Check if flag sync needed: counts differ, never synced, or stale (>6h)
+    if (imapMessages <= FLAG_SYNC_MAX_MESSAGES) {
+      const flagSyncStale = !dbFolder.posledni_flag_sync ||
+        (Date.now() - new Date(dbFolder.posledni_flag_sync).getTime() > FLAG_SYNC_COOLDOWN_MS);
+      if (imapUnseen !== dbFolder.pocet_neprectenych || flagSyncStale) {
+        foldersToFlagSync.push({ mailbox, dbFolderId: dbFolder.id });
+      }
     }
   }
 
@@ -591,6 +597,7 @@ async function syncIncremental(
         pocet_zprav: 0,
         pocet_neprectenych: 0,
         posledni_reconciliace: null,
+        posledni_flag_sync: null,
       });
       foldersToSync.push(mailbox);
     }
