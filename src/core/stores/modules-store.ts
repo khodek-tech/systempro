@@ -48,19 +48,29 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
       let definitions = defsResult.data.map(mapDbToModuleDefinition);
       let configs = configsResult.data.map(mapDbToModuleConfig);
 
-      // Synchronize missing definitions from defaults
+      // Synchronize missing definitions from defaults → persist to DB
       const missingDefs = DEFAULT_MODULE_DEFINITIONS.filter(
         (def) => !definitions.find((d) => d.id === def.id)
       );
       if (missingDefs.length > 0) {
+        const dbDefs = missingDefs.map((d) => ({
+          id: d.id,
+          nazev: d.name,
+          popis: d.description,
+          komponenta: d.component,
+          ikona: d.icon,
+        }));
+        await supabase.from('definice_modulu').upsert(dbDefs, { onConflict: 'id' });
         definitions = [...definitions, ...missingDefs];
       }
 
-      // Synchronize missing configs from defaults
+      // Synchronize missing configs from defaults → persist to DB
       const missingConfigs = DEFAULT_MODULE_CONFIGS.filter(
         (cfg) => !configs.find((c) => c.moduleId === cfg.moduleId)
       );
       if (missingConfigs.length > 0) {
+        const dbConfigs = missingConfigs.map((c) => mapModuleConfigToDb(c));
+        await supabase.from('konfigurace_modulu').upsert(dbConfigs, { onConflict: 'id_modulu' });
         configs = [...configs, ...missingConfigs];
       }
 
