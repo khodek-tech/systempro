@@ -40,6 +40,8 @@ export function HomePage({ slug }: HomePageProps) {
       if (user) {
         setAuthId(user.id);
         setLoggedInUser(user.id);
+        // Re-derive attendance state now that currentUser is set
+        useAttendanceStore.getState().fetchTodayAttendance();
       }
     });
   }, [ready, setLoggedInUser]);
