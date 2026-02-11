@@ -14,6 +14,7 @@ export function EmailFullView() {
   const {
     closeEmailView, selectedAccountId, selectedFolderId, selectedMessageId, selectMessage,
     openComposer, composerOpen, triggerSync, triggerBackfill, getAccountsForUser,
+    sendHeartbeat, accounts,
   } = useEmailStore();
   const { currentUser } = useAuthStore();
   const [syncing, setSyncing] = useState(false);
@@ -43,6 +44,29 @@ export function EmailFullView() {
       useEmailStore.getState().selectAccount(userAccounts[0].id);
     }
   }, [selectedAccountId, userAccounts]);
+
+  // Heartbeat + auto-sync on mount
+  useEffect(() => {
+    // Send heartbeat immediately
+    sendHeartbeat();
+
+    // Auto-sync accounts whose last sync is older than 10 minutes
+    for (const acc of accounts) {
+      if (!acc.lastSync) continue;
+      const age = Date.now() - new Date(acc.lastSync).getTime();
+      if (age > 10 * 60 * 1000) {
+        triggerSync(acc.id);
+        break; // Only trigger one to avoid overload
+      }
+    }
+
+    // Heartbeat every 5 minutes
+    const interval = setInterval(() => {
+      sendHeartbeat();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSync = async () => {
     if (!selectedAccountId || syncing) return;

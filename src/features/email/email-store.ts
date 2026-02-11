@@ -123,6 +123,9 @@ interface EmailActions {
   updateRule: (ruleId: string, updates: Partial<EmailRule>) => Promise<void>;
   deleteRule: (ruleId: string) => Promise<void>;
 
+  // Heartbeat
+  sendHeartbeat: () => Promise<void>;
+
   // Realtime
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
@@ -899,6 +902,25 @@ export const useEmailStore = create<EmailState & EmailActions>()((set, get) => (
     } else {
       logger.error('Failed to delete email rule');
       toast.error('Nepodařilo se smazat pravidlo');
+    }
+  },
+
+  // =========================================================================
+  // Heartbeat
+  // =========================================================================
+
+  sendHeartbeat: async () => {
+    try {
+      const { useAuthStore } = await import('@/core/stores/auth-store');
+      const userId = useAuthStore.getState().currentUser?.id;
+      if (!userId) return;
+      const supabase = createClient();
+      await supabase.from('email_aktivita').upsert({
+        id_zamestnance: userId,
+        posledni_aktivita: new Date().toISOString(),
+      });
+    } catch {
+      // Heartbeat is best-effort, don't crash on failure
     }
   },
 

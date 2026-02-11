@@ -277,6 +277,18 @@ async function updateLog(supabase: SupabaseClient, logId: number | undefined, st
 
 const BATCH_SIZE_INITIAL = 100;
 const BATCH_SIZE_INCREMENTAL = 50;
+const RECONCILIATION_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+const MAX_RECONCILIATION_FOLDERS = 3;
+
+interface FolderDbRecord {
+  id: string;
+  imap_cesta: string;
+  posledni_uid: number;
+  uid_next: number;
+  uid_validity: number;
+  pocet_zprav: number;
+  posledni_reconciliace: string | null;
+}
 
 /**
  * Sync a single email account via IMAP.
@@ -344,201 +356,23 @@ export async function syncAccount(
   try {
     await connectWithRetry(client);
 
-    const mailboxes = await client.list();
-
-    // For initial mode: first pass to count total messages across all folders
-    if (isInitial && logEntry?.id) {
-      let grandTotal = 0;
-      for (const mailbox of mailboxes) {
-        try {
-          const status = await client.status(mailbox.path, { messages: true });
-          grandTotal += status.messages ?? 0;
-        } catch {
-          // skip folders we can't stat
-        }
+    if (isInitial) {
+      // =====================================================================
+      // INITIAL SYNC: full iteration (unchanged from before)
+      // =====================================================================
+      totalNew = await syncInitial(client, supabase, accountId, effectiveBatchSize, deadline, logEntry?.id);
+      syncStatus = (deadline && Date.now() >= deadline) ? 'timeout' : 'success';
+      if (syncStatus === 'timeout') {
+        syncError = 'Sync exceeded time limit, some folders were skipped';
       }
-      await supabase.from('emailovy_log').update({
-        celkem_zprav: grandTotal,
-      }).eq('id', logEntry.id);
-    }
-
-    let globalProcessed = 0;
-    let timedOut = false;
-
-    for (const mailbox of mailboxes) {
-      // Check timeout before processing each folder
-      if (deadline && Date.now() >= deadline) {
-        console.warn(`[email-sync] Timeout reached for account ${accountId}, skipping remaining folders`);
-        timedOut = true;
-        break;
-      }
-
-      try {
-        const folderType = detectFolderType(mailbox.path, mailbox.specialUse);
-
-        const folderId = `folder-${accountId}-${sanitizePath(mailbox.path)}`;
-        const { data: existingFolder } = await supabase
-          .from('emailove_slozky')
-          .select('id, posledni_uid')
-          .eq('id_uctu', accountId)
-          .eq('imap_cesta', mailbox.path)
-          .single();
-
-        const folderDbId = existingFolder?.id || folderId;
-        const lastUid = existingFolder?.posledni_uid ?? 0;
-
-        if (!existingFolder) {
-          await supabase.from('emailove_slozky').insert({
-            id: folderId,
-            id_uctu: accountId,
-            nazev: mailbox.name,
-            imap_cesta: mailbox.path,
-            typ: folderType,
-            poradi: getFolderOrder(folderType),
-          });
-        }
-
-        const lock = await client.getMailboxLock(mailbox.path);
-        try {
-          const status = await client.status(mailbox.path, { messages: true, unseen: true });
-
-          if (isInitial && (status.messages ?? 0) === 0 && lastUid === 0) {
-            if (logEntry?.id) {
-              await supabase.from('emailovy_log').update({
-                zpracovano: globalProcessed,
-                aktualni_slozka: mailbox.name,
-              }).eq('id', logEntry.id);
-            }
-            await supabase.from('emailove_slozky').update({
-              pocet_zprav: status.messages ?? 0,
-              pocet_neprectenych: status.unseen ?? 0,
-            }).eq('id', folderDbId);
-            continue;
-          }
-
-          if (isInitial && logEntry?.id) {
-            await supabase.from('emailovy_log').update({
-              aktualni_slozka: mailbox.name,
-            }).eq('id', logEntry.id);
-          }
-
-          const fetchRange = `${lastUid + 1}:*`;
-          let highestUid = lastUid;
-          let newInFolder = 0;
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pendingMessages: any[] = [];
-          try {
-            for await (const msg of client.fetch(fetchRange, {
-              uid: true,
-              envelope: true,
-              bodyStructure: true,
-              flags: true,
-              size: true,
-            }, { uid: true })) {
-              if (msg.uid <= lastUid) continue;
-              pendingMessages.push(msg);
-            }
-          } catch (fetchErr) {
-            console.error(`Error fetching metadata in ${mailbox.path}:`, fetchErr);
-          }
-
-          const pendingRows: Record<string, unknown>[] = [];
-
-          for (const msg of pendingMessages) {
-            const row = await processMessage(msg, client, accountId, folderDbId);
-            if (row) {
-              pendingRows.push(row);
-              if (msg.uid > highestUid) highestUid = msg.uid;
-            }
-
-            if (pendingRows.length >= effectiveBatchSize) {
-              const inserted = await batchUpsertMessages(supabase, pendingRows);
-              newInFolder += inserted;
-              globalProcessed += pendingRows.length;
-              pendingRows.length = 0;
-
-              if (isInitial && logEntry?.id) {
-                await supabase.from('emailovy_log').update({
-                  zpracovano: globalProcessed,
-                }).eq('id', logEntry.id);
-              }
-            }
-          }
-
-          if (pendingRows.length > 0) {
-            const inserted = await batchUpsertMessages(supabase, pendingRows);
-            newInFolder += inserted;
-            globalProcessed += pendingRows.length;
-
-            if (isInitial && logEntry?.id) {
-              await supabase.from('emailovy_log').update({
-                zpracovano: globalProcessed,
-              }).eq('id', logEntry.id);
-            }
-          }
-
-          totalNew += newInFolder;
-
-          const folderUpdate: Record<string, unknown> = {
-            pocet_zprav: status.messages ?? 0,
-            pocet_neprectenych: status.unseen ?? 0,
-          };
-          if (highestUid > lastUid) {
-            folderUpdate.posledni_uid = highestUid;
-          }
-          await supabase.from('emailove_slozky').update(folderUpdate).eq('id', folderDbId);
-
-          // Reconciliation: remove ghost messages (only in incremental mode)
-          if (!isInitial && (status.messages ?? 0) <= 10000) {
-            try {
-              // Get all UIDs currently in this IMAP folder
-              const imapUids: number[] = [];
-              try {
-                for await (const msg of client.fetch('1:*', { uid: true }, { uid: true })) {
-                  imapUids.push(msg.uid);
-                }
-              } catch {
-                // If fetch fails (e.g. empty folder), treat as empty
-              }
-
-              const imapUidSet = new Set(imapUids);
-
-              // Get all UIDs stored in DB for this folder
-              const { data: dbMessages } = await supabase
-                .from('emailove_zpravy')
-                .select('imap_uid')
-                .eq('id_slozky', folderDbId);
-
-              if (dbMessages && dbMessages.length > 0) {
-                const ghostUids = dbMessages
-                  .map((m: { imap_uid: number }) => m.imap_uid)
-                  .filter((uid: number) => uid > 0 && !imapUidSet.has(uid));
-
-                if (ghostUids.length > 0) {
-                  const { error: deleteError } = await supabase
-                    .from('emailove_zpravy')
-                    .delete()
-                    .eq('id_slozky', folderDbId)
-                    .in('imap_uid', ghostUids);
-
-                  if (deleteError) {
-                    console.error(`[email-sync] Failed to delete ghost messages in ${mailbox.path}:`, deleteError.message);
-                  } else {
-                    console.log(`[email-sync] Reconciliation: removed ${ghostUids.length} ghost messages from ${mailbox.path}`);
-                  }
-                }
-              }
-            } catch (reconcileErr) {
-              console.error(`[email-sync] Reconciliation error in ${mailbox.path}:`, reconcileErr);
-            }
-          }
-        } finally {
-          lock.release();
-        }
-      } catch (folderErr) {
-        console.error(`[email-sync] Error processing folder ${mailbox.path}:`, folderErr);
-        // Continue with next folder instead of crashing the entire sync
+    } else {
+      // =====================================================================
+      // INCREMENTAL SYNC: smart change detection
+      // =====================================================================
+      totalNew = await syncIncremental(client, supabase, accountId, effectiveBatchSize, deadline);
+      syncStatus = (deadline && Date.now() >= deadline) ? 'timeout' : 'success';
+      if (syncStatus === 'timeout') {
+        syncError = 'Sync exceeded time limit, some folders were skipped';
       }
     }
 
@@ -546,11 +380,6 @@ export async function syncAccount(
     await supabase.from('emailove_ucty').update({
       posledni_sync: new Date().toISOString(),
     }).eq('id', accountId);
-
-    syncStatus = timedOut ? 'timeout' : 'success';
-    if (timedOut) {
-      syncError = 'Sync exceeded time limit, some folders were skipped';
-    }
   } catch (imapErr) {
     syncError = imapErr instanceof Error ? imapErr.message : String(imapErr);
     console.error('IMAP sync error:', imapErr);
@@ -566,4 +395,486 @@ export async function syncAccount(
     return { success: false, newCount: totalNew, logId: logEntry?.id, error: friendlyError(syncError) };
   }
   return { success: true, newCount: totalNew, logId: logEntry?.id, error: syncError || undefined };
+}
+
+/**
+ * Incremental sync using smart change detection:
+ * 1. LIST with statusQuery to get all folder statuses in ~1 IMAP command
+ * 2. Load all folders from DB in 1 query
+ * 3. Compare uidNext → only open folders with new messages
+ * 4. Deferred reconciliation for folders with decreased message count
+ */
+async function syncIncremental(
+  client: ImapFlow,
+  supabase: SupabaseClient,
+  accountId: string,
+  effectiveBatchSize: number,
+  deadline: number | null,
+): Promise<number> {
+  // Step 1: Get status of ALL mailboxes in one IMAP command
+  const mailboxes = await client.list({
+    statusQuery: { messages: true, uidNext: true, unseen: true, uidValidity: true },
+  });
+
+  // Step 2: Load ALL folder records from DB in one query
+  const { data: dbFolders } = await supabase
+    .from('emailove_slozky')
+    .select('id, imap_cesta, posledni_uid, uid_next, uid_validity, pocet_zprav, posledni_reconciliace')
+    .eq('id_uctu', accountId);
+
+  const dbFolderMap = new Map<string, FolderDbRecord>();
+  for (const f of (dbFolders ?? [])) {
+    dbFolderMap.set(f.imap_cesta, f as FolderDbRecord);
+  }
+
+  // Step 3: Compare and classify folders
+  const foldersToSync: typeof mailboxes = [];
+  const foldersToReconcile: typeof mailboxes = [];
+  const folderCountUpdates: { id: string; pocet_zprav: number; pocet_neprectenych: number; uid_next: number; uid_validity: number }[] = [];
+  const newFolders: typeof mailboxes = [];
+
+  for (const mailbox of mailboxes) {
+    const dbFolder = dbFolderMap.get(mailbox.path);
+    const imapMessages = mailbox.status?.messages ?? 0;
+    const imapUidNext = mailbox.status?.uidNext ?? 0;
+    const imapUnseen = mailbox.status?.unseen ?? 0;
+    const imapUidValidity = mailbox.status?.uidValidity ? Number(mailbox.status.uidValidity) : 0;
+
+    if (!dbFolder) {
+      // New folder — create it and sync
+      newFolders.push(mailbox);
+      continue;
+    }
+
+    // Prepare count update for all folders (batch update later)
+    folderCountUpdates.push({
+      id: dbFolder.id,
+      pocet_zprav: imapMessages,
+      pocet_neprectenych: imapUnseen,
+      uid_next: imapUidNext,
+      uid_validity: imapUidValidity,
+    });
+
+    // Check if uidValidity changed (mailbox was recreated)
+    if (imapUidValidity > 0 && dbFolder.uid_validity > 0 && imapUidValidity !== dbFolder.uid_validity) {
+      // UID validity changed — need full resync of this folder
+      foldersToSync.push(mailbox);
+      continue;
+    }
+
+    // Check if uidNext increased → new messages
+    if (imapUidNext > dbFolder.uid_next && dbFolder.uid_next > 0) {
+      foldersToSync.push(mailbox);
+    } else if (dbFolder.uid_next === 0 && imapMessages > 0) {
+      // First time we track uid_next but folder has messages — sync to capture uid_next
+      foldersToSync.push(mailbox);
+    }
+
+    // Check if messages decreased → possible deletions, needs reconciliation
+    if (imapMessages < dbFolder.pocet_zprav) {
+      foldersToReconcile.push(mailbox);
+    }
+  }
+
+  // Create new folders in DB
+  for (const mailbox of newFolders) {
+    const folderType = detectFolderType(mailbox.path, mailbox.specialUse);
+    const folderId = `folder-${accountId}-${sanitizePath(mailbox.path)}`;
+    const imapMessages = mailbox.status?.messages ?? 0;
+    const imapUnseen = mailbox.status?.unseen ?? 0;
+    const imapUidNext = mailbox.status?.uidNext ?? 0;
+    const imapUidValidity = mailbox.status?.uidValidity ? Number(mailbox.status.uidValidity) : 0;
+
+    await supabase.from('emailove_slozky').insert({
+      id: folderId,
+      id_uctu: accountId,
+      nazev: mailbox.name,
+      imap_cesta: mailbox.path,
+      typ: folderType,
+      poradi: getFolderOrder(folderType),
+      pocet_zprav: imapMessages,
+      pocet_neprectenych: imapUnseen,
+      uid_next: imapUidNext,
+      uid_validity: imapUidValidity,
+    });
+
+    // New folders with messages need syncing
+    if (imapMessages > 0) {
+      dbFolderMap.set(mailbox.path, {
+        id: folderId,
+        imap_cesta: mailbox.path,
+        posledni_uid: 0,
+        uid_next: 0,
+        uid_validity: imapUidValidity,
+        pocet_zprav: 0,
+        posledni_reconciliace: null,
+      });
+      foldersToSync.push(mailbox);
+    }
+  }
+
+  // Batch update folder counts (non-blocking, best-effort)
+  for (const update of folderCountUpdates) {
+    await supabase.from('emailove_slozky').update({
+      pocet_zprav: update.pocet_zprav,
+      pocet_neprectenych: update.pocet_neprectenych,
+      uid_next: update.uid_next,
+      uid_validity: update.uid_validity,
+    }).eq('id', update.id);
+  }
+
+  let totalNew = 0;
+
+  // Step 4: Sync only folders with new messages
+  for (const mailbox of foldersToSync) {
+    if (deadline && Date.now() >= deadline) break;
+
+    const dbFolder = dbFolderMap.get(mailbox.path);
+    if (!dbFolder) continue;
+
+    try {
+      const newInFolder = await syncFolder(
+        client, supabase, accountId, mailbox, dbFolder.id, dbFolder.posledni_uid, effectiveBatchSize,
+      );
+      totalNew += newInFolder;
+
+      // Update uid_next after sync
+      const imapUidNext = mailbox.status?.uidNext ?? 0;
+      const imapUidValidity = mailbox.status?.uidValidity ? Number(mailbox.status.uidValidity) : 0;
+      await supabase.from('emailove_slozky').update({
+        uid_next: imapUidNext,
+        uid_validity: imapUidValidity,
+      }).eq('id', dbFolder.id);
+    } catch (err) {
+      console.error(`[email-sync] Error syncing folder ${mailbox.path}:`, err);
+    }
+  }
+
+  // Step 5: Deferred reconciliation (max MAX_RECONCILIATION_FOLDERS folders, only if cooldown elapsed)
+  let reconciledCount = 0;
+  for (const mailbox of foldersToReconcile) {
+    if (reconciledCount >= MAX_RECONCILIATION_FOLDERS) break;
+    if (deadline && Date.now() >= deadline) break;
+
+    const dbFolder = dbFolderMap.get(mailbox.path);
+    if (!dbFolder) continue;
+
+    // Check cooldown: skip if reconciled less than 1 hour ago
+    if (dbFolder.posledni_reconciliace) {
+      const elapsed = Date.now() - new Date(dbFolder.posledni_reconciliace).getTime();
+      if (elapsed < RECONCILIATION_COOLDOWN_MS) continue;
+    }
+
+    // Skip large folders
+    const imapMessages = mailbox.status?.messages ?? 0;
+    if (imapMessages > 10000) continue;
+
+    try {
+      await reconcileFolder(client, supabase, mailbox.path, dbFolder.id);
+      // Update reconciliation timestamp
+      await supabase.from('emailove_slozky').update({
+        posledni_reconciliace: new Date().toISOString(),
+      }).eq('id', dbFolder.id);
+      reconciledCount++;
+    } catch (err) {
+      console.error(`[email-sync] Reconciliation error in ${mailbox.path}:`, err);
+    }
+  }
+
+  return totalNew;
+}
+
+/**
+ * Sync a single folder: fetch new messages starting from lastUid+1.
+ */
+async function syncFolder(
+  client: ImapFlow,
+  supabase: SupabaseClient,
+  accountId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mailbox: any,
+  folderDbId: string,
+  lastUid: number,
+  effectiveBatchSize: number,
+): Promise<number> {
+  const lock = await client.getMailboxLock(mailbox.path);
+  let newInFolder = 0;
+
+  try {
+    const fetchRange = `${lastUid + 1}:*`;
+    let highestUid = lastUid;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pendingMessages: any[] = [];
+    try {
+      for await (const msg of client.fetch(fetchRange, {
+        uid: true,
+        envelope: true,
+        bodyStructure: true,
+        flags: true,
+        size: true,
+      }, { uid: true })) {
+        if (msg.uid <= lastUid) continue;
+        pendingMessages.push(msg);
+      }
+    } catch (fetchErr) {
+      console.error(`Error fetching metadata in ${mailbox.path}:`, fetchErr);
+    }
+
+    const pendingRows: Record<string, unknown>[] = [];
+
+    for (const msg of pendingMessages) {
+      const row = await processMessage(msg, client, accountId, folderDbId);
+      if (row) {
+        pendingRows.push(row);
+        if (msg.uid > highestUid) highestUid = msg.uid;
+      }
+
+      if (pendingRows.length >= effectiveBatchSize) {
+        const inserted = await batchUpsertMessages(supabase, pendingRows);
+        newInFolder += inserted;
+        pendingRows.length = 0;
+      }
+    }
+
+    if (pendingRows.length > 0) {
+      const inserted = await batchUpsertMessages(supabase, pendingRows);
+      newInFolder += inserted;
+    }
+
+    // Update folder stats
+    const status = await client.status(mailbox.path, { messages: true, unseen: true });
+    const folderUpdate: Record<string, unknown> = {
+      pocet_zprav: status.messages ?? 0,
+      pocet_neprectenych: status.unseen ?? 0,
+    };
+    if (highestUid > lastUid) {
+      folderUpdate.posledni_uid = highestUid;
+    }
+    await supabase.from('emailove_slozky').update(folderUpdate).eq('id', folderDbId);
+  } finally {
+    lock.release();
+  }
+
+  return newInFolder;
+}
+
+/**
+ * Reconcile a single folder: remove ghost messages that no longer exist on IMAP.
+ */
+async function reconcileFolder(
+  client: ImapFlow,
+  supabase: SupabaseClient,
+  mailboxPath: string,
+  folderDbId: string,
+): Promise<void> {
+  const lock = await client.getMailboxLock(mailboxPath);
+  try {
+    // Get all UIDs currently in this IMAP folder
+    const imapUids: number[] = [];
+    try {
+      for await (const msg of client.fetch('1:*', { uid: true }, { uid: true })) {
+        imapUids.push(msg.uid);
+      }
+    } catch {
+      // If fetch fails (e.g. empty folder), treat as empty
+    }
+
+    const imapUidSet = new Set(imapUids);
+
+    // Get all UIDs stored in DB for this folder
+    const { data: dbMessages } = await supabase
+      .from('emailove_zpravy')
+      .select('imap_uid')
+      .eq('id_slozky', folderDbId);
+
+    if (dbMessages && dbMessages.length > 0) {
+      const ghostUids = dbMessages
+        .map((m: { imap_uid: number }) => m.imap_uid)
+        .filter((uid: number) => uid > 0 && !imapUidSet.has(uid));
+
+      if (ghostUids.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('emailove_zpravy')
+          .delete()
+          .eq('id_slozky', folderDbId)
+          .in('imap_uid', ghostUids);
+
+        if (deleteError) {
+          console.error(`[email-sync] Failed to delete ghost messages in ${mailboxPath}:`, deleteError.message);
+        } else {
+          console.log(`[email-sync] Reconciliation: removed ${ghostUids.length} ghost messages from ${mailboxPath}`);
+        }
+      }
+    }
+  } finally {
+    lock.release();
+  }
+}
+
+/**
+ * Initial sync: full iteration of all folders (original behavior, preserved).
+ */
+async function syncInitial(
+  client: ImapFlow,
+  supabase: SupabaseClient,
+  accountId: string,
+  effectiveBatchSize: number,
+  deadline: number | null,
+  logId?: number,
+): Promise<number> {
+  const mailboxes = await client.list();
+
+  // First pass to count total messages across all folders
+  if (logId) {
+    let grandTotal = 0;
+    for (const mailbox of mailboxes) {
+      try {
+        const status = await client.status(mailbox.path, { messages: true });
+        grandTotal += status.messages ?? 0;
+      } catch {
+        // skip folders we can't stat
+      }
+    }
+    await supabase.from('emailovy_log').update({
+      celkem_zprav: grandTotal,
+    }).eq('id', logId);
+  }
+
+  let globalProcessed = 0;
+  let totalNew = 0;
+
+  for (const mailbox of mailboxes) {
+    if (deadline && Date.now() >= deadline) {
+      console.warn(`[email-sync] Timeout reached for account ${accountId}, skipping remaining folders`);
+      break;
+    }
+
+    try {
+      const folderType = detectFolderType(mailbox.path, mailbox.specialUse);
+      const folderId = `folder-${accountId}-${sanitizePath(mailbox.path)}`;
+      const { data: existingFolder } = await supabase
+        .from('emailove_slozky')
+        .select('id, posledni_uid')
+        .eq('id_uctu', accountId)
+        .eq('imap_cesta', mailbox.path)
+        .single();
+
+      const folderDbId = existingFolder?.id || folderId;
+      const lastUid = existingFolder?.posledni_uid ?? 0;
+
+      if (!existingFolder) {
+        await supabase.from('emailove_slozky').insert({
+          id: folderId,
+          id_uctu: accountId,
+          nazev: mailbox.name,
+          imap_cesta: mailbox.path,
+          typ: folderType,
+          poradi: getFolderOrder(folderType),
+        });
+      }
+
+      const lock = await client.getMailboxLock(mailbox.path);
+      try {
+        const status = await client.status(mailbox.path, { messages: true, unseen: true, uidNext: true, uidValidity: true });
+
+        if ((status.messages ?? 0) === 0 && lastUid === 0) {
+          if (logId) {
+            await supabase.from('emailovy_log').update({
+              zpracovano: globalProcessed,
+              aktualni_slozka: mailbox.name,
+            }).eq('id', logId);
+          }
+          await supabase.from('emailove_slozky').update({
+            pocet_zprav: status.messages ?? 0,
+            pocet_neprectenych: status.unseen ?? 0,
+            uid_next: status.uidNext ?? 0,
+            uid_validity: status.uidValidity ? Number(status.uidValidity) : 0,
+          }).eq('id', folderDbId);
+          continue;
+        }
+
+        if (logId) {
+          await supabase.from('emailovy_log').update({
+            aktualni_slozka: mailbox.name,
+          }).eq('id', logId);
+        }
+
+        const fetchRange = `${lastUid + 1}:*`;
+        let highestUid = lastUid;
+        let newInFolder = 0;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pendingMessages: any[] = [];
+        try {
+          for await (const msg of client.fetch(fetchRange, {
+            uid: true,
+            envelope: true,
+            bodyStructure: true,
+            flags: true,
+            size: true,
+          }, { uid: true })) {
+            if (msg.uid <= lastUid) continue;
+            pendingMessages.push(msg);
+          }
+        } catch (fetchErr) {
+          console.error(`Error fetching metadata in ${mailbox.path}:`, fetchErr);
+        }
+
+        const pendingRows: Record<string, unknown>[] = [];
+
+        for (const msg of pendingMessages) {
+          const row = await processMessage(msg, client, accountId, folderDbId);
+          if (row) {
+            pendingRows.push(row);
+            if (msg.uid > highestUid) highestUid = msg.uid;
+          }
+
+          if (pendingRows.length >= effectiveBatchSize) {
+            const inserted = await batchUpsertMessages(supabase, pendingRows);
+            newInFolder += inserted;
+            globalProcessed += pendingRows.length;
+            pendingRows.length = 0;
+
+            if (logId) {
+              await supabase.from('emailovy_log').update({
+                zpracovano: globalProcessed,
+              }).eq('id', logId);
+            }
+          }
+        }
+
+        if (pendingRows.length > 0) {
+          const inserted = await batchUpsertMessages(supabase, pendingRows);
+          newInFolder += inserted;
+          globalProcessed += pendingRows.length;
+
+          if (logId) {
+            await supabase.from('emailovy_log').update({
+              zpracovano: globalProcessed,
+            }).eq('id', logId);
+          }
+        }
+
+        totalNew += newInFolder;
+
+        const folderUpdate: Record<string, unknown> = {
+          pocet_zprav: status.messages ?? 0,
+          pocet_neprectenych: status.unseen ?? 0,
+          uid_next: status.uidNext ?? 0,
+          uid_validity: status.uidValidity ? Number(status.uidValidity) : 0,
+        };
+        if (highestUid > lastUid) {
+          folderUpdate.posledni_uid = highestUid;
+        }
+        await supabase.from('emailove_slozky').update(folderUpdate).eq('id', folderDbId);
+      } finally {
+        lock.release();
+      }
+    } catch (folderErr) {
+      console.error(`[email-sync] Error processing folder ${mailbox.path}:`, folderErr);
+    }
+  }
+
+  return totalNew;
 }
