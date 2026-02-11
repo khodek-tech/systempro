@@ -289,6 +289,7 @@ interface FolderDbRecord {
   uid_next: number;
   uid_validity: number;
   pocet_zprav: number;
+  pocet_neprectenych: number;
   posledni_reconciliace: string | null;
 }
 
@@ -494,7 +495,7 @@ async function syncIncremental(
   // Step 2: Load ALL folder records from DB in one query
   const { data: dbFolders } = await supabase
     .from('emailove_slozky')
-    .select('id, imap_cesta, posledni_uid, uid_next, uid_validity, pocet_zprav, posledni_reconciliace')
+    .select('id, imap_cesta, posledni_uid, uid_next, uid_validity, pocet_zprav, pocet_neprectenych, posledni_reconciliace')
     .eq('id_uctu', accountId);
 
   const dbFolderMap = new Map<string, FolderDbRecord>();
@@ -588,6 +589,7 @@ async function syncIncremental(
         uid_next: 0,
         uid_validity: imapUidValidity,
         pocet_zprav: 0,
+        pocet_neprectenych: 0,
         posledni_reconciliace: null,
       });
       foldersToSync.push(mailbox);
