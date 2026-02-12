@@ -113,6 +113,16 @@
 | TASK-E003 | Úkol bez assignee | Zobrazí se ve "Všechny" |
 | TASK-E004 | Dvojí delegace | Chyba: "Úkol je již delegován" |
 
+#### TASK-009: Klikatelné URL v popisu a komentáři úkolu
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít detail úkolu s URL v popisu | URL v popisu je modrý podtržený odkaz |
+| 2 | Kliknout na odkaz v popisu | Otevře se nový tab s URL |
+| 3 | Přidat komentář s URL (např. "Viz https://example.com/result") | Komentář zobrazen |
+| 4 | Zkontrolovat URL v komentáři | URL je modrý podtržený odkaz |
+| 5 | Kliknout na odkaz v komentáři | Otevře se nový tab s URL |
+
 ### Realtime synchronizace
 
 #### TASK-006: Realtime — nový úkol
@@ -193,6 +203,16 @@
 | 1 | Otevřít chat ve dvou prohlížečích | Oba připojeni přes Realtime |
 | 2 | Uživatel A pošle zprávu | Zpráva se okamžitě objeví u B |
 | 3 | Zkontrolovat badge u B | Badge se aktualizuje bez refreshe |
+
+#### CHAT-007: Klikatelné URL v chatové zprávě
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít skupinu v chatu | Konverzace zobrazena |
+| 2 | Napsat zprávu s URL (např. "Podívej https://example.com") | Text v inputu |
+| 3 | Odeslat zprávu | Zpráva zobrazena |
+| 4 | Zkontrolovat URL ve zprávě | URL je modrý podtržený odkaz (cizí) / bílý podtržený (vlastní) |
+| 5 | Kliknout na odkaz | Otevře se nový tab s URL |
 
 ### Hraniční případy
 
@@ -952,4 +972,4 @@
 
 ---
 
-*Poslední aktualizace: 2026-02-10*
+*Poslední aktualizace: 2026-02-12*

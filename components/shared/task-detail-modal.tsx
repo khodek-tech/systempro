@@ -23,6 +23,7 @@ import {
 } from '@/lib/tasks-helpers';
 import type { TaskAttachment } from '@/types';
 import { cn } from '@/lib/utils';
+import { linkifyText } from '@/lib/linkify';
 import { uploadFiles } from '@/lib/supabase/storage';
 import { useSignedUrl } from '@/lib/hooks/use-signed-url';
 import { toast } from 'sonner';
@@ -312,7 +313,9 @@ export function TaskDetailModal() {
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] space-y-6">
           {/* Description */}
           <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.description}</p>
+            <p className="text-sm text-slate-600 whitespace-pre-wrap">
+              {linkifyText(task.description, 'text-blue-600 underline break-all')}
+            </p>
           </div>
 
           {/* Return reason */}
@@ -588,7 +591,11 @@ export function TaskDetailModal() {
                         </span>
                         <span className="text-xs text-slate-400">{formatDate(comment.createdAt)}</span>
                       </div>
-                      {comment.text && <p className="text-sm text-slate-600">{comment.text}</p>}
+                      {comment.text && (
+                        <p className="text-sm text-slate-600">
+                          {linkifyText(comment.text, 'text-blue-600 underline break-all')}
+                        </p>
+                      )}
                       {comment.attachments.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {comment.attachments.map((att) => (

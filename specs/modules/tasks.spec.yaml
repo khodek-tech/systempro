@@ -113,6 +113,15 @@ features:
       - Nový úkol má posunutý deadline
       - repeatSourceId odkazuje na původní úkol
 
+  - id: clickable_urls
+    name: Klikatelné URL odkazy
+    description: URL adresy v popisu úkolu a komentářích se automaticky detekují a zobrazují jako klikatelné hypertextové odkazy
+    acceptance_criteria:
+      - URL (http/https) v popisu úkolu se vykreslí jako <a> tag
+      - URL (http/https) v komentáři se vykreslí jako <a> tag
+      - Klik otevře odkaz v novém tabu (target="_blank")
+      - Odkaz je modrý s podtržením (text-blue-600 underline)
+
   - id: task_tabs
     name: Záložky
     description: Filtrování úkolů podle vztahu k uživateli
@@ -244,6 +253,20 @@ scenarios:
     expected:
       - Automaticky se vytváří nové instance
       - repeatSourceId odkazuje na původní úkol
+
+  - id: TASK-009
+    name: Klikatelné URL v popisu a komentáři úkolu
+    preconditions:
+      - Existuje úkol s URL v popisu (např. "Viz https://example.com/docs")
+    steps:
+      - Otevřu detail úkolu
+      - V popisu je URL zobrazena jako klikatelný odkaz
+      - Přidám komentář s URL (např. "Hotovo, viz https://example.com/result")
+      - V komentáři je URL zobrazena jako klikatelný odkaz
+      - Kliknu na odkaz
+    expected:
+      - URL v popisu i komentáři je modrý podtržený odkaz
+      - Klik otevře URL v novém tabu prohlížeče
 
 edge_cases:
   - id: TASK-E001

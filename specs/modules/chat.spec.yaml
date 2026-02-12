@@ -110,6 +110,15 @@ features:
       - Smazání skupiny (včetně všech zpráv)
       - Konfigurace v nastavení modulu (Module Settings)
 
+  - id: clickable_urls
+    name: Klikatelné URL odkazy
+    description: URL adresy ve zprávách se automaticky detekují a zobrazují jako klikatelné hypertextové odkazy
+    acceptance_criteria:
+      - URL (http/https) ve zprávě se vykreslí jako <a> tag
+      - Klik otevře odkaz v novém tabu (target="_blank")
+      - Vlastní zprávy: odkaz bílý s podtržením (dědí barvu textu)
+      - Cizí zprávy: odkaz modrý s podtržením (text-blue-600)
+
   - id: realtime
     name: Supabase Realtime
     description: Real-time propagace zpráv a stavů přečtení přes Supabase Realtime
@@ -225,6 +234,22 @@ scenarios:
     expected:
       - Zpráva se okamžitě objeví u uživatele B bez refreshe
       - Badge se aktualizuje pro uživatele B
+
+  - id: CHAT-007
+    name: Klikatelné URL v chatové zprávě
+    preconditions:
+      - Existuje skupina s členy
+      - Uživatel je členem skupiny
+    steps:
+      - Otevřu skupinu
+      - Napíšu zprávu obsahující URL (např. "Podívej se na https://example.com prosím")
+      - Odešlu zprávu
+      - Zpráva se zobrazí s URL jako klikatelným odkazem
+      - Kliknu na odkaz
+    expected:
+      - URL je zobrazena jako podtržený odkaz
+      - Klik otevře URL v novém tabu prohlížeče
+      - Vlastní zpráva: odkaz bílý (dědí barvu), cizí zpráva: odkaz modrý
 
 edge_cases:
   - id: CHAT-E001

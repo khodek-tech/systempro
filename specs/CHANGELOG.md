@@ -2,6 +2,20 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.3.0] - 2026-02-12
+
+### Přidáno
+
+#### Klikatelné URL odkazy v chatu a úkolech
+- `lib/linkify.tsx`: nová utilita `linkifyText()` — detekce URL v textu a vykreslení jako `<a>` s `target="_blank"`
+- `components/chat/ChatMessage.tsx`: zprávy s URL se zobrazují jako klikatelné odkazy (vlastní: bílý, cizí: modrý)
+- `components/shared/task-detail-modal.tsx`: popis úkolu a komentáře s URL se zobrazují jako klikatelné modré odkazy
+- `specs/modules/chat.spec.yaml`: feature `clickable_urls`, scénář CHAT-007
+- `specs/modules/tasks.spec.yaml`: feature `clickable_urls`, scénář TASK-009
+- `testy.md`: přidány testy CHAT-007 a TASK-009
+
+---
+
 ## [2.2.0] - 2026-02-12
 
 ### Opraveno

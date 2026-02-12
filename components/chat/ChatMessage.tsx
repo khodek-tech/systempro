@@ -8,6 +8,7 @@ import { formatMessageTime, getReactionEmoji } from '@/features/chat';
 import { ChatReactionPicker } from './ChatReactionPicker';
 import { ChatAttachmentPreview } from './ChatAttachmentPreview';
 import { cn } from '@/lib/utils';
+import { linkifyText } from '@/lib/linkify';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -76,7 +77,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
       >
         {/* Text */}
-        <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+        <p className="text-sm whitespace-pre-wrap break-words">
+          {linkifyText(message.text, isOwnMessage ? 'underline break-all' : 'text-blue-600 underline break-all')}
+        </p>
 
         {/* Attachments */}
         {message.attachments.length > 0 && (
