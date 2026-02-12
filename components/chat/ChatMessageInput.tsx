@@ -35,34 +35,32 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const emojiSelectRef = useRef<((emoji: any) => void) | null>(null);
 
-  // Register the emoji-mart web component on first use
-  const emojiMartReady = useRef(false);
-  useEffect(() => {
-    if (!showEmojiPicker || emojiMartReady.current) return;
-    import('emoji-mart').then(({ init }) => {
-      init({ data });
-      emojiMartReady.current = true;
-    });
-  }, [showEmojiPicker]);
-
-  // Mount em-emoji-picker web component into the ref div when picker opens
+  // Init emoji-mart data and mount web component when picker opens
   useEffect(() => {
     if (!showEmojiPicker || !emojiPickerRef.current) return;
     const container = emojiPickerRef.current;
-    if (container.querySelector('em-emoji-picker')) return;
-    const el = document.createElement('em-emoji-picker');
-    el.setAttribute('locale', 'cs');
-    el.setAttribute('theme', 'light');
-    el.setAttribute('preview-position', 'none');
-    el.setAttribute('skin-tone-position', 'none');
-    container.appendChild(el);
+    let mounted = true;
 
-    // Listen for emoji-click events from the web component
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handler = (e: any) => emojiSelectRef.current?.(e.detail);
-    el.addEventListener('emoji-click', handler);
+    import('emoji-mart').then(({ init }) => {
+      if (!mounted || !container) return;
+      // Init data BEFORE creating the web component
+      init({ data });
+      if (container.querySelector('em-emoji-picker')) return;
+      const el = document.createElement('em-emoji-picker');
+      el.setAttribute('locale', 'cs');
+      el.setAttribute('theme', 'light');
+      el.setAttribute('preview-position', 'none');
+      el.setAttribute('skin-tone-position', 'none');
+      container.appendChild(el);
+
+      // Listen for emoji-click events from the web component
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const handler = (e: any) => emojiSelectRef.current?.(e.detail);
+      el.addEventListener('emoji-click', handler);
+    });
+
     return () => {
-      el.removeEventListener('emoji-click', handler);
+      mounted = false;
       container.innerHTML = '';
     };
   }, [showEmojiPicker]);
