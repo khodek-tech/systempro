@@ -35,7 +35,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const emojiSelectRef = useRef<((emoji: any) => void) | null>(null);
 
-  // Init emoji-mart data and mount web component when picker opens
+  // Init emoji-mart data and mount picker web component
   useEffect(() => {
     if (!showEmojiPicker || !emojiPickerRef.current) return;
     const container = emojiPickerRef.current;
@@ -43,20 +43,20 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
 
     import('emoji-mart').then(({ init }) => {
       if (!mounted || !container) return;
-      // Init data BEFORE creating the web component
       init({ data });
       if (container.querySelector('em-emoji-picker')) return;
-      const el = document.createElement('em-emoji-picker');
-      el.setAttribute('locale', 'cs');
-      el.setAttribute('theme', 'light');
-      el.setAttribute('preview-position', 'none');
-      el.setAttribute('skin-tone-position', 'none');
-      container.appendChild(el);
-
-      // Listen for emoji-click events from the web component
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handler = (e: any) => emojiSelectRef.current?.(e.detail);
-      el.addEventListener('emoji-click', handler);
+      // Use the registered custom element class to pass onEmojiSelect callback
+      const PickerClass = customElements.get('em-emoji-picker');
+      if (!PickerClass) return;
+      const picker = new PickerClass({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onEmojiSelect: (emoji: any) => emojiSelectRef.current?.(emoji),
+        locale: 'cs',
+        theme: 'light',
+        previewPosition: 'none',
+        skinTonePosition: 'none',
+      });
+      container.appendChild(picker);
     });
 
     return () => {
