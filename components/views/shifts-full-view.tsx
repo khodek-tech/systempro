@@ -22,7 +22,7 @@ const MONTH_NAMES = [
   'Prosinec',
 ];
 
-const DAY_NAMES = ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'];
+const DAY_NAMES = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
 
 export function ShiftsFullView() {
   const {
@@ -56,7 +56,7 @@ export function ShiftsFullView() {
     : [];
 
   // Calculate calendar grid
-  const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
+  const firstDayOfMonth = (new Date(selectedYear, selectedMonth, 1).getDay() + 6) % 7;
   const today = new Date();
   const isCurrentMonth =
     today.getMonth() === selectedMonth && today.getFullYear() === selectedYear;
@@ -142,7 +142,7 @@ export function ShiftsFullView() {
                     key={day}
                     className={cn(
                       'px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide',
-                      i === 0 ? 'text-red-500' : 'text-slate-500'
+                      i === 6 ? 'text-red-500' : 'text-slate-500'
                     )}
                   >
                     {day}
