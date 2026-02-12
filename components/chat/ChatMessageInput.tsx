@@ -2,13 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon, Smile } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import emojiData from '@emoji-mart/data';
-
-const EmojiPicker = dynamic(() => import('@emoji-mart/react'), {
-  ssr: false,
-  loading: () => <div className="w-[352px] h-[435px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-sm">Načítání...</div>,
-});
+import data from '@emoji-mart/data';
 
 interface ChatMessageInputProps {
   onSend: (text: string, files: File[]) => void;
@@ -38,6 +32,31 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const emojiSelectRef = useRef<((emoji: any) => void) | null>(null);
+
+  // Mount vanilla Picker into the ref div when picker opens
+  useEffect(() => {
+    if (!showEmojiPicker || !emojiPickerRef.current) return;
+    const container = emojiPickerRef.current;
+    // Clear previous picker
+    container.innerHTML = '';
+    let mounted = true;
+    import('emoji-mart').then(({ Picker }) => {
+      if (!mounted || !container) return;
+      new Picker({
+        data,
+        ref: container,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onEmojiSelect: (emoji: any) => emojiSelectRef.current?.(emoji),
+        locale: 'cs',
+        theme: 'light',
+        previewPosition: 'none',
+        skinTonePosition: 'none',
+      });
+    });
+    return () => { mounted = false; };
+  }, [showEmojiPicker]);
 
   // Calculate fixed position when picker opens
   useEffect(() => {
@@ -65,7 +84,6 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
 
   useEffect(() => {
     if (!showEmojiPicker) return;
-    // Delay to avoid catching the opening click
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 0);
@@ -143,6 +161,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
       textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     });
   };
+  emojiSelectRef.current = handleEmojiSelect;
 
   return (
     <div className="border-t border-slate-200 bg-white p-4">
@@ -208,16 +227,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
             ref={emojiPickerRef}
             className="fixed z-50"
             style={{ bottom: pickerPos.bottom, left: pickerPos.left }}
-          >
-            <EmojiPicker
-              data={emojiData}
-              onEmojiSelect={handleEmojiSelect}
-              locale="cs"
-              theme="light"
-              previewPosition="none"
-              skinTonePosition="none"
-            />
-          </div>
+          />
         )}
 
         <textarea
