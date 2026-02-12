@@ -5,10 +5,10 @@ import { useTasksStore } from '@/stores/tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 
 export function TasksModule() {
-  const { openTasksView, getUnresolvedTasksCount } = useTasksStore();
+  const { openTasksView, getMyTasksCount } = useTasksStore();
   const { currentUser } = useAuthStore();
 
-  const unseenCount = currentUser ? getUnresolvedTasksCount(currentUser.id) : 0;
+  const unseenCount = currentUser ? getMyTasksCount(currentUser.id) : 0;
 
   const handleClick = () => {
     openTasksView();

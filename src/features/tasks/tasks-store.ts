@@ -75,6 +75,7 @@ interface TasksActions {
   // Notification methods
   getUnseenTasksCount: (userId: string) => number;
   getUnresolvedTasksCount: (userId: string) => number;
+  getMyTasksCount: (userId: string) => number;
   markTaskAsSeen: (taskId: string, userId: string) => Promise<void>;
 
   // Filter actions
@@ -673,6 +674,28 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
     }).length;
 
     return myTasksCount + createdByMeCount;
+  },
+
+  getMyTasksCount: (userId) => {
+    const { tasks } = get();
+
+    return tasks.filter((t) => {
+      const isAssigned = isUserAssignedToTask(userId, t);
+      const isDelegatedToMe = t.delegatedTo === userId;
+      const isDelegatedByMe = t.delegatedBy === userId && t.status === 'pending-review';
+      const isPendingMyApproval = t.createdBy === userId && t.status === 'pending-approval';
+
+      if (!isAssigned && !isDelegatedToMe && !isDelegatedByMe && !isPendingMyApproval) return false;
+
+      if (t.status === 'approved') return false;
+
+      if (isAssigned && !isDelegatedToMe && !isDelegatedByMe && !isPendingMyApproval) {
+        if (t.status === 'pending-approval') return false;
+        if (t.status === 'delegated') return false;
+      }
+
+      return true;
+    }).length;
   },
 
   markTaskAsSeen: async (taskId, userId) => {
