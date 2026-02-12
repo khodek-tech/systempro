@@ -1,5 +1,6 @@
 'use client';
 
+import { Trash2 } from 'lucide-react';
 import { ChatMessage as ChatMessageType, ChatReactionType } from '@/types';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -15,7 +16,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
-  const { addReaction, removeReaction } = useChatStore();
+  const { addReaction, removeReaction, deleteMessage } = useChatStore();
   const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
 
@@ -51,6 +52,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const handleAddReaction = (type: ChatReactionType) => {
     if (!currentUser) return;
     addReaction(message.id, currentUser.id, type);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm('Opravdu chcete smazat tuto zprávu?')) {
+      deleteMessage(message.id);
+    }
   };
 
   return (
@@ -124,8 +131,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
         ))}
 
         {/* Add reaction button (visible on hover) */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
           <ChatReactionPicker onSelect={handleAddReaction} />
+          {isOwnMessage && (
+            <button
+              onClick={handleDelete}
+              className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+              title="Smazat zprávu"
+              aria-label="Smazat zprávu"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

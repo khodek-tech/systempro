@@ -12,6 +12,7 @@ import type {
   Task,
   TaskComment,
   ChatGroup,
+  ChatGroupType,
   ChatMessage,
   ChatReadStatus,
   AttendanceRecord,
@@ -251,6 +252,7 @@ export function mapDbToChatGroup(row: any): ChatGroup {
   return {
     id: row.id,
     name: row.nazev,
+    type: (row.typ as ChatGroupType) ?? 'group',
     memberIds: row.id_clenu ?? [],
     createdAt: row.vytvoreno,
     createdBy: row.vytvoril,
@@ -260,6 +262,7 @@ export function mapDbToChatGroup(row: any): ChatGroup {
 export function mapChatGroupToDb(group: Partial<ChatGroup> & { id: string }): Record<string, any> {
   const row: Record<string, any> = { id: group.id };
   if (group.name !== undefined) row.nazev = group.name;
+  if (group.type !== undefined) row.typ = group.type;
   if (group.memberIds !== undefined) row.id_clenu = group.memberIds;
   if (group.createdAt !== undefined) row.vytvoreno = group.createdAt;
   if (group.createdBy !== undefined) row.vytvoril = group.createdBy;

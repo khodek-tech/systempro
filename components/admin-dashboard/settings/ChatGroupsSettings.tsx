@@ -9,7 +9,8 @@ import { ChatGroupFormModal } from './ChatGroupFormModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export function ChatGroupsSettings() {
-  const { groups, openGroupForm, deleteGroup } = useChatStore();
+  const { groups: allGroups, openGroupForm, deleteGroup } = useChatStore();
+  const groups = allGroups.filter((g) => g.type === 'group');
   const { getUserById } = useUsersStore();
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);

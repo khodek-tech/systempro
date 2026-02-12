@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { groupMessagesByDate } from '@/features/chat';
+import { groupMessagesByDate, getDirectGroupDisplayName } from '@/features/chat';
 import { ChatMessage } from './ChatMessage';
 import { ChatMessageInput } from './ChatMessageInput';
 import { uploadFiles } from '@/lib/supabase/storage';
@@ -99,8 +99,14 @@ export function ChatConversation() {
       <div className="border-b border-slate-200 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">{group.name}</h2>
-            <p className="text-sm text-slate-500">{group.memberIds.length} členů</p>
+            <h2 className="text-lg font-bold text-slate-800">
+              {group.type === 'direct' && currentUser
+                ? getDirectGroupDisplayName(group, currentUser.id)
+                : group.name}
+            </h2>
+            <p className="text-sm text-slate-500">
+              {group.type === 'direct' ? 'Přímá zpráva' : `${group.memberIds.length} členů`}
+            </p>
           </div>
 
           {/* Search in conversation */}

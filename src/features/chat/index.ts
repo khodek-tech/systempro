@@ -14,5 +14,7 @@ export {
   canUserAccessGroup,
   getLastMessageInGroup,
   sortGroupsByLastMessage,
+  getDirectGroupDisplayName,
+  sortDirectGroupsAlphabetically,
   formatFileSize,
 } from './chat-helpers';

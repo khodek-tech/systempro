@@ -214,6 +214,41 @@
 | 4 | Zkontrolovat URL ve zprávě | URL je modrý podtržený odkaz (cizí) / bílý podtržený (vlastní) |
 | 5 | Kliknout na odkaz | Otevře se nový tab s URL |
 
+#### CHAT-008: Mazání vlastní zprávy
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít skupinu s vlastními zprávami | Konverzace zobrazena |
+| 2 | Najet na vlastní zprávu | Zobrazí se ikona koše vedle reakcí |
+| 3 | Najet na cizí zprávu | Ikona koše se NEzobrazí |
+| 4 | Kliknout na ikonu koše u vlastní zprávy | Dialog "Opravdu chcete smazat?" |
+| 5 | Potvrdit smazání | Zpráva zmizí |
+| 6 | Zkontrolovat u druhého uživatele | Zpráva zmizí i tam (realtime) |
+
+#### CHAT-009: Přímá zpráva (1:1)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít modul Chat | Zobrazí se seznam skupin s tlačítkem "Nová zpráva" |
+| 2 | Kliknout "Nová zpráva" | Modal se seznamem zaměstnanců |
+| 3 | Vyhledat zaměstnance | Filtrování seznamu |
+| 4 | Kliknout na zaměstnance | Otevře se nová DM konverzace |
+| 5 | Odeslat zprávu | Zpráva se zobrazí |
+| 6 | Zkontrolovat header | Jméno druhé osoby + "Přímá zpráva" |
+| 7 | Zkontrolovat řazení v seznamu | Admin skupiny nahoře, DM abecedně pod nimi |
+| 8 | Znovu kliknout "Nová zpráva" → stejný zaměstnanec | Otevře existující DM |
+| 9 | Zkontrolovat admin nastavení | DM se nezobrazují v tabulce skupin |
+
+#### CHAT-010: Emoji picker
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít konverzaci | Input bar s ikonou smajlíka |
+| 2 | Kliknout na ikonu smajlíka | Emoji picker se otevře nad inputem |
+| 3 | Vybrat emoji | Emoji vložen do textu na pozici kurzoru |
+| 4 | Kliknout mimo picker | Picker se zavře |
+| 5 | Odeslat zprávu s emoji | Zpráva zobrazena s emoji |
+
 ### Hraniční případy
 
 | ID | Situace | Očekávané chování |
@@ -221,6 +256,9 @@
 | CHAT-E001 | Prázdná skupina | Text "Zatím žádné zprávy" |
 | CHAT-E002 | Odebrání ze skupiny | Skupina zmizí ze seznamu |
 | CHAT-E003 | Smazání skupiny s nepřečtenými | Badge se přepočítá |
+| CHAT-E005 | DM se sebou samým | Aktuální uživatel se nezobrazuje v modalu |
+| CHAT-E006 | Duplicitní DM | Otevře existující DM místo vytvoření nové |
+| CHAT-E007 | Admin nastavení nevidí DM | Pouze skupiny typu "group" v tabulce |
 
 ---
 

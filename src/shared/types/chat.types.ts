@@ -2,6 +2,8 @@
  * Chat Module Types
  */
 
+export type ChatGroupType = 'group' | 'direct';
+
 export type ChatReactionType = 'thumbsUp' | 'heart' | 'laugh' | 'wow' | 'sad' | 'pray';
 
 export interface ChatAttachment {
@@ -39,6 +41,7 @@ export interface ChatReadStatus {
 export interface ChatGroup {
   id: string;
   name: string;
+  type: ChatGroupType;
   memberIds: string[];
   createdAt: string;
   createdBy: string;

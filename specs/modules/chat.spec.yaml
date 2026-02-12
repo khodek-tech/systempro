@@ -28,6 +28,7 @@ data_model:
   chatGroup:
     id: string
     name: string
+    type: group | direct  # typ skupiny
     memberIds: string[]  # userIds
     createdAt: ISO8601
     createdBy: string  # userId
@@ -119,11 +120,42 @@ features:
       - Vlastní zprávy: odkaz bílý s podtržením (dědí barvu textu)
       - Cizí zprávy: odkaz modrý s podtržením (text-blue-600)
 
+  - id: delete_message
+    name: Mazání vlastních zpráv
+    description: Uživatel může smazat vlastní zprávy
+    acceptance_criteria:
+      - Tlačítko Trash2 viditelné na hover pouze u vlastních zpráv
+      - Potvrzovací dialog před smazáním
+      - Po smazání zpráva zmizí u všech uživatelů (realtime DELETE)
+
+  - id: direct_messages
+    name: Přímé zprávy (1:1)
+    description: Uživatel může poslat přímou zprávu jinému zaměstnanci
+    acceptance_criteria:
+      - Tlačítko "Nová zpráva" v seznamu skupin
+      - Modal s výběrem aktivního zaměstnance
+      - Existující DM se znovuotevře místo vytvoření nové
+      - DM řazeny abecedně dle jména druhé osoby pod admin skupinami
+      - Ikona User u DM, ikona Users u skupin
+      - Header zobrazuje jméno druhé osoby a "Přímá zpráva"
+      - Admin nevidí DM v nastavení skupin
+
+  - id: emoji_picker
+    name: Emoji picker
+    description: Vložení emoji do zprávy přes picker
+    acceptance_criteria:
+      - Tlačítko Smile vedle přílohy v inputu
+      - Klik otevře emoji-mart picker nad inputem
+      - Výběr emoji vloží na pozici kurzoru v textarea
+      - Click-outside zavře picker
+
   - id: realtime
     name: Supabase Realtime
-    description: Real-time propagace zpráv a stavů přečtení přes Supabase Realtime
+    description: Real-time propagace zpráv, skupin a stavů přečtení přes Supabase Realtime
     acceptance_criteria:
       - Nové zprávy se zobrazí ostatním uživatelům okamžitě bez refreshe
+      - Smazané zprávy zmizí u ostatních uživatelů okamžitě (DELETE event)
+      - Nové DM skupiny se zobrazí druhému uživateli okamžitě (INSERT event)
       - Stav přečtení se synchronizuje přes WebSocket
       - Automatická reconnect při ztrátě spojení
 
@@ -251,6 +283,54 @@ scenarios:
       - Klik otevře URL v novém tabu prohlížeče
       - Vlastní zpráva: odkaz bílý (dědí barvu), cizí zpráva: odkaz modrý
 
+  - id: CHAT-008
+    name: Mazání vlastní zprávy
+    preconditions:
+      - Uživatel má odeslané zprávy v konverzaci
+    steps:
+      - Otevřu skupinu s vlastními zprávami
+      - Najedu na vlastní zprávu, objeví se ikona koše
+      - Kliknu na ikonu koše
+      - Potvrdím smazání v dialogu
+    expected:
+      - Zpráva zmizí z konverzace
+      - Zpráva zmizí i u ostatních uživatelů (realtime)
+      - Ikona koše se nezobrazuje u cizích zpráv
+
+  - id: CHAT-009
+    name: Přímá zpráva (1:1)
+    preconditions:
+      - Existují aktivní zaměstnanci v systému
+    steps:
+      - Otevřu modul Chat
+      - Kliknu na "Nová zpráva"
+      - Zobrazí se modal se seznamem zaměstnanců
+      - Vyberu zaměstnance
+      - Otevře se nová konverzace
+      - Napíšu a odešlu zprávu
+      - Druhý uživatel vidí novou konverzaci v seznamu
+    expected:
+      - DM se vytvoří s type "direct"
+      - V seznamu se zobrazuje jméno druhé osoby
+      - Header zobrazuje "Přímá zpráva"
+      - Opakovaný klik na stejného zaměstnance otevře existující DM
+
+  - id: CHAT-010
+    name: Emoji picker
+    preconditions:
+      - Otevřena konverzace
+    steps:
+      - Kliknu na ikonu smajlíka v input baru
+      - Zobrazí se emoji picker
+      - Vyberu emoji
+      - Emoji se vloží do textu zprávy
+      - Kliknu mimo picker
+      - Picker se zavře
+    expected:
+      - Emoji se vloží na pozici kurzoru
+      - Po výběru emoji je fokus zpět na textarea
+      - Click-outside zavře picker
+
 edge_cases:
   - id: CHAT-E001
     name: Prázdná skupina
@@ -281,3 +361,22 @@ edge_cases:
     expected: >
       Supabase Realtime synchronizuje nové zprávy a stav přečtení
       přes WebSocket na všechny připojené klienty v reálném čase.
+
+  - id: CHAT-E005
+    name: DM se sebou samým
+    description: Uživatel by neměl moci vytvořit DM se sebou
+    expected: >
+      V modalu pro novou zprávu se aktuální uživatel nezobrazuje.
+
+  - id: CHAT-E006
+    name: Duplicitní DM
+    description: Uživatel se pokusí vytvořit DM s osobou, se kterou už DM existuje
+    expected: >
+      Systém nalezne existující DM a otevře ji místo vytvoření nové.
+
+  - id: CHAT-E007
+    name: Admin nastavení nevidí DM
+    description: Administrátor otevře nastavení chat skupin
+    expected: >
+      V tabulce se zobrazují pouze skupiny typu "group".
+      DM konverzace se nezobrazují v admin nastavení.

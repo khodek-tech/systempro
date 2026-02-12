@@ -4,6 +4,7 @@
 
 import { ChatMessage, ChatReactionType, ChatGroup } from '@/shared/types';
 import { useAuthStore } from '@/core/stores/auth-store';
+import { useUsersStore } from '@/core/stores/users-store';
 import { ROLE_IDS } from '@/lib/constants';
 
 /**
@@ -131,6 +132,27 @@ export function sortGroupsByLastMessage(
     if (!lastB) return -1;
 
     return new Date(lastB.createdAt).getTime() - new Date(lastA.createdAt).getTime();
+  });
+}
+
+/**
+ * Get the display name for a direct message group (other person's name)
+ */
+export function getDirectGroupDisplayName(group: ChatGroup, currentUserId: string): string {
+  const otherUserId = group.memberIds.find((id) => id !== currentUserId);
+  if (!otherUserId) return 'Neznámý';
+  const user = useUsersStore.getState().getUserById(otherUserId);
+  return user?.fullName || 'Neznámý';
+}
+
+/**
+ * Sort direct groups alphabetically by the other person's name (cs locale)
+ */
+export function sortDirectGroupsAlphabetically(groups: ChatGroup[], currentUserId: string): ChatGroup[] {
+  return [...groups].sort((a, b) => {
+    const nameA = getDirectGroupDisplayName(a, currentUserId);
+    const nameB = getDirectGroupDisplayName(b, currentUserId);
+    return nameA.localeCompare(nameB, 'cs');
   });
 }
 

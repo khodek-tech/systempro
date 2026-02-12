@@ -52,6 +52,7 @@ export type {
 
 // Chat types
 export type {
+  ChatGroupType,
   ChatReactionType,
   ChatAttachment,
   ChatReaction,

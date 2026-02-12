@@ -2,6 +2,44 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.5.0] - 2026-02-12
+
+### Přidáno
+
+#### Chat: 3 nové funkce — mazání zpráv, přímé zprávy (1:1), emoji picker
+
+**Mazání vlastních zpráv**
+- `chat-store.ts`: nová akce `deleteMessage(messageId)` — ověří vlastnictví, smaže z DB
+- `ChatMessage.tsx`: tlačítko Trash2 viditelné na hover u vlastních zpráv s `window.confirm()`
+- DB migrace: `REPLICA IDENTITY FULL` na `chat_zpravy` pro realtime DELETE eventy
+- Realtime handler pro DELETE event na `chat_zpravy`
+
+**Přímé zprávy (1:1)**
+- DB migrace: `ALTER TABLE chat_skupiny ADD COLUMN typ TEXT NOT NULL DEFAULT 'group'` s CHECK constraint
+- `chat.types.ts`: nový typ `ChatGroupType = 'group' | 'direct'`, `type` field v `ChatGroup`
+- `mappers.ts`: mapování `typ` ↔ `type` v `mapDbToChatGroup`/`mapChatGroupToDb`
+- `chat-store.ts`: nové akce `openNewDm()`, `closeNewDm()`, `startDirectMessage(otherUserId)`, `getDirectGroupWith()`
+- `chat-helpers.ts`: nové funkce `getDirectGroupDisplayName()`, `sortDirectGroupsAlphabetically()`
+- `ChatNewDmModal.tsx`: nová komponenta — modal se seznamem zaměstnanců, search, klik → DM
+- `ChatGroupList.tsx`: tlačítko "Nová zpráva" (`MessageCirclePlus`), search hledá i dle jména u DM
+- `ChatGroupItem.tsx`: ikona User/Users, display name pro DM, message preview bez prefixu u DM
+- `ChatConversation.tsx`: header zobrazuje jméno + "Přímá zpráva" u DM
+- `ChatGroupsSettings.tsx`: filtr `type === 'group'` — admin nevidí DM
+- `getGroupsForUser()`: admin skupiny nahoře seřazené dle poslední zprávy, DM pod nimi abecedně
+- Realtime handler pro INSERT na `chat_skupiny` (druhý uživatel vidí novou konverzaci)
+- DB migrace: `REPLICA IDENTITY FULL` na `chat_skupiny`
+
+**Emoji picker**
+- Instalace `@emoji-mart/react` + `@emoji-mart/data`
+- `ChatMessageInput.tsx`: tlačítko Smile, `<Picker>` z emoji-mart, vkládání na pozici kurzoru
+- Click-outside handler pro zavření pickeru
+
+#### Spec soubory
+- `specs/modules/chat.spec.yaml`: features `delete_message`, `direct_messages`, `emoji_picker`; scénáře CHAT-008 až CHAT-010; edge cases CHAT-E005 až CHAT-E007
+- `testy.md`: nové testovací scénáře
+
+---
+
 ## [2.4.0] - 2026-02-12
 
 ### Změněno

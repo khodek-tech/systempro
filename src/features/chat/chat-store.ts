@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { ROLE_IDS } from '@/lib/constants';
-import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
+import { getLastMessageInGroup, sortGroupsByLastMessage, sortDirectGroupsAlphabetically } from './chat-helpers';
 
 interface ChatState {
   groups: ChatGroup[];
@@ -33,6 +33,7 @@ interface ChatState {
   searchQuery: string;
   isGroupFormOpen: boolean;
   editingGroupId: string | null;
+  isNewDmOpen: boolean;
   _realtimeChannel: RealtimeChannel | null;
 }
 
@@ -53,6 +54,7 @@ interface ChatActions {
     text: string,
     attachments?: ChatAttachment[]
   ) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   addReaction: (messageId: string, userId: string, reactionType: ChatReactionType) => Promise<void>;
   removeReaction: (messageId: string, userId: string, reactionType: ChatReactionType) => Promise<void>;
 
@@ -65,6 +67,12 @@ interface ChatActions {
   createGroup: (name: string, memberIds: string[], createdBy: string) => Promise<void>;
   updateGroup: (groupId: string, updates: Partial<Pick<ChatGroup, 'name' | 'memberIds'>>) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
+
+  // Direct messages
+  openNewDm: () => void;
+  closeNewDm: () => void;
+  startDirectMessage: (otherUserId: string) => Promise<void>;
+  getDirectGroupWith: (otherUserId: string) => ChatGroup | undefined;
 
   // Realtime
   subscribeRealtime: () => void;
@@ -90,6 +98,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   searchQuery: '',
   isGroupFormOpen: false,
   editingGroupId: null,
+  isNewDmOpen: false,
   _realtimeChannel: null,
 
   // Fetch
@@ -154,6 +163,27 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
 
     // Mark as read for sender
     await get().markGroupAsRead(groupId, userId);
+  },
+
+  deleteMessage: async (messageId) => {
+    const { messages } = get();
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg) return;
+
+    const currentUser = useAuthStore.getState().currentUser;
+    if (!currentUser || msg.userId !== currentUser.id) return;
+
+    const supabase = createClient();
+    const { error } = await supabase.from('chat_zpravy').delete().eq('id', messageId);
+    if (error) {
+      logger.error('Failed to delete message');
+      toast.error('Nepodařilo se smazat zprávu');
+      return;
+    }
+
+    set((state) => ({
+      messages: state.messages.filter((m) => m.id !== messageId),
+    }));
   },
 
   addReaction: async (messageId, userId, reactionType) => {
@@ -267,6 +297,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const newGroup: ChatGroup = {
       id: `group-${crypto.randomUUID()}`,
       name,
+      type: 'group',
       memberIds,
       createdAt: new Date().toISOString(),
       createdBy,
@@ -330,6 +361,61 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     }));
   },
 
+  // Direct messages
+  openNewDm: () => set({ isNewDmOpen: true }),
+  closeNewDm: () => set({ isNewDmOpen: false }),
+
+  startDirectMessage: async (otherUserId) => {
+    const currentUser = useAuthStore.getState().currentUser;
+    if (!currentUser) return;
+
+    // Check for existing direct group
+    const existing = get().getDirectGroupWith(otherUserId);
+    if (existing) {
+      set({ isNewDmOpen: false });
+      get().selectGroup(existing.id);
+      return;
+    }
+
+    // Create new direct group
+    const memberIds = [currentUser.id, otherUserId].sort();
+    const newGroup: ChatGroup = {
+      id: `group-${crypto.randomUUID()}`,
+      name: '',
+      type: 'direct',
+      memberIds,
+      createdAt: new Date().toISOString(),
+      createdBy: currentUser.id,
+    };
+
+    const dbData = mapChatGroupToDb(newGroup);
+    const supabase = createClient();
+    const { error } = await supabase.from('chat_skupiny').insert(dbData);
+    if (error) {
+      logger.error('Failed to create direct message');
+      toast.error('Nepodařilo se vytvořit konverzaci');
+      return;
+    }
+
+    set((state) => ({
+      groups: [...state.groups, newGroup],
+      isNewDmOpen: false,
+    }));
+    get().selectGroup(newGroup.id);
+  },
+
+  getDirectGroupWith: (otherUserId) => {
+    const currentUser = useAuthStore.getState().currentUser;
+    if (!currentUser) return undefined;
+
+    return get().groups.find(
+      (g) =>
+        g.type === 'direct' &&
+        g.memberIds.includes(currentUser.id) &&
+        g.memberIds.includes(otherUserId)
+    );
+  },
+
   // Realtime
   subscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
@@ -374,6 +460,39 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       .on(
         'postgres_changes',
         {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chat_zpravy',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const deletedId = payload.old?.id;
+          if (deletedId) {
+            set({
+              messages: get().messages.filter((m) => m.id !== deletedId),
+            });
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_skupiny',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const newGroup = mapDbToChatGroup(payload.new);
+          const exists = get().groups.some((g) => g.id === newGroup.id);
+          if (!exists) {
+            set({ groups: [...get().groups, newGroup] });
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
           event: '*',
           schema: 'public',
           table: 'chat_stav_precteni',
@@ -405,7 +524,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
           Promise.all([
             supabaseRefresh.from('chat_zpravy').select('*'),
             supabaseRefresh.from('chat_stav_precteni').select('*'),
-          ]).then(([msgsResult, readResult]) => {
+            supabaseRefresh.from('chat_skupiny').select('*'),
+          ]).then(([msgsResult, readResult, groupsResult]) => {
             if (!msgsResult.error && msgsResult.data) {
               const freshMessages = msgsResult.data.map(mapDbToChatMessage);
               const current = get().messages;
@@ -418,6 +538,15 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
             }
             if (!readResult.error && readResult.data) {
               set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
+            }
+            if (!groupsResult.error && groupsResult.data) {
+              const freshGroups = groupsResult.data.map(mapDbToChatGroup);
+              const currentGroups = get().groups;
+              const currentGroupIds = new Set(currentGroups.map((g) => g.id));
+              const newGroups = freshGroups.filter((g) => !currentGroupIds.has(g.id));
+              if (newGroups.length > 0) {
+                set({ groups: [...currentGroups, ...newGroups] });
+              }
             }
           }).catch(() => {
             logger.error('[chat-realtime] reconnect refresh failed');
@@ -440,7 +569,16 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     const userGroups = isAdmin
       ? groups
       : groups.filter((g) => g.memberIds.includes(userId));
-    return sortGroupsByLastMessage(userGroups, messages);
+
+    // Split into admin groups and direct groups
+    const adminGroups = userGroups.filter((g) => g.type === 'group');
+    const directGroups = userGroups.filter((g) => g.type === 'direct');
+
+    // Sort admin groups by last message, direct groups alphabetically by other person's name
+    const sortedAdminGroups = sortGroupsByLastMessage(adminGroups, messages);
+    const sortedDirectGroups = sortDirectGroupsAlphabetically(directGroups, userId);
+
+    return [...sortedAdminGroups, ...sortedDirectGroups];
   },
 
   getMessagesForGroup: (groupId) => {

@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
-import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
+import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon, Smile } from 'lucide-react';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 
 interface ChatMessageInputProps {
   onSend: (text: string, files: File[]) => void;
@@ -25,8 +27,29 @@ function formatSize(bytes: number): string {
 export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputProps) {
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Click outside handler for emoji picker
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (
+      emojiPickerRef.current &&
+      !emojiPickerRef.current.contains(e.target as Node)
+    ) {
+      setShowEmojiPicker(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker, handleClickOutside]);
 
   const handleSubmit = () => {
     if (!text.trim() && selectedFiles.length === 0) return;
@@ -69,6 +92,32 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
 
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleEmojiSelect = (emoji: any) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setText((prev) => prev + emoji.native);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = text.substring(0, start) + emoji.native + text.substring(end);
+    setText(newText);
+
+    // Restore cursor position after emoji insertion
+    requestAnimationFrame(() => {
+      const newPos = start + emoji.native.length;
+      textarea.selectionStart = newPos;
+      textarea.selectionEnd = newPos;
+      textarea.focus();
+
+      // Recalculate textarea height
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    });
   };
 
   return (
@@ -118,6 +167,31 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           className="hidden"
           accept="image/*,.pdf,.xls,.xlsx,.doc,.docx"
         />
+
+        {/* Emoji picker */}
+        <div className="relative" ref={emojiPickerRef}>
+          <button
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            disabled={disabled}
+            className="flex-shrink-0 p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+            title="Emoji"
+            aria-label="Vložit emoji"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+          {showEmojiPicker && (
+            <div className="absolute bottom-full left-0 mb-2 z-50">
+              <Picker
+                data={data}
+                onEmojiSelect={handleEmojiSelect}
+                locale="cs"
+                theme="light"
+                previewPosition="none"
+                skinTonePosition="none"
+              />
+            </div>
+          )}
+        </div>
 
         <textarea
           ref={textareaRef}
