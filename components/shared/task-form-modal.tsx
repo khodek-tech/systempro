@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { X, User, Building2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, User, Building2, Paperclip, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -14,8 +14,10 @@ import { useTasksStore } from '@/stores/tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUsersStore } from '@/stores/users-store';
 import { useStoresStore } from '@/stores/stores-store';
-import { TaskPriority, TaskRepeat, TaskAssigneeType } from '@/types';
+import { TaskPriority, TaskRepeat, TaskAssigneeType, TaskAttachment } from '@/types';
 import { cn } from '@/lib/utils';
+import { uploadFiles } from '@/lib/supabase/storage';
+import { toast } from 'sonner';
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: 'high', label: 'Vysoká' },
@@ -32,7 +34,7 @@ const REPEAT_OPTIONS: { value: TaskRepeat; label: string }[] = [
 ];
 
 export function TaskFormModal() {
-  const { closeFormModal, createTask, editingTaskId, getTaskById, updateTask } = useTasksStore();
+  const { closeFormModal, createTask, editingTaskId, getTaskById, updateTask, addComment } = useTasksStore();
   const { currentUser } = useAuthStore();
   const { users } = useUsersStore();
   const { stores } = useStoresStore();
@@ -49,6 +51,9 @@ export function TaskFormModal() {
     existingTask ? new Date(existingTask.deadline).toISOString().slice(0, 16) : ''
   );
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeUsers = users
     .filter((u) => u.active)
@@ -59,7 +64,7 @@ export function TaskFormModal() {
 
   if (!currentUser) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -77,9 +82,11 @@ export function TaskFormModal() {
       return;
     }
 
+    setIsSubmitting(true);
+
     if (editingTaskId && existingTask) {
       // Update existing task
-      updateTask(editingTaskId, {
+      await updateTask(editingTaskId, {
         title: title.trim(),
         description: description.trim(),
         priority,
@@ -90,7 +97,7 @@ export function TaskFormModal() {
       });
     } else {
       // Create new task
-      createTask({
+      const result = await createTask({
         title: title.trim(),
         description: description.trim(),
         priority,
@@ -100,8 +107,34 @@ export function TaskFormModal() {
         deadline: new Date(deadline).toISOString(),
         createdBy: currentUser.id,
       });
+
+      // Upload attachments if any
+      if (result.success && result.taskId && selectedFiles.length > 0) {
+        const uploadResults = await uploadFiles(`tasks/${result.taskId}`, selectedFiles);
+
+        const failed = uploadResults.filter((r) => !r.success);
+        if (failed.length > 0) {
+          toast.error(`Nepodařilo se nahrát ${failed.length} soubor(ů)`);
+        }
+
+        const attachments: TaskAttachment[] = uploadResults
+          .filter((r) => r.success && r.path)
+          .map((r, i) => ({
+            id: `att-${crypto.randomUUID()}`,
+            fileName: selectedFiles[i].name,
+            fileType: selectedFiles[i].type,
+            fileUrl: r.path!,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: currentUser.id,
+          }));
+
+        if (attachments.length > 0) {
+          await addComment(result.taskId, currentUser.id, '', attachments);
+        }
+      }
     }
 
+    setIsSubmitting(false);
     closeFormModal();
   };
 
@@ -154,6 +187,53 @@ export function TaskFormModal() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none resize-none focus:border-violet-300 h-32"
                 />
               </div>
+
+              {/* Attachments (only for new tasks) */}
+              {!editingTaskId && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Přílohy</label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setSelectedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    Přiložit soubory
+                  </button>
+                  {selectedFiles.length > 0 && (
+                    <div className="space-y-1.5 mt-2">
+                      {selectedFiles.map((file, idx) => (
+                        <div
+                          key={`${file.name}-${idx}`}
+                          className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-sm"
+                        >
+                          <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span className="text-slate-600 font-medium truncate flex-1">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            className="text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Priority and Repeat */}
               <div className="grid grid-cols-2 gap-4">
@@ -296,9 +376,10 @@ export function TaskFormModal() {
             </Button>
             <Button
               type="submit"
-              className="bg-violet-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-violet-700"
+              disabled={isSubmitting}
+              className="bg-violet-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-violet-700 disabled:opacity-50"
             >
-              {editingTaskId ? 'Uložit změny' : 'Vytvořit úkol'}
+              {isSubmitting ? 'Ukládám...' : editingTaskId ? 'Uložit změny' : 'Vytvořit úkol'}
             </Button>
           </div>
         </form>

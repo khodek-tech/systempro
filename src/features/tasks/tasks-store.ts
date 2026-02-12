@@ -46,7 +46,7 @@ interface TasksActions {
   closeFormModal: () => void;
 
   // CRUD actions
-  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'comments' | 'status'>) => Promise<{ success: boolean; error?: string }>;
+  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'comments' | 'status'>) => Promise<{ success: boolean; taskId?: string; error?: string }>;
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<{ success: boolean; error?: string }>;
   deleteTask: (taskId: string) => Promise<{ success: boolean; error?: string }>;
 
@@ -181,7 +181,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       editingTaskId: null,
       activeTab: 'created-by-me',
     }));
-    return { success: true };
+    return { success: true, taskId: newId };
   },
 
   updateTask: async (taskId, updates) => {
@@ -547,6 +547,12 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
 
         // Hide approved tasks from "Moje úkoly"
         if (t.status === 'approved') return false;
+
+        // Hide tasks where assigned user is waiting on someone else
+        if (isAssigned && !isDelegatedToMe && !isDelegatedByMe && !isPendingMyApproval) {
+          if (t.status === 'pending-approval') return false;
+          if (t.status === 'delegated') return false;
+        }
 
         if (statusFilter !== 'all' && t.status !== statusFilter) return false;
         if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
