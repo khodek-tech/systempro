@@ -42,10 +42,10 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
     // Clear previous picker
     container.innerHTML = '';
     let mounted = true;
-    import('emoji-mart').then(({ Picker }) => {
+    import('emoji-mart').then(({ init, Picker }) => {
       if (!mounted || !container) return;
+      init({ data });
       new Picker({
-        data,
         ref: container,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onEmojiSelect: (emoji: any) => emojiSelectRef.current?.(emoji),
