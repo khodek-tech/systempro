@@ -5,7 +5,6 @@ import { Search, X } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { groupMessagesByDate, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
-import { ROLE_IDS } from '@/lib/constants';
 import { useUsersStore } from '@/stores/users-store';
 import { ChatMessage } from './ChatMessage';
 import { ChatMessageInput } from './ChatMessageInput';
@@ -26,7 +25,7 @@ export function ChatConversation() {
     setReplyingTo,
     messages: allMessages,
   } = useChatStore();
-  const { currentUser, activeRoleId } = useAuthStore();
+  const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -35,7 +34,8 @@ export function ChatConversation() {
   const messages = selectedGroupId ? getMessagesForGroup(selectedGroupId) : [];
   const groupedMessages = groupMessagesByDate(messages);
 
-  const isAdmin = activeRoleId === ROLE_IDS.ADMINISTRATOR;
+  const isOthersDm =
+    group?.type === 'direct' && currentUser && !group.memberIds.includes(currentUser.id);
 
   const replyingToMessage = replyingToMessageId
     ? allMessages.find((m) => m.id === replyingToMessageId)
@@ -114,7 +114,7 @@ export function ChatConversation() {
           <div>
             <h2 className="text-lg font-bold text-slate-800">
               {group.type === 'direct'
-                ? isAdmin
+                ? isOthersDm
                   ? getDirectGroupBothNames(group)
                   : currentUser
                     ? getDirectGroupDisplayName(group, currentUser.id)

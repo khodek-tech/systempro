@@ -1,29 +1,46 @@
 'use client';
 
-import { Search, MessageCirclePlus } from 'lucide-react';
+import { useState } from 'react';
+import { Search, MessageCirclePlus, ChevronDown, ChevronRight } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { getDirectGroupDisplayName } from '@/features/chat';
+import { getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
+import { ROLE_IDS } from '@/lib/constants';
 import { ChatGroupItem } from './ChatGroupItem';
 import { ChatNewDmModal } from './ChatNewDmModal';
 
 export function ChatGroupList() {
   const { selectedGroupId, selectGroup, getGroupsForUser, searchQuery, setSearchQuery, openNewDm } =
     useChatStore();
-  const { currentUser } = useAuthStore();
+  const { currentUser, activeRoleId } = useAuthStore();
+  const [showOthersDms, setShowOthersDms] = useState(false);
 
+  const isAdmin = activeRoleId === ROLE_IDS.ADMINISTRATOR;
   const groups = currentUser ? getGroupsForUser(currentUser.id) : [];
 
   const filteredGroups = searchQuery.trim()
     ? groups.filter((g) => {
         const query = searchQuery.toLowerCase();
         if (g.type === 'direct' && currentUser) {
-          const displayName = getDirectGroupDisplayName(g, currentUser.id);
+          const displayName = isAdmin && !g.memberIds.includes(currentUser.id)
+            ? getDirectGroupBothNames(g)
+            : getDirectGroupDisplayName(g, currentUser.id);
           return displayName.toLowerCase().includes(query);
         }
         return g.name.toLowerCase().includes(query);
       })
     : groups;
+
+  // Split into categories
+  const groupChats = filteredGroups.filter((g) => g.type === 'group');
+  const ownDms = filteredGroups.filter(
+    (g) => g.type === 'direct' && currentUser && g.memberIds.includes(currentUser.id)
+  );
+  const othersDms = filteredGroups.filter(
+    (g) => g.type === 'direct' && currentUser && !g.memberIds.includes(currentUser.id)
+  );
+
+  const visibleGroups = [...groupChats, ...ownDms];
 
   return (
     <div className="flex flex-col h-full">
@@ -50,13 +67,13 @@ export function ChatGroupList() {
 
       {/* Groups list */}
       <div className="flex-1 overflow-y-auto">
-        {filteredGroups.length === 0 ? (
+        {visibleGroups.length === 0 && othersDms.length === 0 ? (
           <div className="p-4 text-center text-slate-500 text-sm">
             {searchQuery.trim() ? 'Žádné konverzace nenalezeny' : 'Nejste členem žádné skupiny'}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {filteredGroups.map((group) => (
+            {visibleGroups.map((group) => (
               <ChatGroupItem
                 key={group.id}
                 group={group}
@@ -64,6 +81,36 @@ export function ChatGroupList() {
                 onClick={() => selectGroup(group.id)}
               />
             ))}
+
+            {/* Others' DMs toggle (admin only) */}
+            {isAdmin && othersDms.length > 0 && (
+              <>
+                <button
+                  onClick={() => setShowOthersDms((v) => !v)}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                >
+                  {showOthersDms ? (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  )}
+                  {showOthersDms
+                    ? `− Skrýt cizí konverzace`
+                    : `+ Zobrazit cizí konverzace (${othersDms.length})`}
+                </button>
+
+                {showOthersDms &&
+                  othersDms.map((group) => (
+                    <ChatGroupItem
+                      key={group.id}
+                      group={group}
+                      isSelected={selectedGroupId === group.id}
+                      onClick={() => selectGroup(group.id)}
+                      isOthersDm
+                    />
+                  ))}
+              </>
+            )}
           </div>
         )}
       </div>

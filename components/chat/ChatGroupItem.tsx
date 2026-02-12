@@ -7,26 +7,25 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useUsersStore } from '@/stores/users-store';
 import { formatMessageTime, getLastMessageInGroup, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
 import { cn } from '@/lib/utils';
-import { ROLE_IDS } from '@/lib/constants';
 
 interface ChatGroupItemProps {
   group: ChatGroup;
   isSelected: boolean;
   onClick: () => void;
+  isOthersDm?: boolean;
 }
 
-export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps) {
+export function ChatGroupItem({ group, isSelected, onClick, isOthersDm }: ChatGroupItemProps) {
   const { messages, getUnreadCountForGroup } = useChatStore();
-  const { currentUser, activeRoleId } = useAuthStore();
+  const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
 
   const lastMessage = getLastMessageInGroup(group.id, messages);
   const unreadCount = currentUser ? getUnreadCountForGroup(group.id, currentUser.id) : 0;
 
   const isDirect = group.type === 'direct';
-  const isAdmin = activeRoleId === ROLE_IDS.ADMINISTRATOR;
   const displayName = isDirect
-    ? isAdmin
+    ? isOthersDm
       ? getDirectGroupBothNames(group)
       : currentUser
         ? getDirectGroupDisplayName(group, currentUser.id)
@@ -45,7 +44,7 @@ export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps
       onClick={onClick}
       className={cn(
         'w-full text-left p-4 transition-all duration-200 border-l-4',
-        isDirect
+        isOthersDm
           ? isSelected
             ? 'bg-green-100 border-l-green-500'
             : 'bg-green-50 border-l-transparent hover:bg-green-100/70'
@@ -57,8 +56,10 @@ export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {isDirect ? (
+            {isOthersDm ? (
               <User className="w-4 h-4 text-green-500 flex-shrink-0" />
+            ) : isDirect ? (
+              <User className="w-4 h-4 text-blue-500 flex-shrink-0" />
             ) : (
               <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
             )}
@@ -69,7 +70,7 @@ export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps
               </span>
             )}
           </div>
-          {isDirect && isAdmin && (
+          {isOthersDm && (
             <p className="text-xs text-slate-400 mt-0.5 ml-6">Přímá zpráva</p>
           )}
           <p className="text-sm text-slate-500 truncate mt-1">{lastMessagePreview}</p>
