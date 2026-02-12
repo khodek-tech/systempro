@@ -101,13 +101,13 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
         >
           <p className={cn(
             'text-xs font-semibold',
-            isOwnMessage ? 'text-blue-100' : 'text-green-600'
+            isOwnMessage ? 'text-white' : 'text-green-600'
           )}>
             {replyToSender?.fullName || 'Neznámý'}
           </p>
           <p className={cn(
             'text-xs truncate',
-            isOwnMessage ? 'text-blue-200' : 'text-slate-500'
+            isOwnMessage ? 'text-blue-100' : 'text-slate-500'
           )}>
             {replyToMessage.text.length > 80
               ? replyToMessage.text.slice(0, 80) + '...'
