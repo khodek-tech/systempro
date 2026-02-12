@@ -396,6 +396,15 @@
 | 2 | Zkontrolovat cashToCollect | Částka zobrazena |
 | 3 | Zkontrolovat provozní základnu | Základna zobrazena |
 
+#### CASH-004: Načtení kumulované hotovosti z DB při mountu
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Zapsat tržbu (hotovost 5000 Kč) | cashToCollect = 5000 |
+| 2 | Refresh stránky (F5) | cashToCollect = 5000 (nenuluje se) |
+| 3 | Zapsat další tržbu (3000 Kč) | cashToCollect = 8000 (kumuluje) |
+| 4 | Přepnout prodejnu a zpět | Data se načtou znovu z DB |
+
 ---
 
 ## 8. Docházka (Attendance)

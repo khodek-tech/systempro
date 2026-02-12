@@ -91,6 +91,20 @@ scenarios:
       - Okamžitá aktualizace na nulu
 
   - id: CASH-004
+    name: Načtení kumulované hotovosti z DB při mountu
+    preconditions:
+      - Uživatel je přihlášen jako Prodavač
+      - V DB existují neodvezené záznamy z předchozích dnů
+    steps:
+      - Otevřu aplikaci / refreshnu stránku
+      - CashInfoModule se mountne
+      - useEffect zavolá fetchCashToCollect(activeStoreId)
+    expected:
+      - cashToCollect zobrazuje kumulovanou částku ze všech neodvezených dnů
+      - Částka odpovídá součtu hotovost + pohyby z dochazka WHERE vybrano IS NULL/false
+      - Při přepnutí prodejny se data načtou znovu
+
+  - id: CASH-005
     name: Vizuální indikace vysoké částky
     preconditions:
       - cashToCollect je velmi vysoká (> threshold)

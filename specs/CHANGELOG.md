@@ -2,6 +2,18 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.2.0] - 2026-02-12
+
+### Opraveno
+
+#### CashInfoModule: hotovost k odevzdání se nuluje po refreshi
+- `modules/CashInfoModule.tsx`: přidán `useEffect` volající `fetchCashToCollect(activeStoreId)` při mountu
+- Částka se nyní načítá z DB při každém mountu komponenty a při přepnutí prodejny
+- `specs/modules/cash-info.spec.yaml`: přidán scénář CASH-004, přečíslován CASH-004→CASH-005
+- `testy.md`: přidán test CASH-004
+
+---
+
 ## [2.1.0] - 2026-02-10
 
 ### Opraveno
