@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon, Smile } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import emojiData from '@emoji-mart/data';
 
-const EmojiPicker = dynamic(() => import('@emoji-mart/react').then((mod) => mod.default), {
+const EmojiPicker = dynamic(() => import('@emoji-mart/react'), {
   ssr: false,
   loading: () => <div className="w-[352px] h-[435px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-sm">Načítání...</div>,
 });
@@ -36,7 +37,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  // Click outside handler for emoji picker
+  // Click outside handler for emoji picker (delayed to avoid closing on the same click that opens)
   const handleClickOutside = useCallback((e: MouseEvent) => {
     if (
       emojiPickerRef.current &&
@@ -47,10 +48,13 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   }, []);
 
   useEffect(() => {
-    if (showEmojiPicker) {
+    if (!showEmojiPicker) return;
+    // Delay adding listener so the opening click event doesn't immediately close the picker
+    const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
-    }
+    }, 0);
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showEmojiPicker, handleClickOutside]);
@@ -186,6 +190,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           {showEmojiPicker && (
             <div className="absolute bottom-full left-0 mb-2 z-50">
               <EmojiPicker
+                data={emojiData}
                 onEmojiSelect={handleEmojiSelect}
                 locale="cs"
                 theme="light"
