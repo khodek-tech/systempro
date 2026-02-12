@@ -104,14 +104,24 @@ export const usePresenceStore = create<PresenceState & PresenceActions>()((set) 
       });
     }
 
-    // Sort: present first, then absent, then excused
-    const statusOrder: Record<PresenceStatus, number> = {
-      present: 0,
-      absent: 1,
-      excused: 2,
-    };
+    // Sort: store employees first (by storeName), then role-only (by roleName), then by userName
+    return records.sort((a, b) => {
+      const aHasStore = a.storeName ? 0 : 1;
+      const bHasStore = b.storeName ? 0 : 1;
+      if (aHasStore !== bHasStore) return aHasStore - bHasStore;
 
-    return records.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+      if (a.storeName && b.storeName) {
+        const storeCompare = a.storeName.localeCompare(b.storeName, 'cs');
+        if (storeCompare !== 0) return storeCompare;
+      }
+
+      if (!a.storeName && !b.storeName) {
+        const roleCompare = (a.roleName ?? '').localeCompare(b.roleName ?? '', 'cs');
+        if (roleCompare !== 0) return roleCompare;
+      }
+
+      return a.userName.localeCompare(b.userName, 'cs');
+    });
   },
 
   getPresenceStatus: (userId: string): PresenceStatus => {
