@@ -277,6 +277,20 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
 
     const schedule: StoreOpeningHours = JSON.parse(JSON.stringify(store.openingHours));
 
+    // Expand sameAllWeek to per-day format so alternating mode shows all days
+    if (schedule.sameAllWeek) {
+      const def = schedule.default || { open: '08:00', close: '16:30', closed: false };
+      schedule.sameAllWeek = false;
+      schedule.monday = { ...def };
+      schedule.tuesday = { ...def };
+      schedule.wednesday = { ...def };
+      schedule.thursday = { ...def };
+      schedule.friday = { ...def };
+      schedule.saturday = { ...def };
+      schedule.sunday = { ...def };
+      delete schedule.default;
+    }
+
     if (week === 'odd') {
       set({ workingHours: { ...workingHours, oddWeek: schedule } });
     } else {
