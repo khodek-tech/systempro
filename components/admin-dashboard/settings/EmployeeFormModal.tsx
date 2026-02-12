@@ -9,8 +9,8 @@ import { useStoresStore } from '@/stores/stores-store';
 import { User, DayOpeningHours, StoreOpeningHours } from '@/types';
 import { cn } from '@/lib/utils';
 
-const DAY_NAMES = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
-const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+const DAY_NAMES = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'];
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 interface EmployeeFormModalProps {
   open: boolean;
