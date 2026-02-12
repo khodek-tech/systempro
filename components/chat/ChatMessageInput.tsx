@@ -234,8 +234,8 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
         {showEmojiPicker && (
           <div
             ref={emojiPickerRef}
-            className="fixed z-50"
-            style={{ bottom: pickerPos.bottom, left: pickerPos.left }}
+            className="fixed z-50 overflow-hidden rounded-xl shadow-lg border border-slate-200"
+            style={{ bottom: pickerPos.bottom, left: pickerPos.left, width: 352, height: 435 }}
           />
         )}
 
