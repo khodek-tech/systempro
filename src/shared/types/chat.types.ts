@@ -28,6 +28,7 @@ export interface ChatMessage {
   text: string;
   attachments: ChatAttachment[];
   reactions: ChatReaction[];
+  replyToMessageId?: string | null;
   createdAt: string;
 }
 

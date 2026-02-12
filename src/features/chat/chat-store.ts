@@ -34,6 +34,7 @@ interface ChatState {
   isGroupFormOpen: boolean;
   editingGroupId: string | null;
   isNewDmOpen: boolean;
+  replyingToMessageId: string | null;
   _realtimeChannel: RealtimeChannel | null;
 }
 
@@ -52,8 +53,10 @@ interface ChatActions {
     groupId: string,
     userId: string,
     text: string,
-    attachments?: ChatAttachment[]
+    attachments?: ChatAttachment[],
+    replyToMessageId?: string | null
   ) => Promise<void>;
+  setReplyingTo: (messageId: string | null) => void;
   deleteMessage: (messageId: string) => Promise<void>;
   addReaction: (messageId: string, userId: string, reactionType: ChatReactionType) => Promise<void>;
   removeReaction: (messageId: string, userId: string, reactionType: ChatReactionType) => Promise<void>;
@@ -99,6 +102,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   isGroupFormOpen: false,
   editingGroupId: null,
   isNewDmOpen: false,
+  replyingToMessageId: null,
   _realtimeChannel: null,
 
   // Fetch
@@ -137,7 +141,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   // Message actions
-  sendMessage: async (groupId, userId, text, attachments = []) => {
+  sendMessage: async (groupId, userId, text, attachments = [], replyToMessageId = null) => {
     const newMessage: ChatMessage = {
       id: `msg-${crypto.randomUUID()}`,
       groupId,
@@ -145,6 +149,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       text,
       attachments,
       reactions: [],
+      replyToMessageId: replyToMessageId ?? null,
       createdAt: new Date().toISOString(),
     };
 
@@ -159,11 +164,14 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
 
     set((state) => ({
       messages: [...state.messages, newMessage],
+      replyingToMessageId: null,
     }));
 
     // Mark as read for sender
     await get().markGroupAsRead(groupId, userId);
   },
+
+  setReplyingTo: (messageId) => set({ replyingToMessageId: messageId }),
 
   deleteMessage: async (messageId) => {
     const { messages } = get();

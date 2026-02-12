@@ -146,6 +146,17 @@ export function getDirectGroupDisplayName(group: ChatGroup, currentUserId: strin
 }
 
 /**
+ * Get both participant names for a DM group (for admin view)
+ */
+export function getDirectGroupBothNames(group: ChatGroup): string {
+  const users = useUsersStore.getState();
+  const names = group.memberIds
+    .map((id) => users.getUserById(id)?.fullName || 'Neznámý')
+    .sort((a, b) => a.localeCompare(b, 'cs'));
+  return names.join(' a ');
+}
+
+/**
  * Sort direct groups alphabetically by the other person's name (cs locale)
  */
 export function sortDirectGroupsAlphabetically(groups: ChatGroup[], currentUserId: string): ChatGroup[] {

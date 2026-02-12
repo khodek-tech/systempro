@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
+import { Trash2, Reply } from 'lucide-react';
 import { ChatMessage as ChatMessageType, ChatReactionType } from '@/types';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -13,12 +13,18 @@ import { linkifyText } from '@/lib/linkify';
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  onReply?: (messageId: string) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
-  const { addReaction, removeReaction, deleteMessage } = useChatStore();
+export function ChatMessage({ message, onReply }: ChatMessageProps) {
+  const { addReaction, removeReaction, deleteMessage, messages } = useChatStore();
   const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
+
+  const replyToMessage = message.replyToMessageId
+    ? messages.find((m) => m.id === message.replyToMessageId)
+    : null;
+  const replyToSender = replyToMessage ? getUserById(replyToMessage.userId) : null;
 
   const sender = getUserById(message.userId);
   const isOwnMessage = currentUser?.id === message.userId;
@@ -62,8 +68,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   return (
     <div
+      id={`msg-${message.id}`}
       className={cn(
-        'flex flex-col max-w-[75%] group',
+        'flex flex-col max-w-[75%] group transition-all duration-300',
         isOwnMessage ? 'items-end ml-auto' : 'items-start mr-auto'
       )}
     >
@@ -72,6 +79,41 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <span className="text-xs font-medium text-slate-500 mb-1 px-1">
           {sender?.fullName || 'Neznámý'}
         </span>
+      )}
+
+      {/* Reply citation */}
+      {replyToMessage && (
+        <button
+          onClick={() => {
+            const el = document.getElementById(`msg-${replyToMessage.id}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('ring-2', 'ring-blue-300', 'rounded-2xl');
+              setTimeout(() => el.classList.remove('ring-2', 'ring-blue-300', 'rounded-2xl'), 2000);
+            }
+          }}
+          className={cn(
+            'w-full text-left rounded-xl px-3 py-2 mb-1 border-l-4 cursor-pointer transition-colors',
+            isOwnMessage
+              ? 'bg-blue-400/30 border-l-blue-300 hover:bg-blue-400/40'
+              : 'bg-slate-50 border-l-green-400 hover:bg-slate-100'
+          )}
+        >
+          <p className={cn(
+            'text-xs font-semibold',
+            isOwnMessage ? 'text-blue-100' : 'text-green-600'
+          )}>
+            {replyToSender?.fullName || 'Neznámý'}
+          </p>
+          <p className={cn(
+            'text-xs truncate',
+            isOwnMessage ? 'text-blue-200' : 'text-slate-500'
+          )}>
+            {replyToMessage.text.length > 80
+              ? replyToMessage.text.slice(0, 80) + '...'
+              : replyToMessage.text}
+          </p>
+        </button>
       )}
 
       {/* Message bubble */}
@@ -132,6 +174,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
         {/* Add reaction button (visible on hover) */}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+          {onReply && (
+            <button
+              onClick={() => onReply(message.id)}
+              className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+              title="Odpovědět"
+              aria-label="Odpovědět"
+            >
+              <Reply className="w-3.5 h-3.5" />
+            </button>
+          )}
           <ChatReactionPicker onSelect={handleAddReaction} />
           {isOwnMessage && (
             <button

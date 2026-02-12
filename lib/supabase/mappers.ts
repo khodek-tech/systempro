@@ -281,6 +281,7 @@ export function mapDbToChatMessage(row: any): ChatMessage {
     text: row.text,
     attachments: row.prilohy ?? [],
     reactions: row.reakce ?? [],
+    replyToMessageId: row.id_odpoved_na ?? null,
     createdAt: row.vytvoreno,
   };
 }
@@ -292,6 +293,7 @@ export function mapChatMessageToDb(msg: Partial<ChatMessage> & { id: string }): 
   if (msg.text !== undefined) row.text = msg.text;
   if (msg.attachments !== undefined) row.prilohy = msg.attachments;
   if (msg.reactions !== undefined) row.reakce = msg.reactions;
+  if (msg.replyToMessageId !== undefined) row.id_odpoved_na = msg.replyToMessageId;
   if (msg.createdAt !== undefined) row.vytvoreno = msg.createdAt;
   return row;
 }

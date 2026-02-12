@@ -5,8 +5,9 @@ import { ChatGroup } from '@/types';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUsersStore } from '@/stores/users-store';
-import { formatMessageTime, getLastMessageInGroup, getDirectGroupDisplayName } from '@/features/chat';
+import { formatMessageTime, getLastMessageInGroup, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
 import { cn } from '@/lib/utils';
+import { ROLE_IDS } from '@/lib/constants';
 
 interface ChatGroupItemProps {
   group: ChatGroup;
@@ -16,15 +17,20 @@ interface ChatGroupItemProps {
 
 export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps) {
   const { messages, getUnreadCountForGroup } = useChatStore();
-  const { currentUser } = useAuthStore();
+  const { currentUser, activeRoleId } = useAuthStore();
   const { getUserById } = useUsersStore();
 
   const lastMessage = getLastMessageInGroup(group.id, messages);
   const unreadCount = currentUser ? getUnreadCountForGroup(group.id, currentUser.id) : 0;
 
   const isDirect = group.type === 'direct';
-  const displayName = isDirect && currentUser
-    ? getDirectGroupDisplayName(group, currentUser.id)
+  const isAdmin = activeRoleId === ROLE_IDS.ADMINISTRATOR;
+  const displayName = isDirect
+    ? isAdmin
+      ? getDirectGroupBothNames(group)
+      : currentUser
+        ? getDirectGroupDisplayName(group, currentUser.id)
+        : 'Neznámý'
     : group.name;
 
   const lastMessageUser = lastMessage ? getUserById(lastMessage.userId) : null;
@@ -39,16 +45,20 @@ export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps
       onClick={onClick}
       className={cn(
         'w-full text-left p-4 transition-all duration-200 border-l-4',
-        isSelected
-          ? 'bg-blue-50 border-l-blue-500'
-          : 'bg-white border-l-transparent hover:bg-slate-50'
+        isDirect
+          ? isSelected
+            ? 'bg-green-100 border-l-green-500'
+            : 'bg-green-50 border-l-transparent hover:bg-green-100/70'
+          : isSelected
+            ? 'bg-blue-50 border-l-blue-500'
+            : 'bg-white border-l-transparent hover:bg-slate-50'
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {isDirect ? (
-              <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <User className="w-4 h-4 text-green-500 flex-shrink-0" />
             ) : (
               <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
             )}
@@ -59,6 +69,9 @@ export function ChatGroupItem({ group, isSelected, onClick }: ChatGroupItemProps
               </span>
             )}
           </div>
+          {isDirect && isAdmin && (
+            <p className="text-xs text-slate-400 mt-0.5 ml-6">Přímá zpráva</p>
+          )}
           <p className="text-sm text-slate-500 truncate mt-1">{lastMessagePreview}</p>
         </div>
         {lastMessage && (

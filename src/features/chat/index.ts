@@ -15,6 +15,7 @@ export {
   getLastMessageInGroup,
   sortGroupsByLastMessage,
   getDirectGroupDisplayName,
+  getDirectGroupBothNames,
   sortDirectGroupsAlphabetically,
   formatFileSize,
 } from './chat-helpers';

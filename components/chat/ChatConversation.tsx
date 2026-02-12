@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { groupMessagesByDate, getDirectGroupDisplayName } from '@/features/chat';
+import { groupMessagesByDate, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
+import { ROLE_IDS } from '@/lib/constants';
+import { useUsersStore } from '@/stores/users-store';
 import { ChatMessage } from './ChatMessage';
 import { ChatMessageInput } from './ChatMessageInput';
 import { uploadFiles } from '@/lib/supabase/storage';
@@ -20,14 +22,25 @@ export function ChatConversation() {
     getGroupById,
     sendMessage,
     markGroupAsRead,
+    replyingToMessageId,
+    setReplyingTo,
+    messages: allMessages,
   } = useChatStore();
-  const { currentUser } = useAuthStore();
+  const { currentUser, activeRoleId } = useAuthStore();
+  const { getUserById } = useUsersStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(false);
 
   const group = selectedGroupId ? getGroupById(selectedGroupId) : null;
   const messages = selectedGroupId ? getMessagesForGroup(selectedGroupId) : [];
   const groupedMessages = groupMessagesByDate(messages);
+
+  const isAdmin = activeRoleId === ROLE_IDS.ADMINISTRATOR;
+
+  const replyingToMessage = replyingToMessageId
+    ? allMessages.find((m) => m.id === replyingToMessageId)
+    : null;
+  const replyingToSender = replyingToMessage ? getUserById(replyingToMessage.userId) : null;
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -79,7 +92,7 @@ export function ChatConversation() {
       if (attachments.length === 0 && !text.trim()) return;
     }
 
-    sendMessage(selectedGroupId, currentUser.id, text, attachments);
+    sendMessage(selectedGroupId, currentUser.id, text, attachments, replyingToMessageId);
   };
 
   if (!selectedGroupId || !group) {
@@ -100,8 +113,12 @@ export function ChatConversation() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-800">
-              {group.type === 'direct' && currentUser
-                ? getDirectGroupDisplayName(group, currentUser.id)
+              {group.type === 'direct'
+                ? isAdmin
+                  ? getDirectGroupBothNames(group)
+                  : currentUser
+                    ? getDirectGroupDisplayName(group, currentUser.id)
+                    : 'Neznámý'
                 : group.name}
             </h2>
             <p className="text-sm text-slate-500">
@@ -151,7 +168,7 @@ export function ChatConversation() {
               {/* Messages for this date */}
               <div className="space-y-3">
                 {dateMessages.map((message) => (
-                  <ChatMessage key={message.id} message={message} />
+                  <ChatMessage key={message.id} message={message} onReply={setReplyingTo} />
                 ))}
               </div>
             </div>
@@ -161,7 +178,15 @@ export function ChatConversation() {
       </div>
 
       {/* Input */}
-      <ChatMessageInput onSend={handleSend} disabled={uploading} />
+      <ChatMessageInput
+        onSend={handleSend}
+        disabled={uploading}
+        replyPreview={replyingToMessage ? {
+          senderName: replyingToSender?.fullName || 'Neznámý',
+          text: replyingToMessage.text,
+        } : null}
+        onCancelReply={() => setReplyingTo(null)}
+      />
     </div>
   );
 }
