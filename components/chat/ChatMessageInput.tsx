@@ -2,8 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon, Smile } from 'lucide-react';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import dynamic from 'next/dynamic';
+
+const EmojiPicker = dynamic(() => import('@emoji-mart/react').then((mod) => mod.default), {
+  ssr: false,
+  loading: () => <div className="w-[352px] h-[435px] bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-sm">Načítání...</div>,
+});
 
 interface ChatMessageInputProps {
   onSend: (text: string, files: File[]) => void;
@@ -181,8 +185,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
           </button>
           {showEmojiPicker && (
             <div className="absolute bottom-full left-0 mb-2 z-50">
-              <Picker
-                data={data}
+              <EmojiPicker
                 onEmojiSelect={handleEmojiSelect}
                 locale="cs"
                 theme="light"
