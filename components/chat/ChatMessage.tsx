@@ -117,15 +117,13 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
       {/* Message bubble */}
       <div
         className={cn(
-          'rounded-2xl px-4 py-2.5 relative',
-          isOwnMessage
-            ? 'bg-blue-500 text-white rounded-br-md'
-            : 'bg-slate-100 text-slate-800 rounded-bl-md'
+          'rounded-2xl px-4 py-2.5 relative bg-slate-100 text-slate-800',
+          isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'
         )}
       >
         {/* Text */}
         <p className="text-sm whitespace-pre-wrap break-words">
-          {linkifyText(message.text, isOwnMessage ? 'underline break-all' : 'text-blue-600 underline break-all')}
+          {linkifyText(message.text, 'text-blue-600 underline break-all')}
         </p>
 
         {/* Attachments */}
@@ -138,12 +136,7 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
         )}
 
         {/* Time */}
-        <span
-          className={cn(
-            'text-[10px] mt-1 block',
-            isOwnMessage ? 'text-blue-100' : 'text-slate-400'
-          )}
-        >
+        <span className="text-[10px] mt-1 block text-slate-400">
           {formatMessageTime(message.createdAt)}
         </span>
       </div>
