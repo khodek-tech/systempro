@@ -16,6 +16,8 @@ interface AttendanceState {
   requiresKasa: boolean;
   // Track all checked-in users globally (employee names who have open records today)
   checkedInUsers: Set<string>;
+  // Arrival times keyed by employee fullName
+  arrivalTimes: Map<string, string>;
   _loaded: boolean;
   _realtimeChannel: RealtimeChannel | null;
 }
@@ -32,6 +34,7 @@ interface AttendanceActions {
   checkOutUser: (userId: string) => void;
   isUserCheckedIn: (userId: string) => boolean;
   getAllCheckedInUsers: () => string[];
+  getArrivalTime: (fullName: string) => string | null;
 }
 
 export const useAttendanceStore = create<AttendanceState & AttendanceActions>((set, get) => ({
@@ -43,6 +46,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
   workplaceName: '',
   requiresKasa: false,
   checkedInUsers: new Set<string>(),
+  arrivalTimes: new Map<string, string>(),
   _loaded: false,
   _realtimeChannel: null,
 
@@ -52,7 +56,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
 
     const { data, error } = await supabase
       .from('dochazka')
-      .select('zamestnanec, odchod')
+      .select('zamestnanec, odchod, prichod')
       .eq('datum', today);
 
     if (error) {
@@ -60,11 +64,15 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
       return;
     }
 
-    // Build set of checked-in users (have arrival, no departure)
+    // Build set of checked-in users (have arrival, no departure) and their arrival times
     const checkedIn = new Set<string>();
+    const arrivals = new Map<string, string>();
     for (const row of data || []) {
       if (!row.odchod) {
         checkedIn.add(row.zamestnanec);
+        if (row.prichod) {
+          arrivals.set(row.zamestnanec, row.prichod);
+        }
       }
     }
 
@@ -72,7 +80,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
     const currentUser = useAuthStore.getState().currentUser;
     const isInWork = currentUser ? checkedIn.has(currentUser.fullName) : false;
 
-    set({ checkedInUsers: checkedIn, isInWork, _loaded: true });
+    set({ checkedInUsers: checkedIn, arrivalTimes: arrivals, isInWork, _loaded: true });
   },
 
   toggleAttendance: async () => {
@@ -208,7 +216,11 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
           if (row.datum === today && !row.odchod) {
             const newSet = new Set(get().checkedInUsers);
             newSet.add(row.zamestnanec);
-            set({ checkedInUsers: newSet });
+            const newArrivals = new Map(get().arrivalTimes);
+            if (row.prichod) {
+              newArrivals.set(row.zamestnanec, row.prichod);
+            }
+            set({ checkedInUsers: newSet, arrivalTimes: newArrivals });
           }
         },
       )
@@ -225,7 +237,9 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
           if (row.datum === today && row.odchod) {
             const newSet = new Set(get().checkedInUsers);
             newSet.delete(row.zamestnanec);
-            set({ checkedInUsers: newSet });
+            const newArrivals = new Map(get().arrivalTimes);
+            newArrivals.delete(row.zamestnanec);
+            set({ checkedInUsers: newSet, arrivalTimes: newArrivals });
           }
         },
       )
@@ -262,5 +276,9 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
 
   getAllCheckedInUsers: () => {
     return Array.from(get().checkedInUsers);
+  },
+
+  getArrivalTime: (fullName) => {
+    return get().arrivalTimes.get(fullName) ?? null;
   },
 }));

@@ -12,4 +12,6 @@ export interface PresenceRecord {
   status: PresenceStatus;
   absenceType?: AbsenceType;
   storeName?: string;
+  roleName?: string;
+  arrivalTime?: string;
 }

@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button';
 import { usePresenceStore } from '@/stores/presence-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
-import { PresenceStatus } from '@/types';
+import { PresenceRecord } from '@/types';
 
-function getStatusLabel(status: PresenceStatus): string {
-  switch (status) {
+function getStatusLabel(record: PresenceRecord): string {
+  switch (record.status) {
     case 'present':
-      return 'V práci';
+      return record.arrivalTime ? `V práci od ${record.arrivalTime}` : 'V práci';
     case 'absent':
       return 'Nepřítomen';
     case 'excused':
-      return 'Schválená absence';
+      return record.absenceType ?? 'Schválená absence';
   }
 }
 
@@ -66,7 +66,7 @@ export function PresenceFullView() {
                       record.status === 'excused' && 'bg-orange-500'
                     )}
                     role="img"
-                    aria-label={getStatusLabel(record.status)}
+                    aria-label={getStatusLabel(record)}
                   />
 
                   {/* Info */}
@@ -75,9 +75,7 @@ export function PresenceFullView() {
                       {record.userName}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {record.status === 'excused' && record.absenceType
-                        ? record.absenceType
-                        : record.storeName || 'Bez prodejny'}
+                      {record.storeName || record.roleName || 'Bez přiřazení'}
                     </div>
                   </div>
 
@@ -90,7 +88,7 @@ export function PresenceFullView() {
                       record.status === 'excused' && 'bg-orange-50 text-orange-700'
                     )}
                   >
-                    {getStatusLabel(record.status)}
+                    {getStatusLabel(record)}
                   </span>
                 </div>
               ))}

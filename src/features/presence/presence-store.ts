@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { PresenceRecord, PresenceStatus } from '@/shared/types';
 import { useUsersStore } from '@/core/stores/users-store';
 import { useStoresStore } from '@/core/stores/stores-store';
+import { useRolesStore } from '@/core/stores/roles-store';
 import { useModulesStore } from '@/core/stores/modules-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { useAbsenceStore } from '@/features/absence/absence-store';
@@ -47,39 +48,49 @@ export const usePresenceStore = create<PresenceState & PresenceActions>()((set) 
       user.roleIds.some((roleId) => visibleRoleIds.includes(roleId))
     );
 
+    const attendanceStore = useAttendanceStore.getState();
     const records: PresenceRecord[] = [];
 
     for (const user of visibleUsers) {
-      // Check if user has a shift today
-      const hasShiftToday = checkUserHasShiftToday(user.id, today);
+      const hasShiftNow = checkUserHasShiftNow(user.id, today);
+      const isCheckedIn = attendanceStore.checkedInUsers.has(user.fullName);
 
-      // Only include users who have a shift today
-      if (!hasShiftToday) {
+      // Show user if: has shift NOW or is still checked-in
+      if (!hasShiftNow && !isCheckedIn) {
+        // Check for approved absence on today — show excused even outside shift
+        const hasApprovedAbsence = checkHasApprovedAbsence(user.id, todayStr);
+        const hasShiftToday = checkUserHasShiftToday(user.id, today);
+        if (hasApprovedAbsence && hasShiftToday) {
+          const absenceType = getAbsenceType(user.id, todayStr);
+          const { storeName, roleName } = getSubtitle(user);
+          records.push({
+            userId: user.id,
+            userName: user.fullName,
+            status: 'excused',
+            absenceType,
+            storeName,
+            roleName,
+          });
+        }
         continue;
       }
 
-      // Get presence status
-      const status = getPresenceStatusForUser(user.id, todayStr);
+      // Get presence status using fullName for check-in lookup
+      const status = getPresenceStatusForUser(user.fullName, todayStr, user.id);
 
-      // Get store name (first store if assigned)
-      let storeName: string | undefined;
-      if (user.storeIds.length > 0) {
-        const store = useStoresStore.getState().getStoreById(user.storeIds[0]);
-        storeName = store?.name;
+      // Get subtitle info
+      const { storeName, roleName } = getSubtitle(user);
+
+      // Get arrival time if present
+      let arrivalTime: string | undefined;
+      if (status === 'present') {
+        arrivalTime = attendanceStore.getArrivalTime(user.fullName) ?? undefined;
       }
 
       // Get absence type if excused
       let absenceType: PresenceRecord['absenceType'];
       if (status === 'excused') {
-        const absenceRequests = useAbsenceStore.getState().absenceRequests;
-        const todayAbsence = absenceRequests.find(
-          (req) =>
-            req.userId === user.id &&
-            req.status === 'approved' &&
-            req.dateFrom <= todayStr &&
-            req.dateTo >= todayStr
-        );
-        absenceType = todayAbsence?.type;
+        absenceType = getAbsenceType(user.id, todayStr);
       }
 
       records.push({
@@ -88,6 +99,8 @@ export const usePresenceStore = create<PresenceState & PresenceActions>()((set) 
         status,
         absenceType,
         storeName,
+        roleName,
+        arrivalTime,
       });
     }
 
@@ -103,19 +116,20 @@ export const usePresenceStore = create<PresenceState & PresenceActions>()((set) 
 
   getPresenceStatus: (userId: string): PresenceStatus => {
     const todayStr = new Date().toISOString().split('T')[0];
-    return getPresenceStatusForUser(userId, todayStr);
+    const user = useUsersStore.getState().getUserById(userId);
+    const fullName = user?.fullName ?? '';
+    return getPresenceStatusForUser(fullName, todayStr, userId);
   },
 }));
 
-// Helper function to check if user should be working RIGHT NOW
-function checkUserHasShiftToday(userId: string, date: Date): boolean {
+// Helper: check if user has a shift RIGHT NOW
+function checkUserHasShiftNow(userId: string, date: Date): boolean {
   const user = useUsersStore.getState().getUserById(userId);
   if (!user?.workingHours) return false;
 
   const isWorkDay = useShiftsStore.getState().isWorkDayForUser(userId, date);
   if (!isWorkDay) return false;
 
-  // Check if current time is within working hours
   const openingHours = useShiftsStore.getState().getEffectiveWorkingHours(
     userId,
     date.getDay(),
@@ -127,29 +141,77 @@ function checkUserHasShiftToday(userId: string, date: Date): boolean {
   const now = new Date();
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  // Compare times as strings (works for HH:mm format)
   return currentTime >= openingHours.open && currentTime <= openingHours.close;
 }
 
-// Helper function to determine presence status for a user
-function getPresenceStatusForUser(userId: string, dateStr: string): PresenceStatus {
-  // Check if user is checked in
-  const isCheckedIn = useAttendanceStore.getState().isUserCheckedIn(userId);
-  if (isCheckedIn) {
-    return 'present';
-  }
+// Helper: check if user has any shift today (regardless of current time)
+function checkUserHasShiftToday(userId: string, date: Date): boolean {
+  const user = useUsersStore.getState().getUserById(userId);
+  if (!user?.workingHours) return false;
 
-  // Check if user has an approved absence for today
+  const isWorkDay = useShiftsStore.getState().isWorkDayForUser(userId, date);
+  if (!isWorkDay) return false;
+
+  const openingHours = useShiftsStore.getState().getEffectiveWorkingHours(
+    userId,
+    date.getDay(),
+    date
+  );
+
+  return !!openingHours && !openingHours.closed;
+}
+
+// Helper: get subtitle (store name or role name)
+function getSubtitle(user: { storeIds: string[]; roleIds: string[] }): {
+  storeName?: string;
+  roleName?: string;
+} {
+  if (user.storeIds.length > 0) {
+    const store = useStoresStore.getState().getStoreById(user.storeIds[0]);
+    return { storeName: store?.name };
+  }
+  if (user.roleIds.length > 0) {
+    const role = useRolesStore.getState().getRoleById(user.roleIds[0]);
+    return { roleName: role?.name };
+  }
+  return {};
+}
+
+// Helper: check approved absence
+function checkHasApprovedAbsence(userId: string, dateStr: string): boolean {
   const absenceRequests = useAbsenceStore.getState().absenceRequests;
-  const hasApprovedAbsence = absenceRequests.some(
+  return absenceRequests.some(
     (req) =>
       req.userId === userId &&
       req.status === 'approved' &&
       req.dateFrom <= dateStr &&
       req.dateTo >= dateStr
   );
+}
 
-  if (hasApprovedAbsence) {
+// Helper: get absence type
+function getAbsenceType(userId: string, dateStr: string): PresenceRecord['absenceType'] {
+  const absenceRequests = useAbsenceStore.getState().absenceRequests;
+  const todayAbsence = absenceRequests.find(
+    (req) =>
+      req.userId === userId &&
+      req.status === 'approved' &&
+      req.dateFrom <= dateStr &&
+      req.dateTo >= dateStr
+  );
+  return todayAbsence?.type;
+}
+
+// Helper: determine presence status for a user (uses fullName for check-in lookup)
+function getPresenceStatusForUser(fullName: string, dateStr: string, userId: string): PresenceStatus {
+  // Check if user is checked in — checkedInUsers contains fullName strings
+  const isCheckedIn = useAttendanceStore.getState().checkedInUsers.has(fullName);
+  if (isCheckedIn) {
+    return 'present';
+  }
+
+  // Check if user has an approved absence for today
+  if (checkHasApprovedAbsence(userId, dateStr)) {
     return 'excused';
   }
 
