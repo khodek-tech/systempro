@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent } from 'react';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon, Smile } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import emojiData from '@emoji-mart/data';
@@ -35,29 +35,6 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-
-  // Click outside handler for emoji picker (delayed to avoid closing on the same click that opens)
-  const handleClickOutside = useCallback((e: MouseEvent) => {
-    if (
-      emojiPickerRef.current &&
-      !emojiPickerRef.current.contains(e.target as Node)
-    ) {
-      setShowEmojiPicker(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!showEmojiPicker) return;
-    // Delay adding listener so the opening click event doesn't immediately close the picker
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 0);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showEmojiPicker, handleClickOutside]);
 
   const handleSubmit = () => {
     if (!text.trim() && selectedFiles.length === 0) return;
@@ -177,7 +154,7 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
         />
 
         {/* Emoji picker */}
-        <div className="relative" ref={emojiPickerRef}>
+        <div className="relative">
           <button
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             disabled={disabled}
@@ -188,16 +165,23 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
             <Smile className="w-5 h-5" />
           </button>
           {showEmojiPicker && (
-            <div className="absolute bottom-full left-0 mb-2 z-50">
-              <EmojiPicker
-                data={emojiData}
-                onEmojiSelect={handleEmojiSelect}
-                locale="cs"
-                theme="light"
-                previewPosition="none"
-                skinTonePosition="none"
+            <>
+              {/* Transparent backdrop to catch outside clicks */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowEmojiPicker(false)}
               />
-            </div>
+              <div className="absolute bottom-full left-0 mb-2 z-50">
+                <EmojiPicker
+                  data={emojiData}
+                  onEmojiSelect={handleEmojiSelect}
+                  locale="cs"
+                  theme="light"
+                  previewPosition="none"
+                  skinTonePosition="none"
+                />
+              </div>
+            </>
           )}
         </div>
 
