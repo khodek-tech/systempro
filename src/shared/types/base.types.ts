@@ -35,6 +35,12 @@ export interface StoreOpeningHours {
   sunday?: DayOpeningHours;
 }
 
+export interface EmployeeWorkingHours {
+  alternating: boolean;                  // true = odd/even week alternation
+  oddWeek: StoreOpeningHours;            // Odd week schedule (or only schedule if not alternating)
+  evenWeek?: StoreOpeningHours;          // Even week schedule (only if alternating=true)
+}
+
 // Store interface
 export interface Store {
   id: string;
@@ -63,8 +69,7 @@ export interface User {
   defaultRoleId?: string;
   defaultStoreId?: string;
   active: boolean;
-  startsWithShortWeek?: boolean;
-  workingHours?: StoreOpeningHours;  // Vlastní pracovní doba zaměstnance
+  workingHours?: EmployeeWorkingHours;  // Vlastní pracovní doba zaměstnance
   authId?: string;
   mustChangePassword?: boolean;
 }

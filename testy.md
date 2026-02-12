@@ -469,17 +469,39 @@
 | # | Krok | Očekávaný výsledek |
 |---|------|-------------------|
 | 1 | Otevřít modul Směny | Kalendář aktuálního měsíce |
-| 2 | Vidět zvýrazněné pracovní dny | Barevné rozlišení |
-| 3 | Vidět krátký/dlouhý týden | Označení týdnů |
-| 4 | Kliknout na pracovní den | Otevírací doba zobrazena |
+| 2 | Vidět zvýrazněné pracovní dny | Zelené pozadí, pracovní doba zobrazena |
+| 3 | Zdroj pracovní doby | Vždy "Vlastní" |
 
-#### SHIFT-003: Krátký vs dlouhý týden
+#### SHIFT-003: Střídání lichý/sudý týden
 
 | # | Krok | Očekávaný výsledek |
 |---|------|-------------------|
-| 1 | Najít lichý týden | Týden nalezen |
-| 2 | Zkontrolovat pracovní dny | St, Čt (krátký) nebo Po,Út,Pá,So,Ne (dlouhý) |
-| 3 | Přejít na sudý týden | Opačné dny |
+| 1 | Zaměstnanec s alternating=true | Lichý ISO týden: dny dle oddWeek |
+| 2 | Přejít na sudý ISO týden | Dny dle evenWeek rozvrhu |
+| 3 | Badges "Lichý"/"Sudý" | Zobrazují se jen při alternating |
+
+#### SHIFT-005: Zaměstnanec bez střídání (skladník)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Zaměstnanec s alternating=false | Směny dle oddWeek |
+| 2 | Po-Pá 08:00-16:30, So+Ne volno | Správné dny zvýrazněny |
+| 3 | Žádné badges lichý/sudý | Badges se nezobrazují |
+
+#### SHIFT-006: Zaměstnanec bez pracovní doby
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Zaměstnanec bez workingHours | Zpráva "Pracovní doba není nastavena" |
+| 2 | Žádný kalendář | Kalendář se nezobrazuje |
+
+#### SHIFT-007: Kopírování pracovní doby z prodejny
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít formulář zaměstnance | Formulář s pracovní dobou |
+| 2 | Kliknout "Kopírovat z prodejny" | Předvyplnění dle otevírací doby prodejny |
+| 3 | Upravit dle potřeby | Admin může dále upravit |
 
 ---
 

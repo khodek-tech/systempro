@@ -2,6 +2,24 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.4.0] - 2026-02-12
+
+### Změněno
+
+#### Redesign pracovní doby zaměstnanců
+- **Nový datový model:** `EmployeeWorkingHours` typ s volitelným střídáním lichý/sudý týden (dle ISO week čísla)
+- `src/shared/types/base.types.ts`: přidán `EmployeeWorkingHours` interface, `User.workingHours` změněn na nový typ, odstraněn `startsWithShortWeek`
+- `lib/supabase/mappers.ts`: odstraněno mapování `zacina_kratkym_tydnem`, `pracovni_hodiny` nyní ukládá `EmployeeWorkingHours`
+- `src/features/shifts/shifts-store.ts`: kompletně přepsán — `isOddWeek()` místo `isShortWeekForUser()`, `isWorkDayForUser()` bez hardcoded dnů, `getEffectiveWorkingHours()` vždy z `user.workingHours`, `ShiftDay.isOddWeek` místo `isShortWeek`
+- `src/admin/employee-form-store.ts`: nové akce `toggleAlternating()`, `setWeekDayHours()`, `toggleWeekSameAllWeek()`, `copyFromStore()`; odstraněn `startsWithShortWeek` stav a `setStartsWithShortWeek()`
+- `components/admin-dashboard/settings/EmployeeFormModal.tsx`: kompletně přepsaná sekce pracovní doby — toggle střídání, per-week editor, tlačítko "Kopírovat z prodejny"
+- `components/views/shifts-full-view.tsx`: badges "Lichý"/"Sudý" (jen při alternating), zpráva "Pracovní doba není nastavena", zdroj vždy "Vlastní"
+- `src/features/presence/presence-store.ts`: aktualizovány volání `isWorkDayForUser()` a `getEffectiveWorkingHours()` na nové signatury
+- `specs/modules/shifts.spec.yaml`: přepsány features, scénáře a edge cases pro nový model
+- `testy.md`: aktualizované testovací scénáře SHIFT-001 až SHIFT-007
+
+---
+
 ## [2.3.0] - 2026-02-12
 
 ### Přidáno

@@ -1,15 +1,23 @@
 import { create } from 'zustand';
-import { User, StoreOpeningHours, DayOpeningHours } from '@/shared/types';
+import { User, StoreOpeningHours, DayOpeningHours, EmployeeWorkingHours } from '@/shared/types';
 import { useUsersStore } from '@/core/stores/users-store';
+import { useStoresStore } from '@/core/stores/stores-store';
 
 type DayKey = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
 
 const DEFAULT_HOURS: DayOpeningHours = { open: '08:00', close: '16:30', closed: false };
 
-function createDefaultWorkingHours(): StoreOpeningHours {
+function createDefaultSchedule(): StoreOpeningHours {
   return {
     sameAllWeek: true,
     default: { ...DEFAULT_HOURS },
+  };
+}
+
+function createDefaultWorkingHours(): EmployeeWorkingHours {
+  return {
+    alternating: false,
+    oddWeek: createDefaultSchedule(),
   };
 }
 
@@ -21,8 +29,7 @@ interface EmployeeFormState {
   selectedStores: string[];
   defaultRoleId: string | undefined;
   defaultStoreId: string | undefined;
-  startsWithShortWeek: boolean;
-  workingHours: StoreOpeningHours | undefined;
+  workingHours: EmployeeWorkingHours | undefined;
   error: string | null;
 
   // Edit mode
@@ -47,17 +54,17 @@ interface EmployeeFormActions {
   toggleStore: (storeId: string) => void;
   setDefaultStore: (storeId: string) => void;
 
-  // Shift settings
-  setStartsWithShortWeek: (value: boolean) => void;
-
   // Working hours actions
   toggleWorkingHours: () => void;
-  toggleSameAllWeek: () => void;
-  setDayHours: (
+  toggleAlternating: () => void;
+  toggleWeekSameAllWeek: (week: 'odd' | 'even') => void;
+  setWeekDayHours: (
+    week: 'odd' | 'even',
     dayKey: DayKey | 'default',
     field: 'open' | 'close' | 'closed',
     value: string | boolean
   ) => void;
+  copyFromStore: (week: 'odd' | 'even', storeId: string) => void;
 
   // Submit
   submitForm: (onSuccess: () => void) => Promise<void>;
@@ -73,7 +80,6 @@ const initialState: EmployeeFormState = {
   selectedStores: [],
   defaultRoleId: undefined,
   defaultStoreId: undefined,
-  startsWithShortWeek: false,
   workingHours: undefined,
   error: null,
   editingUser: null,
@@ -92,7 +98,6 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
         selectedStores: user.storeIds,
         defaultRoleId: user.defaultRoleId,
         defaultStoreId: user.defaultStoreId,
-        startsWithShortWeek: user.startsWithShortWeek ?? false,
         workingHours: user.workingHours,
         error: null,
         editingUser: user,
@@ -145,9 +150,6 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
 
   setDefaultStore: (storeId) => set({ defaultStoreId: storeId }),
 
-  // Shift settings
-  setStartsWithShortWeek: (value) => set({ startsWithShortWeek: value }),
-
   // Working hours actions
   toggleWorkingHours: () => {
     const { workingHours } = get();
@@ -158,50 +160,128 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
     }
   },
 
-  toggleSameAllWeek: () => {
+  toggleAlternating: () => {
     const { workingHours } = get();
     if (!workingHours) return;
 
-    if (workingHours.sameAllWeek) {
-      // Switch to per-day mode
-      const defaultHrs = workingHours.default || DEFAULT_HOURS;
+    if (workingHours.alternating) {
+      // Turn off alternating — keep oddWeek only
       set({
         workingHours: {
-          sameAllWeek: false,
-          monday: { ...defaultHrs },
-          tuesday: { ...defaultHrs },
-          wednesday: { ...defaultHrs },
-          thursday: { ...defaultHrs },
-          friday: { ...defaultHrs },
-          saturday: { ...defaultHrs, closed: true },
-          sunday: { ...defaultHrs, closed: true },
+          alternating: false,
+          oddWeek: workingHours.oddWeek,
         },
       });
     } else {
-      // Switch to same all week mode
+      // Turn on alternating — create per-day evenWeek
+      const defaultPerDay: StoreOpeningHours = {
+        sameAllWeek: false,
+        monday: { ...DEFAULT_HOURS },
+        tuesday: { ...DEFAULT_HOURS },
+        wednesday: { ...DEFAULT_HOURS },
+        thursday: { ...DEFAULT_HOURS },
+        friday: { ...DEFAULT_HOURS },
+        saturday: { ...DEFAULT_HOURS, closed: true },
+        sunday: { ...DEFAULT_HOURS, closed: true },
+      };
+
+      // Force oddWeek to per-day mode too
+      let oddWeek = workingHours.oddWeek;
+      if (oddWeek.sameAllWeek) {
+        const hrs = oddWeek.default || DEFAULT_HOURS;
+        oddWeek = {
+          sameAllWeek: false,
+          monday: { ...hrs },
+          tuesday: { ...hrs },
+          wednesday: { ...hrs },
+          thursday: { ...hrs },
+          friday: { ...hrs },
+          saturday: { ...hrs, closed: true },
+          sunday: { ...hrs, closed: true },
+        };
+      }
+
       set({
         workingHours: {
-          sameAllWeek: true,
-          default: workingHours.monday || DEFAULT_HOURS,
+          alternating: true,
+          oddWeek,
+          evenWeek: defaultPerDay,
         },
       });
     }
   },
 
-  setDayHours: (dayKey, field, value) => {
+  toggleWeekSameAllWeek: (week) => {
     const { workingHours } = get();
     if (!workingHours) return;
 
-    const current = workingHours[dayKey] || { ...DEFAULT_HOURS };
-    set({
-      workingHours: {
-        ...workingHours,
-        [dayKey]: {
-          ...current,
-          [field]: value,
-        },
+    const schedule = week === 'odd' ? workingHours.oddWeek : workingHours.evenWeek;
+    if (!schedule) return;
+
+    let newSchedule: StoreOpeningHours;
+    if (schedule.sameAllWeek) {
+      const defaultHrs = schedule.default || DEFAULT_HOURS;
+      newSchedule = {
+        sameAllWeek: false,
+        monday: { ...defaultHrs },
+        tuesday: { ...defaultHrs },
+        wednesday: { ...defaultHrs },
+        thursday: { ...defaultHrs },
+        friday: { ...defaultHrs },
+        saturday: { ...defaultHrs, closed: true },
+        sunday: { ...defaultHrs, closed: true },
+      };
+    } else {
+      newSchedule = {
+        sameAllWeek: true,
+        default: schedule.monday || DEFAULT_HOURS,
+      };
+    }
+
+    if (week === 'odd') {
+      set({ workingHours: { ...workingHours, oddWeek: newSchedule } });
+    } else {
+      set({ workingHours: { ...workingHours, evenWeek: newSchedule } });
+    }
+  },
+
+  setWeekDayHours: (week, dayKey, field, value) => {
+    const { workingHours } = get();
+    if (!workingHours) return;
+
+    const schedule = week === 'odd' ? workingHours.oddWeek : workingHours.evenWeek;
+    if (!schedule) return;
+
+    const current = schedule[dayKey] || { ...DEFAULT_HOURS };
+    const newSchedule = {
+      ...schedule,
+      [dayKey]: {
+        ...current,
+        [field]: value,
       },
-    });
+    };
+
+    if (week === 'odd') {
+      set({ workingHours: { ...workingHours, oddWeek: newSchedule } });
+    } else {
+      set({ workingHours: { ...workingHours, evenWeek: newSchedule } });
+    }
+  },
+
+  copyFromStore: (week, storeId) => {
+    const { workingHours } = get();
+    if (!workingHours) return;
+
+    const store = useStoresStore.getState().getStoreById(storeId);
+    if (!store?.openingHours) return;
+
+    const schedule: StoreOpeningHours = JSON.parse(JSON.stringify(store.openingHours));
+
+    if (week === 'odd') {
+      set({ workingHours: { ...workingHours, oddWeek: schedule } });
+    } else {
+      set({ workingHours: { ...workingHours, evenWeek: schedule } });
+    }
   },
 
   // Submit form
@@ -217,7 +297,6 @@ export const useEmployeeFormStore = create<EmployeeFormState & EmployeeFormActio
       defaultRoleId: state.selectedRoles.length > 1 ? state.defaultRoleId : undefined,
       defaultStoreId: state.selectedStores.length > 1 ? state.defaultStoreId : undefined,
       active: state.editingUser?.active ?? true,
-      startsWithShortWeek: state.selectedStores.length > 0 ? state.startsWithShortWeek : undefined,
       workingHours: state.workingHours,
     };
 

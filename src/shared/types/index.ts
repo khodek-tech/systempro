@@ -8,6 +8,7 @@ export type {
   WorkplaceType,
   DayOpeningHours,
   StoreOpeningHours,
+  EmployeeWorkingHours,
   Store,
   Role,
   User,

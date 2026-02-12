@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { X, Check, Star, Info } from 'lucide-react';
+import { X, Check, Star, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeFormStore } from '@/stores/employee-form-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { useStoresStore } from '@/stores/stores-store';
-import { User, DayOpeningHours } from '@/types';
+import { User, DayOpeningHours, StoreOpeningHours } from '@/types';
 import { cn } from '@/lib/utils';
 
 const DAY_NAMES = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
@@ -16,6 +16,136 @@ interface EmployeeFormModalProps {
   open: boolean;
   onClose: () => void;
   user: User | null;
+}
+
+function WeekScheduleEditor({
+  week,
+  schedule,
+  label,
+  storeIds,
+}: {
+  week: 'odd' | 'even';
+  schedule: StoreOpeningHours;
+  label?: string;
+  storeIds: string[];
+}) {
+  const { setWeekDayHours, toggleWeekSameAllWeek, copyFromStore } = useEmployeeFormStore();
+  const { stores } = useStoresStore();
+
+  const availableStores = stores.filter((s) => storeIds.includes(s.id) && s.active && s.openingHours);
+
+  return (
+    <div className="bg-slate-50 rounded-xl p-4 space-y-4">
+      {label && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-slate-700">{label}</span>
+          {availableStores.length > 0 && (
+            <button
+              type="button"
+              onClick={() => copyFromStore(week, availableStores[0].id)}
+              className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              <Copy className="w-3 h-3" />
+              Kopírovat z prodejny
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Same all week toggle — only for non-alternating mode */}
+      {!label && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-700">Stejná celý týden</span>
+          <button
+            type="button"
+            onClick={() => toggleWeekSameAllWeek(week)}
+            role="switch"
+            aria-checked={schedule.sameAllWeek}
+            aria-label="Stejná pracovní doba celý týden"
+            className={cn(
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+              schedule.sameAllWeek ? 'bg-orange-500' : 'bg-slate-300'
+            )}
+          >
+            <span
+              className={cn(
+                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                schedule.sameAllWeek ? 'translate-x-6' : 'translate-x-1'
+              )}
+            />
+          </button>
+        </div>
+      )}
+
+      {/* Working hours inputs */}
+      {schedule.sameAllWeek ? (
+        <div className="flex items-center gap-3">
+          <label htmlFor={`${week}-default-open`} className="sr-only">Začátek pracovní doby</label>
+          <input
+            id={`${week}-default-open`}
+            type="time"
+            value={schedule.default?.open || '08:00'}
+            onChange={(e) => setWeekDayHours(week, 'default', 'open', e.target.value)}
+            className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
+          />
+          <span className="text-slate-400" aria-hidden="true">–</span>
+          <label htmlFor={`${week}-default-close`} className="sr-only">Konec pracovní doby</label>
+          <input
+            id={`${week}-default-close`}
+            type="time"
+            value={schedule.default?.close || '16:30'}
+            onChange={(e) => setWeekDayHours(week, 'default', 'close', e.target.value)}
+            className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {DAY_KEYS.map((dayKey, index) => {
+            const dayHours = schedule[dayKey] as DayOpeningHours | undefined;
+            const isClosed = dayHours?.closed ?? false;
+
+            return (
+              <div key={dayKey} className="flex items-center gap-3">
+                <span className="w-20 text-sm font-medium text-slate-600">
+                  {DAY_NAMES[index]}
+                </span>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isClosed}
+                    onChange={(e) => setWeekDayHours(week, dayKey, 'closed', e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                  />
+                  <span className="text-xs text-slate-500">Volno</span>
+                </label>
+                {!isClosed && (
+                  <>
+                    <label htmlFor={`${week}-${dayKey}-open`} className="sr-only">Začátek - {DAY_NAMES[index]}</label>
+                    <input
+                      id={`${week}-${dayKey}-open`}
+                      type="time"
+                      value={dayHours?.open || '08:00'}
+                      onChange={(e) => setWeekDayHours(week, dayKey, 'open', e.target.value)}
+                      className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
+                    />
+                    <span className="text-slate-400" aria-hidden="true">–</span>
+                    <label htmlFor={`${week}-${dayKey}-close`} className="sr-only">Konec - {DAY_NAMES[index]}</label>
+                    <input
+                      id={`${week}-${dayKey}-close`}
+                      type="time"
+                      value={dayHours?.close || '16:30'}
+                      onChange={(e) => setWeekDayHours(week, dayKey, 'close', e.target.value)}
+                      className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
+                    />
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProps) {
@@ -29,7 +159,6 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
     selectedStores,
     defaultRoleId,
     defaultStoreId,
-    startsWithShortWeek,
     workingHours,
     error,
     initForm,
@@ -39,10 +168,8 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
     setDefaultRole,
     toggleStore,
     setDefaultStore,
-    setStartsWithShortWeek,
     toggleWorkingHours,
-    toggleSameAllWeek,
-    setDayHours,
+    toggleAlternating,
     submitForm,
     isEditing,
   } = useEmployeeFormStore();
@@ -225,41 +352,6 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
             </div>
           </fieldset>
 
-          {/* Shift Settings - only show if stores are selected */}
-          {selectedStores.length > 0 && (
-            <div className="pt-4 border-t border-slate-200">
-              <span className="block text-sm font-medium text-slate-500 mb-3">Nastavení směn</span>
-              <div className="bg-slate-50 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-slate-700">Začíná krátkým týdnem</span>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Krátký = St, Čt | Dlouhý = Po, Út, Pá, So, Ne
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setStartsWithShortWeek(!startsWithShortWeek)}
-                    role="switch"
-                    aria-checked={startsWithShortWeek}
-                    aria-label="Začíná krátkým týdnem"
-                    className={cn(
-                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                      startsWithShortWeek ? 'bg-orange-500' : 'bg-slate-300'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                        startsWithShortWeek ? 'translate-x-6' : 'translate-x-1'
-                      )}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Working Hours */}
           <div className="pt-4 border-t border-slate-200">
             <div className="flex items-center justify-between mb-3">
@@ -284,106 +376,59 @@ export function EmployeeFormModal({ open, onClose, user }: EmployeeFormModalProp
               </button>
             </div>
 
-            {selectedStores.length > 0 && (
-              <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 rounded-lg">
-                <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                <p className="text-xs text-blue-700">
-                  Pokud je zaměstnanec přiřazen k prodejně, platí otvírací doba prodejny.
-                </p>
-              </div>
-            )}
-
             {workingHours && (
-              <div className="bg-slate-50 rounded-xl p-4 space-y-4">
-                {/* Same all week toggle */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700">Stejná celý týden</span>
+              <div className="space-y-4">
+                {/* Alternating toggle */}
+                <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4">
+                  <div>
+                    <span className="text-sm font-medium text-slate-700">Střídání lichý/sudý týden</span>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Dle čísla ISO týdne (lichý/sudý)
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={toggleSameAllWeek}
+                    onClick={toggleAlternating}
                     role="switch"
-                    aria-checked={workingHours.sameAllWeek}
-                    aria-label="Stejná pracovní doba celý týden"
+                    aria-checked={workingHours.alternating}
+                    aria-label="Střídání lichý/sudý týden"
                     className={cn(
                       'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                      workingHours.sameAllWeek ? 'bg-orange-500' : 'bg-slate-300'
+                      workingHours.alternating ? 'bg-orange-500' : 'bg-slate-300'
                     )}
                   >
                     <span
                       className={cn(
                         'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                        workingHours.sameAllWeek ? 'translate-x-6' : 'translate-x-1'
+                        workingHours.alternating ? 'translate-x-6' : 'translate-x-1'
                       )}
                     />
                   </button>
                 </div>
 
-                {/* Working hours inputs */}
-                {workingHours.sameAllWeek ? (
-                  <div className="flex items-center gap-3">
-                    <label htmlFor="default-open" className="sr-only">Začátek pracovní doby</label>
-                    <input
-                      id="default-open"
-                      type="time"
-                      value={workingHours.default?.open || '08:00'}
-                      onChange={(e) => setDayHours('default', 'open', e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
+                {workingHours.alternating ? (
+                  <>
+                    <WeekScheduleEditor
+                      week="odd"
+                      schedule={workingHours.oddWeek}
+                      label="Lichý týden"
+                      storeIds={selectedStores}
                     />
-                    <span className="text-slate-400" aria-hidden="true">–</span>
-                    <label htmlFor="default-close" className="sr-only">Konec pracovní doby</label>
-                    <input
-                      id="default-close"
-                      type="time"
-                      value={workingHours.default?.close || '16:30'}
-                      onChange={(e) => setDayHours('default', 'close', e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300"
-                    />
-                  </div>
+                    {workingHours.evenWeek && (
+                      <WeekScheduleEditor
+                        week="even"
+                        schedule={workingHours.evenWeek}
+                        label="Sudý týden"
+                        storeIds={selectedStores}
+                      />
+                    )}
+                  </>
                 ) : (
-                  <div className="space-y-2">
-                    {DAY_KEYS.map((dayKey, index) => {
-                      const dayHours = workingHours[dayKey] as DayOpeningHours | undefined;
-                      const isClosed = dayHours?.closed ?? false;
-
-                      return (
-                        <div key={dayKey} className="flex items-center gap-3">
-                          <span className="w-20 text-sm font-medium text-slate-600">
-                            {DAY_NAMES[index]}
-                          </span>
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={isClosed}
-                              onChange={(e) => setDayHours(dayKey, 'closed', e.target.checked)}
-                              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
-                            />
-                            <span className="text-xs text-slate-500">Volno</span>
-                          </label>
-                          {!isClosed && (
-                            <>
-                              <label htmlFor={`${dayKey}-open`} className="sr-only">Začátek - {DAY_NAMES[index]}</label>
-                              <input
-                                id={`${dayKey}-open`}
-                                type="time"
-                                value={dayHours?.open || '08:00'}
-                                onChange={(e) => setDayHours(dayKey, 'open', e.target.value)}
-                                className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
-                              />
-                              <span className="text-slate-400" aria-hidden="true">–</span>
-                              <label htmlFor={`${dayKey}-close`} className="sr-only">Konec - {DAY_NAMES[index]}</label>
-                              <input
-                                id={`${dayKey}-close`}
-                                type="time"
-                                value={dayHours?.close || '16:30'}
-                                onChange={(e) => setDayHours(dayKey, 'close', e.target.value)}
-                                className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-orange-300"
-                              />
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <WeekScheduleEditor
+                    week="odd"
+                    schedule={workingHours.oddWeek}
+                    storeIds={selectedStores}
+                  />
                 )}
               </div>
             )}

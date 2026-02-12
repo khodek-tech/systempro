@@ -1,5 +1,5 @@
 # SYSTEM.PRO - Shifts Module Specification
-# Modul pro plánování a přehled směn
+# Modul pro plánování a přehled směn zaměstnanců
 
 module:
   id: shifts
@@ -27,6 +27,11 @@ access:
     Vedoucí a Majitel mohou přepínat mezi zaměstnanci/prodejnami.
 
 data_model:
+  employeeWorkingHours:
+    alternating: boolean  # true = střídání lichý/sudý týden
+    oddWeek: StoreOpeningHours  # Rozvrh pro lichý týden (nebo jediný rozvrh)
+    evenWeek?: StoreOpeningHours  # Rozvrh pro sudý týden (jen pokud alternating=true)
+
   shiftsState:
     shiftsViewMode: card | view
     selectedStoreId: string | null
@@ -37,7 +42,7 @@ data_model:
     date: Date
     dayOfWeek: number  # 0=Ne, 1=Po, ..., 6=So
     isWorkDay: boolean  # pracuje uživatel tento den
-    isShortWeek: boolean  # je to krátký týden
+    isOddWeek: boolean  # je lichý ISO týden
     openingHours?: DayOpeningHours  # pracovní doba
 
   dayOpeningHours:
@@ -53,40 +58,45 @@ features:
       - Zobrazení celého měsíce
       - Barevné rozlišení pracovních dnů
       - Možnost navigace mezi měsíci
-      - Zobrazení otevírací doby pro pracovní dny
+      - Zobrazení pracovní doby pro pracovní dny
+      - Pokud workingHours není nastavena, zobrazí se "Pracovní doba není nastavena"
 
-  - id: short_long_weeks
-    name: Krátké/dlouhé týdny
-    description: Střídání krátkých a dlouhých týdnů
+  - id: odd_even_weeks
+    name: Lichý/sudý týden
+    description: Volitelné střídání lichých a sudých týdnů
     acceptance_criteria:
-      - Krátký týden: St, Čt (2 dny)
-      - Dlouhý týden: Po, Út, Pá, So, Ne (5 dní)
-      - Střídání podle ISO týdne a startsWithShortWeek
-      - Vizuální rozlišení krátkého/dlouhého týdne
+      - Střídání dle ISO week čísla (lichý/sudý)
+      - Zapíná se přes alternating flag v EmployeeWorkingHours
+      - Lichý týden = oddWeek rozvrh, sudý = evenWeek rozvrh
+      - Badges "Lichý"/"Sudý" jen pokud alternating=true
+      - Bez alternating se používá oddWeek jako jediný rozvrh
 
   - id: store_selection
     name: Výběr prodejny
-    description: Filtrování směn podle prodejny
+    description: Filtrování zaměstnanců podle prodejny (pro adminy/vedoucí)
     acceptance_criteria:
       - Pouze pro uživatele s viewMappings
-      - Výběr prodejny zobrazí zaměstnance dané prodejny
+      - Výběr prodejny filtruje zaměstnance dané prodejny
       - Pokud jen vlastní směny, výběr není dostupný
+      - Prodejna se nepoužívá pro určení hodin (vždy z user.workingHours)
 
-  - id: opening_hours
-    name: Otevírací doba
-    description: Zobrazení pracovní doby pro směnu
+  - id: employee_working_hours
+    name: Pracovní doba zaměstnance
+    description: Každý zaměstnanec má vlastní pracovní dobu
     acceptance_criteria:
-      - Priorita: otevírací doba prodejny > pracovní doba uživatele
-      - Zobrazení času od-do pro pracovní dny
-      - Zavřené dny mají speciální označení
-
-  - id: user_working_hours
-    name: Pracovní doba uživatele
-    description: Individuální pracovní doba pro role bez prodejny
-    acceptance_criteria:
-      - Používá se když uživatel nemá přiřazenou prodejnu
-      - Definováno v user.workingHours
+      - Vždy se používá user.workingHours (žádný fallback na prodejnu)
       - Může být sameAllWeek nebo per den
+      - Se střídáním: oddWeek pro lichý týden, evenWeek pro sudý
+      - Bez střídání: oddWeek jako jediný rozvrh
+      - Zdroj pracovní doby vždy "Vlastní"
+
+  - id: copy_from_store
+    name: Kopírovat z prodejny
+    description: Předvyplnění pracovní doby z otevírací doby prodejny
+    acceptance_criteria:
+      - Tlačítko dostupné jen pokud zaměstnanec má přiřazené prodejny
+      - Kopíruje otevírací dobu prodejny do vybraného týdne (lichý/sudý)
+      - Slouží jako pohodlná předvolba, admin může dále upravit
 
 notifications:
   badge:
@@ -95,20 +105,18 @@ notifications:
 
 scenarios:
   - id: SHIFT-001
-    name: Zobrazení vlastních směn Prodavače
+    name: Zobrazení vlastních směn
     preconditions:
-      - Uživatel je přihlášen jako Prodavač
-      - Má přiřazenou prodejnu
+      - Uživatel je přihlášen
+      - Má nastavenou pracovní dobu (workingHours)
     steps:
       - Otevřu modul Směny
       - Vidím kalendář aktuálního měsíce
-      - Pracovní dny jsou zvýrazněny
-      - Vidím rozlišení krátký/dlouhý týden
-      - Kliknu na pracovní den
-      - Vidím otevírací dobu prodejny
+      - Pracovní dny jsou zvýrazněny zeleně
+      - Vidím pracovní dobu pro každý pracovní den
     expected:
       - Zobrazují se pouze moje směny
-      - Správné střídání týdnů
+      - Zdroj pracovní doby: "Vlastní"
 
   - id: SHIFT-002
     name: Navigace mezi měsíci
@@ -125,18 +133,20 @@ scenarios:
       - Přechod přes roky funguje
 
   - id: SHIFT-003
-    name: Krátký vs dlouhý týden
+    name: Střídání lichý/sudý týden
     preconditions:
-      - Uživatel s startsWithShortWeek=true
-      - Týden č.1 (lichý)
+      - Zaměstnanec má alternating=true
+      - oddWeek a evenWeek mají různé rozvrhy
     steps:
-      - Otevřu směny pro týden č.1
-      - Vidím pracovní dny: St, Čt (krátký týden)
-      - Přejdu na týden č.2 (sudý)
-      - Vidím pracovní dny: Po, Út, Pá, So, Ne (dlouhý týden)
+      - Otevřu směny pro lichý ISO týden
+      - Vidím pracovní dny dle oddWeek rozvrhu
+      - Přejdu na sudý ISO týden
+      - Vidím pracovní dny dle evenWeek rozvrhu
+      - Vidím badge "Lichý" resp. "Sudý"
     expected:
-      - Liché týdny = krátký (pro startsWithShortWeek=true)
-      - Sudé týdny = dlouhý
+      - Lichý ISO týden používá oddWeek
+      - Sudý ISO týden používá evenWeek
+      - Badges se zobrazují jen při alternating
 
   - id: SHIFT-004
     name: Vedoucí vidí směny podřízených
@@ -146,48 +156,70 @@ scenarios:
     steps:
       - Otevřu modul Směny
       - Vidím výběr prodejny
-      - Vyberu prodejnu "Bohnice"
-      - Zobrazí se směny zaměstnanců na Bohnicích
-      - Vidím seznam zaměstnanců a jejich směny
+      - Vyberu prodejnu
+      - Zobrazí se zaměstnanci dané prodejny
     expected:
       - Vedoucí vidí všechny podřízené
       - Filtrování podle prodejny funguje
 
   - id: SHIFT-005
-    name: Zaměstnanec bez prodejny (Skladník)
+    name: Zaměstnanec bez střídání (skladník)
     preconditions:
-      - Uživatel je Skladník s definovanou pracovní dobou
-      - Nemá přiřazenou prodejnu
+      - Zaměstnanec má alternating=false
+      - oddWeek: Po-Pá 08:00-16:30, So+Ne volno
     steps:
       - Otevřu modul Směny
-      - Vidím své směny podle workingHours
-      - Po-Pá: 08:00-16:30
-      - So, Ne: zavřeno
+      - Vidím směny dle oddWeek rozvrhu
+      - Žádné badges "Lichý"/"Sudý"
     expected:
-      - Směny podle user.workingHours
-      - Bez střídání krátkých/dlouhých týdnů
+      - Směny podle oddWeek (jediný rozvrh)
+      - Bez rozlišení lichý/sudý
+
+  - id: SHIFT-006
+    name: Zaměstnanec bez pracovní doby
+    preconditions:
+      - Zaměstnanec nemá nastavenou workingHours
+    steps:
+      - Otevřu modul Směny
+    expected:
+      - Zobrazí se zpráva "Pracovní doba není nastavena"
+      - Žádný kalendář
+
+  - id: SHIFT-007
+    name: Kopírování pracovní doby z prodejny
+    preconditions:
+      - Zaměstnanec má přiřazenu prodejnu s definovanou otevírací dobou
+      - Formulář úpravy zaměstnance je otevřen
+    steps:
+      - Zapnu pracovní dobu
+      - Kliknu "Kopírovat z prodejny"
+      - Pracovní doba se předvyplní dle otevírací doby prodejny
+      - Upravím dle potřeby
+    expected:
+      - Otevírací doba prodejny se zkopíruje do vybraného týdne
+      - Admin může dále upravit
 
 edge_cases:
   - id: SHIFT-E001
     name: Prodejna bez otevírací doby
     description: Prodejna nemá definované openingHours
     expected: >
-      Použijí se user.workingHours pokud existují.
-      Jinak se směny nezobrazují nebo defaultní hodnoty.
+      Tlačítko "Kopírovat z prodejny" se nezobrazí.
+      Pracovní doba zaměstnance se musí nastavit ručně.
 
   - id: SHIFT-E002
-    name: Jediný zaměstnanec na prodejně
-    description: Prodejna má pouze jednoho přiřazeného zaměstnance
+    name: Zaměstnanec bez prodejny
+    description: Zaměstnanec nemá přiřazenou prodejnu (skladník)
     expected: >
-      Zaměstnanec pracuje všechny dny kdy je prodejna otevřená.
-      Žádné střídání krátkých/dlouhých týdnů.
+      Pracovní doba se bere výhradně z user.workingHours.
+      Tlačítko "Kopírovat z prodejny" se nezobrazí.
 
   - id: SHIFT-E003
     name: Více prodejen přiřazených uživateli
     description: Uživatel má více prodejen v storeIds
     expected: >
-      Směny se počítají pro první prodejnu (storeIds[0]).
-      (Potenciální vylepšení: výběr prodejny)
+      Kopírování z prodejny použije první prodejnu (storeIds[0]).
+      Výběr prodejny v kalendáři slouží jen jako filtr zaměstnanců.
 
   - id: SHIFT-E004
     name: Přechod roku (prosinec/leden)
@@ -195,3 +227,10 @@ edge_cases:
     expected: >
       Rok se automaticky aktualizuje.
       ISO týdny pokračují korektně přes hranici roku.
+
+  - id: SHIFT-E005
+    name: Zapnutí/vypnutí střídání
+    description: Admin zapíná/vypíná alternating v nastavení zaměstnance
+    expected: >
+      Při zapnutí se oddWeek převede na per-day mód a vytvoří se prázdný evenWeek.
+      Při vypnutí se zachová oddWeek, evenWeek se zahodí.

@@ -1,13 +1,12 @@
 import { create } from 'zustand';
-import { DayOpeningHours, Store, User } from '@/shared/types';
-import { useStoresStore } from '@/core/stores/stores-store';
+import { DayOpeningHours, EmployeeWorkingHours, Store, StoreOpeningHours, User } from '@/shared/types';
 import { useUsersStore } from '@/core/stores/users-store';
 
 export interface ShiftDay {
   date: Date;
   dayOfWeek: number; // 0 = Sunday, 1 = Monday, ...
   isWorkDay: boolean;
-  isShortWeek: boolean;
+  isOddWeek: boolean;
   openingHours?: DayOpeningHours;
 }
 
@@ -28,7 +27,7 @@ interface ShiftsActions {
 
   // Calculation functions
   getWeekNumber: (date: Date) => number;
-  isShortWeekForUser: (userId: string, date: Date) => boolean;
+  isOddWeek: (date: Date) => boolean;
   getShiftsForMonth: (
     userId: string,
     month: number,
@@ -36,8 +35,40 @@ interface ShiftsActions {
   ) => ShiftDay[];
   getOpeningHoursForDay: (store: Store, dayOfWeek: number) => DayOpeningHours | undefined;
   getUsersForStore: (storeId: string) => User[];
-  isWorkDayForUser: (userId: string, storeId: string | null, date: Date) => boolean;
-  getEffectiveWorkingHours: (userId: string, storeId: string | null, dayOfWeek: number) => DayOpeningHours | undefined;
+  isWorkDayForUser: (userId: string, date: Date) => boolean;
+  getEffectiveWorkingHours: (userId: string, dayOfWeek: number, date: Date) => DayOpeningHours | undefined;
+}
+
+/**
+ * Helper: get DayOpeningHours from a StoreOpeningHours schedule for a given day of week.
+ */
+function getDayFromSchedule(schedule: StoreOpeningHours, dayOfWeek: number): DayOpeningHours | undefined {
+  if (schedule.sameAllWeek) {
+    return schedule.default;
+  }
+
+  const dayMap: Record<number, keyof StoreOpeningHours> = {
+    0: 'sunday',
+    1: 'monday',
+    2: 'tuesday',
+    3: 'wednesday',
+    4: 'thursday',
+    5: 'friday',
+    6: 'saturday',
+  };
+
+  const dayKey = dayMap[dayOfWeek];
+  return schedule[dayKey] as DayOpeningHours | undefined;
+}
+
+/**
+ * Helper: get the active week schedule from EmployeeWorkingHours based on odd/even week.
+ */
+function getActiveWeekSchedule(wh: EmployeeWorkingHours, oddWeek: boolean): StoreOpeningHours {
+  if (!wh.alternating) {
+    return wh.oddWeek;
+  }
+  return oddWeek ? wh.oddWeek : (wh.evenWeek ?? wh.oddWeek);
 }
 
 export const useShiftsStore = create<ShiftsState & ShiftsActions>()((set, get) => {
@@ -76,7 +107,7 @@ export const useShiftsStore = create<ShiftsState & ShiftsActions>()((set, get) =
       }
     },
 
-    // Get ISO week number (1.1.2024 is in week 1)
+    // Get ISO week number
     getWeekNumber: (date: Date) => {
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
       const dayNum = d.getUTCDay() || 7;
@@ -85,84 +116,26 @@ export const useShiftsStore = create<ShiftsState & ShiftsActions>()((set, get) =
       return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
     },
 
-    // Determine if it's a short week for the user
-    isShortWeekForUser: (userId: string, date: Date) => {
+    // Determine if the ISO week number is odd
+    isOddWeek: (date: Date) => {
       const { getWeekNumber } = get();
-      const user = useUsersStore.getState().getUserById(userId);
-      if (!user) return false;
-
-      const weekNum = getWeekNumber(date);
-      const isOddWeek = weekNum % 2 === 1;
-
-      // If startsWithShortWeek is true:
-      //   - Odd weeks = short week
-      //   - Even weeks = long week
-      // If startsWithShortWeek is false:
-      //   - Odd weeks = long week
-      //   - Even weeks = short week
-      if (user.startsWithShortWeek) {
-        return isOddWeek;
-      }
-      return !isOddWeek;
+      return getWeekNumber(date) % 2 === 1;
     },
 
-    // Get opening hours for a specific day of week
+    // Get opening hours for a specific day of week from a store
     getOpeningHoursForDay: (store: Store, dayOfWeek: number): DayOpeningHours | undefined => {
       if (!store.openingHours) return undefined;
-
-      if (store.openingHours.sameAllWeek) {
-        return store.openingHours.default;
-      }
-
-      const dayMap: Record<number, keyof typeof store.openingHours> = {
-        0: 'sunday',
-        1: 'monday',
-        2: 'tuesday',
-        3: 'wednesday',
-        4: 'thursday',
-        5: 'friday',
-        6: 'saturday',
-      };
-
-      const dayKey = dayMap[dayOfWeek];
-      return store.openingHours[dayKey] as DayOpeningHours | undefined;
+      return getDayFromSchedule(store.openingHours, dayOfWeek);
     },
 
-    // Get effective working hours for a user (priority: store > user)
-    getEffectiveWorkingHours: (userId: string, storeId: string | null, dayOfWeek: number): DayOpeningHours | undefined => {
-      const { getOpeningHoursForDay } = get();
+    // Get effective working hours for a user on a specific day
+    getEffectiveWorkingHours: (userId: string, dayOfWeek: number, date: Date): DayOpeningHours | undefined => {
       const user = useUsersStore.getState().getUserById(userId);
-      if (!user) return undefined;
+      if (!user?.workingHours) return undefined;
 
-      // Priority 1: If store is assigned and has opening hours, use store hours
-      if (storeId) {
-        const store = useStoresStore.getState().getStoreById(storeId);
-        if (store?.openingHours) {
-          return getOpeningHoursForDay(store, dayOfWeek);
-        }
-      }
-
-      // Priority 2: Use user's own working hours
-      if (user.workingHours) {
-        if (user.workingHours.sameAllWeek) {
-          return user.workingHours.default;
-        }
-
-        const dayMap: Record<number, keyof typeof user.workingHours> = {
-          0: 'sunday',
-          1: 'monday',
-          2: 'tuesday',
-          3: 'wednesday',
-          4: 'thursday',
-          5: 'friday',
-          6: 'saturday',
-        };
-
-        const dayKey = dayMap[dayOfWeek];
-        return user.workingHours[dayKey] as DayOpeningHours | undefined;
-      }
-
-      return undefined;
+      const { isOddWeek: isOdd } = get();
+      const schedule = getActiveWeekSchedule(user.workingHours, isOdd(date));
+      return getDayFromSchedule(schedule, dayOfWeek);
     },
 
     // Get users assigned to a specific store
@@ -172,63 +145,23 @@ export const useShiftsStore = create<ShiftsState & ShiftsActions>()((set, get) =
     },
 
     // Determine if a user works on a specific day
-    isWorkDayForUser: (userId: string, storeId: string | null, date: Date): boolean => {
-      const { isShortWeekForUser, getEffectiveWorkingHours, getUsersForStore } = get();
-      const dayOfWeek = date.getDay();
+    isWorkDayForUser: (userId: string, date: Date): boolean => {
+      const user = useUsersStore.getState().getUserById(userId);
+      if (!user?.workingHours) return false;
 
-      // If user has a store assigned
-      if (storeId) {
-        const store = useStoresStore.getState().getStoreById(storeId);
-        if (!store) return false;
+      const { isOddWeek: isOdd } = get();
+      const schedule = getActiveWeekSchedule(user.workingHours, isOdd(date));
+      const dayHours = getDayFromSchedule(schedule, date.getDay());
 
-        const openingHours = getEffectiveWorkingHours(userId, storeId, dayOfWeek);
-
-        // If closed that day, no one works
-        if (!openingHours || openingHours.closed) return false;
-
-        const storeUsers = getUsersForStore(storeId);
-
-        // If only 1 employee on the store, they work all open days
-        if (storeUsers.length === 1) {
-          return storeUsers[0].id === userId;
-        }
-
-        // If 2 employees, alternate short/long weeks
-        if (storeUsers.length >= 2) {
-          const isShortWeek = isShortWeekForUser(userId, date);
-
-          // Short week: Wednesday (3), Thursday (4) = 2 days
-          // Long week: Monday (1), Tuesday (2), Friday (5), Saturday (6), Sunday (0) = 5 days
-          const shortWeekDays = [3, 4]; // St, Čt
-          const longWeekDays = [1, 2, 5, 6, 0]; // Po, Út, Pá, So, Ne
-
-          if (isShortWeek) {
-            return shortWeekDays.includes(dayOfWeek);
-          }
-          return longWeekDays.includes(dayOfWeek);
-        }
-
-        return false;
-      }
-
-      // User without store - use their own working hours
-      const workingHours = getEffectiveWorkingHours(userId, null, dayOfWeek);
-      if (!workingHours || workingHours.closed) return false;
-
+      if (!dayHours || dayHours.closed) return false;
       return true;
     },
 
     // Get all shifts for a user in a specific month
     getShiftsForMonth: (userId: string, month: number, year: number): ShiftDay[] => {
-      const { isShortWeekForUser, getEffectiveWorkingHours, isWorkDayForUser } = get();
+      const { isOddWeek: isOdd, isWorkDayForUser, getEffectiveWorkingHours } = get();
       const user = useUsersStore.getState().getUserById(userId);
-      if (!user) return [];
-
-      // Determine the store to use (if any)
-      const storeId = user.storeIds.length > 0 ? user.storeIds[0] : null;
-
-      // User must have either a store or working hours
-      if (!storeId && !user.workingHours) return [];
+      if (!user?.workingHours) return [];
 
       const shifts: ShiftDay[] = [];
       const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -236,15 +169,15 @@ export const useShiftsStore = create<ShiftsState & ShiftsActions>()((set, get) =
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day);
         const dayOfWeek = date.getDay();
-        const openingHours = getEffectiveWorkingHours(userId, storeId, dayOfWeek);
-        const isWorkDay = isWorkDayForUser(userId, storeId, date);
-        const isShortWeek = isShortWeekForUser(userId, date);
+        const isWorkDay = isWorkDayForUser(userId, date);
+        const oddWeek = isOdd(date);
+        const openingHours = getEffectiveWorkingHours(userId, dayOfWeek, date);
 
         shifts.push({
           date,
           dayOfWeek,
           isWorkDay,
-          isShortWeek,
+          isOddWeek: oddWeek,
           openingHours: openingHours?.closed ? undefined : openingHours,
         });
       }
