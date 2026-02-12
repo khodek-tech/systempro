@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { Send, Paperclip, X, FileText, Image as ImageIcon, FileSpreadsheet, File as FileIcon, Smile } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import emojiData from '@emoji-mart/data';
@@ -33,8 +33,47 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
   const [text, setText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [pickerPos, setPickerPos] = useState({ bottom: 0, left: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate fixed position when picker opens
+  useEffect(() => {
+    if (showEmojiPicker && emojiButtonRef.current) {
+      const rect = emojiButtonRef.current.getBoundingClientRect();
+      setPickerPos({
+        bottom: window.innerHeight - rect.top + 8,
+        left: rect.left,
+      });
+    }
+  }, [showEmojiPicker]);
+
+  // Click-outside handler using coordinates (Shadow DOM compatible)
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (emojiButtonRef.current?.contains(e.target as Node)) return;
+    if (emojiPickerRef.current) {
+      const rect = emojiPickerRef.current.getBoundingClientRect();
+      if (
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom
+      ) return;
+    }
+    setShowEmojiPicker(false);
+  }, []);
+
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    // Delay to avoid catching the opening click
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker, handleClickOutside]);
 
   const handleSubmit = () => {
     if (!text.trim() && selectedFiles.length === 0) return;
@@ -154,36 +193,32 @@ export function ChatMessageInput({ onSend, disabled = false }: ChatMessageInputP
         />
 
         {/* Emoji picker */}
-        <div className="relative">
-          <button
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            disabled={disabled}
-            className="flex-shrink-0 p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
-            title="Emoji"
-            aria-label="Vložit emoji"
+        <button
+          ref={emojiButtonRef}
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          disabled={disabled}
+          className="flex-shrink-0 p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+          title="Emoji"
+          aria-label="Vložit emoji"
+        >
+          <Smile className="w-5 h-5" />
+        </button>
+        {showEmojiPicker && (
+          <div
+            ref={emojiPickerRef}
+            className="fixed z-50"
+            style={{ bottom: pickerPos.bottom, left: pickerPos.left }}
           >
-            <Smile className="w-5 h-5" />
-          </button>
-          {showEmojiPicker && (
-            <>
-              {/* Transparent backdrop to catch outside clicks */}
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowEmojiPicker(false)}
-              />
-              <div className="absolute bottom-full left-0 mb-2 z-50">
-                <EmojiPicker
-                  data={emojiData}
-                  onEmojiSelect={handleEmojiSelect}
-                  locale="cs"
-                  theme="light"
-                  previewPosition="none"
-                  skinTonePosition="none"
-                />
-              </div>
-            </>
-          )}
-        </div>
+            <EmojiPicker
+              data={emojiData}
+              onEmojiSelect={handleEmojiSelect}
+              locale="cs"
+              theme="light"
+              previewPosition="none"
+              skinTonePosition="none"
+            />
+          </div>
+        )}
 
         <textarea
           ref={textareaRef}
