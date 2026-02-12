@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { Search, MessageCirclePlus, ChevronDown, ChevronRight } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
+import { getDirectGroupDisplayName, getDirectGroupBothNames, sortGroupsByLastMessage } from '@/features/chat';
 import { ROLE_IDS } from '@/lib/constants';
 import { ChatGroupItem } from './ChatGroupItem';
 import { ChatNewDmModal } from './ChatNewDmModal';
 
 export function ChatGroupList() {
-  const { selectedGroupId, selectGroup, getGroupsForUser, searchQuery, setSearchQuery, openNewDm } =
+  const { selectedGroupId, selectGroup, getGroupsForUser, searchQuery, setSearchQuery, openNewDm, messages } =
     useChatStore();
   const { currentUser, activeRoleId } = useAuthStore();
   const [showOthersDms, setShowOthersDms] = useState(false);
@@ -31,16 +31,16 @@ export function ChatGroupList() {
       })
     : groups;
 
-  // Split into categories
-  const groupChats = filteredGroups.filter((g) => g.type === 'group');
-  const ownDms = filteredGroups.filter(
-    (g) => g.type === 'direct' && currentUser && g.memberIds.includes(currentUser.id)
+  // Split own conversations from admin-visible others' DMs
+  const visibleGroups = filteredGroups.filter(
+    (g) => g.type === 'group' || (g.type === 'direct' && currentUser && g.memberIds.includes(currentUser.id))
   );
-  const othersDms = filteredGroups.filter(
-    (g) => g.type === 'direct' && currentUser && !g.memberIds.includes(currentUser.id)
+  const othersDms = sortGroupsByLastMessage(
+    filteredGroups.filter(
+      (g) => g.type === 'direct' && currentUser && !g.memberIds.includes(currentUser.id)
+    ),
+    messages
   );
-
-  const visibleGroups = [...groupChats, ...ownDms];
 
   return (
     <div className="flex flex-col h-full">

@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { ROLE_IDS } from '@/lib/constants';
-import { getLastMessageInGroup, sortGroupsByLastMessage, sortDirectGroupsAlphabetically } from './chat-helpers';
+import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
 
 interface ChatState {
   groups: ChatGroup[];
@@ -578,15 +578,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       ? groups
       : groups.filter((g) => g.memberIds.includes(userId));
 
-    // Split into admin groups and direct groups
-    const adminGroups = userGroups.filter((g) => g.type === 'group');
-    const directGroups = userGroups.filter((g) => g.type === 'direct');
-
-    // Sort admin groups by last message, direct groups alphabetically by other person's name
-    const sortedAdminGroups = sortGroupsByLastMessage(adminGroups, messages);
-    const sortedDirectGroups = sortDirectGroupsAlphabetically(directGroups, userId);
-
-    return [...sortedAdminGroups, ...sortedDirectGroups];
+    return sortGroupsByLastMessage(userGroups, messages);
   },
 
   getMessagesForGroup: (groupId) => {
