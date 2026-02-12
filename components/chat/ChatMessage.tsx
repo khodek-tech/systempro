@@ -94,20 +94,18 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
           }}
           className={cn(
             'w-full text-left rounded-xl px-3 py-2 mb-1 border-l-4 cursor-pointer transition-colors',
-            isOwnMessage
-              ? 'bg-blue-400/30 border-l-blue-300 hover:bg-blue-400/40'
-              : 'bg-slate-50 border-l-green-400 hover:bg-slate-100'
+            'bg-slate-50 border-l-green-400 hover:bg-slate-100'
           )}
         >
           <p className={cn(
             'text-xs font-semibold',
-            isOwnMessage ? 'text-white' : 'text-green-600'
+            'text-green-600'
           )}>
             {replyToSender?.fullName || 'Neznámý'}
           </p>
           <p className={cn(
             'text-xs truncate',
-            isOwnMessage ? 'text-blue-100' : 'text-slate-500'
+            'text-slate-500'
           )}>
             {replyToMessage.text.length > 80
               ? replyToMessage.text.slice(0, 80) + '...'
