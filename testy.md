@@ -974,13 +974,14 @@
 | 3 | `curl -H "Authorization: Bearer <CRON_SECRET>" /api/cron/tasks-repeat` | 200 + JSON s createdTasks=1 |
 | 4 | Zkontrolovat tabulku ukoly | Nový úkol s zdroj_opakovani = původní ID |
 
-### CRON-003: Browser polling odstraněn
+### CRON-003: Email polling odstraněn, chat/tasks mají auto-sync fallback
 | Krok | Akce | Očekávaný výsledek |
 |------|------|--------------------|
 | 1 | Otevřít app v prohlížeči | Přihlášen |
-| 2 | Otevřít Network tab, filtr: /api/email/sync | Žádné periodické requesty |
-| 3 | Počkat 2 minuty | Stále žádné sync requesty z browseru |
-| 4 | Zkontrolovat Realtime WebSocket | WS spojení aktivní (chat, email, tasks) |
+| 2 | Otevřít Network tab, filtr: /api/email/sync | Žádné periodické email sync requesty |
+| 3 | Network tab, filtr: chat_zpravy | Periodické requesty ~15s (chat auto-sync) |
+| 4 | Network tab, filtr: ukoly | Periodické requesty ~30s (tasks auto-sync) |
+| 5 | Zkontrolovat Realtime WebSocket | WS spojení aktivní (chat, email, tasks) |
 
 ### CRON-004: Manuální sync stále funguje
 | Krok | Akce | Očekávaný výsledek |
@@ -989,12 +990,13 @@
 | 2 | Kliknout "Synchronizovat" | Spinner, pak toast "Synchronizace dokončena" |
 | 3 | Nové zprávy se zobrazí | Data aktualizována |
 
-### CRON-005: Realtime funguje bez pollingu
+### CRON-005: Realtime + auto-sync fallback funguje
 | Krok | Akce | Očekávaný výsledek |
 |------|------|--------------------|
-| 1 | Otevřít chat ve dvou oknech | Oba připojeni |
-| 2 | Uživatel A pošle zprávu | Zpráva se okamžitě zobrazí u B |
-| 3 | Zkontrolovat Network tab u B | Žádný polling, pouze WebSocket |
+| 1 | Otevřít chat ve dvou oknech (dva uživatelé) | Oba připojeni |
+| 2 | Uživatel A pošle zprávu | Zpráva se zobrazí u B do 15s (Realtime okamžitě, auto-sync max 15s) |
+| 3 | Uživatel A vytvoří úkol pro B | Úkol se zobrazí u B do 30s |
+| 4 | Přepnout tab u B pryč a zpět | Při návratu se data okamžitě refreshnou (visibility change) |
 
 ### CRON-006: Reconciliace ghost messages
 | Krok | Akce | Očekávaný výsledek |
@@ -1029,7 +1031,10 @@
 - Reconciliace: běží pouze v incremental mode (ne initial sync)
 - Timeout: per-account 120s v cron, per-folder error neukončí celý sync
 - Stuck log cleanup: logy starší 10 min ve stavu `running` → automaticky `timeout`
+- Chat/Tasks auto-sync: přeskočí polling když tab není viditelný (`document.visibilityState !== 'visible'`)
+- Chat/Tasks auto-sync: při návratu na tab (visibility change) se data okamžitě refreshnou
+- Chat/Tasks auto-sync: cleanup při odhlášení / unmount (clearInterval + removeEventListener)
 
 ---
 
-*Poslední aktualizace: 2026-02-12*
+*Poslední aktualizace: 2026-02-13*

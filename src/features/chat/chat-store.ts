@@ -22,6 +22,8 @@ import { useAuthStore } from '@/core/stores/auth-store';
 import { ROLE_IDS } from '@/lib/constants';
 import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
 
+let _chatVisibilityHandler: (() => void) | null = null;
+
 interface ChatState {
   groups: ChatGroup[];
   messages: ChatMessage[];
@@ -36,6 +38,7 @@ interface ChatState {
   isNewDmOpen: boolean;
   replyingToMessageId: string | null;
   _realtimeChannel: RealtimeChannel | null;
+  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface ChatActions {
@@ -81,6 +84,10 @@ interface ChatActions {
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
 
+  // Auto-sync polling
+  startAutoSync: () => void;
+  stopAutoSync: () => void;
+
   // Getters
   getGroupsForUser: (userId: string) => ChatGroup[];
   getMessagesForGroup: (groupId: string) => ChatMessage[];
@@ -104,6 +111,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   isNewDmOpen: false,
   replyingToMessageId: null,
   _realtimeChannel: null,
+  _autoSyncInterval: null,
 
   // Fetch
   fetchChatData: async () => {
@@ -525,7 +533,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         },
       )
       .subscribe((status, err) => {
-        if (err) logger.error(`[chat-realtime] ${status}`);
+        if (err) logger.error(`[chat-realtime] ${status}:`, err);
         // Re-fetch data after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           const supabaseRefresh = createClient();
@@ -568,6 +576,54 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   unsubscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
     set({ _realtimeChannel: null });
+  },
+
+  // Auto-sync polling
+  startAutoSync: () => {
+    get().stopAutoSync();
+
+    const syncNow = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+
+      const supabase = createClient();
+      Promise.all([
+        supabase.from('chat_zpravy').select('*'),
+        supabase.from('chat_stav_precteni').select('*'),
+        supabase.from('chat_skupiny').select('*'),
+      ]).then(([msgsResult, readResult, groupsResult]) => {
+        if (!msgsResult.error && msgsResult.data) {
+          set({ messages: msgsResult.data.map(mapDbToChatMessage) });
+        }
+        if (!readResult.error && readResult.data) {
+          set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
+        }
+        if (!groupsResult.error && groupsResult.data) {
+          set({ groups: groupsResult.data.map(mapDbToChatGroup) });
+        }
+      }).catch(() => {
+        logger.error('[chat-autosync] sync failed');
+      });
+    };
+
+    _chatVisibilityHandler = () => {
+      if (document.visibilityState === 'visible') syncNow();
+    };
+    document.addEventListener('visibilitychange', _chatVisibilityHandler);
+
+    const interval = setInterval(syncNow, 2_000);
+    set({ _autoSyncInterval: interval });
+  },
+
+  stopAutoSync: () => {
+    const interval = get()._autoSyncInterval;
+    if (interval) {
+      clearInterval(interval);
+      set({ _autoSyncInterval: null });
+    }
+    if (_chatVisibilityHandler) {
+      document.removeEventListener('visibilitychange', _chatVisibilityHandler);
+      _chatVisibilityHandler = null;
+    }
   },
 
   // Getters

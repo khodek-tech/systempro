@@ -12,6 +12,8 @@ import {
   getUserPrimaryRoleId,
 } from './tasks-helpers';
 
+let _tasksVisibilityHandler: (() => void) | null = null;
+
 type TaskTab = 'my-tasks' | 'created-by-me' | 'all';
 
 interface TasksState {
@@ -26,6 +28,7 @@ interface TasksState {
   statusFilter: TaskStatus | 'all';
   priorityFilter: TaskPriority | 'all';
   _realtimeChannel: RealtimeChannel | null;
+  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface TasksActions {
@@ -86,6 +89,10 @@ interface TasksActions {
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
 
+  // Auto-sync polling
+  startAutoSync: () => void;
+  stopAutoSync: () => void;
+
   // Repeating tasks
   checkAndCreateRepeatingTasks: () => Promise<void>;
 }
@@ -117,6 +124,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   statusFilter: 'all',
   priorityFilter: 'all',
   _realtimeChannel: null,
+  _autoSyncInterval: null,
 
   // Fetch
   fetchTasks: async () => {
@@ -805,7 +813,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         },
       )
       .subscribe((status, err) => {
-        if (err) logger.error(`[tasks-realtime] ${status}`);
+        if (err) logger.error(`[tasks-realtime] ${status}:`, err);
         // Re-fetch tasks after reconnect to catch missed events
         if (status === 'SUBSCRIBED' && get()._loaded) {
           get().fetchTasks();
@@ -818,6 +826,36 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
   unsubscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
     set({ _realtimeChannel: null });
+  },
+
+  // Auto-sync polling
+  startAutoSync: () => {
+    get().stopAutoSync();
+
+    const syncNow = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      get().fetchTasks();
+    };
+
+    _tasksVisibilityHandler = () => {
+      if (document.visibilityState === 'visible') syncNow();
+    };
+    document.addEventListener('visibilitychange', _tasksVisibilityHandler);
+
+    const interval = setInterval(syncNow, 30_000);
+    set({ _autoSyncInterval: interval });
+  },
+
+  stopAutoSync: () => {
+    const interval = get()._autoSyncInterval;
+    if (interval) {
+      clearInterval(interval);
+      set({ _autoSyncInterval: null });
+    }
+    if (_tasksVisibilityHandler) {
+      document.removeEventListener('visibilitychange', _tasksVisibilityHandler);
+      _tasksVisibilityHandler = null;
+    }
   },
 
   // Repeating tasks

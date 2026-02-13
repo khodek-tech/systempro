@@ -74,11 +74,13 @@ async function initializeStores() {
     usePohodaStore.getState().fetchPohodaConfig(),
   ]);
 
-  // Phase 4: Start Realtime subscriptions (polling removed — synced via Vercel Cron Jobs)
+  // Phase 4: Start Realtime subscriptions + auto-sync polling as fallback
   useAttendanceStore.getState().subscribeRealtime();
   useEmailStore.getState().subscribeRealtime();
   useChatStore.getState().subscribeRealtime();
   useTasksStore.getState().subscribeRealtime();
+  useChatStore.getState().startAutoSync();
+  useTasksStore.getState().startAutoSync();
 }
 
 /**
@@ -89,6 +91,8 @@ export function cleanupSubscriptions() {
   useEmailStore.getState().unsubscribeRealtime();
   useChatStore.getState().unsubscribeRealtime();
   useTasksStore.getState().unsubscribeRealtime();
+  useChatStore.getState().stopAutoSync();
+  useTasksStore.getState().stopAutoSync();
 }
 
 /**

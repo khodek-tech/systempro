@@ -2,6 +2,23 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.6.0] - 2026-02-13
+
+### Opraveno
+
+#### Real-time aktualizace chatu a úkolů
+- **Hlavní problém**: Po v2.0.0 (cron centralizace) přestaly fungovat real-time aktualizace — druhý uživatel musel refreshnout stránku
+- **Příčina**: Polling (15s) odstraněn, ale Supabase Realtime subscriptions nebyly spolehlivé (chybějící publikace + RLS politiky)
+- **DB migrace 1**: `ALTER PUBLICATION supabase_realtime ADD TABLE chat_skupiny` — chyběla v publikaci
+- **DB migrace 2**: `anon` SELECT RLS politiky pro `chat_zpravy`, `chat_skupiny`, `chat_stav_precteni`, `ukoly`, `komentare_ukolu` — pojistka pro Realtime eventy
+- `chat-store.ts`: nové metody `startAutoSync()` / `stopAutoSync()` — polling 15s jako fallback
+- `tasks-store.ts`: nové metody `startAutoSync()` / `stopAutoSync()` — polling 30s jako fallback
+- `lib/supabase/init.ts`: auto-sync spuštěn v Phase 4, cleanup v `cleanupSubscriptions()`
+- `chat-store.ts`, `tasks-store.ts`: opraveno error logging v Realtime subscribe callback — loguje `err` místo jen `status`
+- Visibility change listener — při návratu na tab se data okamžitě refreshnou
+
+---
+
 ## [2.5.0] - 2026-02-12
 
 ### Přidáno
