@@ -277,7 +277,7 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   },
 
   syncZasoby: async () => {
-    const { credentials, syncZasobyColumns, syncZasobySklad } = get();
+    const { syncZasobyColumns } = get();
     if (syncZasobyColumns.length === 0) {
       toast.error('Vyberte alespon jeden sloupec');
       return;
@@ -286,22 +286,11 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     set({ isSyncingZasoby: true, syncZasobyProgress: 'Stahování dat z mServeru...' });
 
     try {
-      const response = await fetch('/api/pohoda/sklady/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...credentials,
-          skladId: syncZasobySklad,
-          columns: syncZasobyColumns,
-        }),
-      });
+      const supabase = createClient();
+      const { data, error } = await supabase.functions.invoke('sync-zasoby');
 
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error(text || `Server vrátil chybu ${response.status}`);
+      if (error) {
+        throw new Error(error.message || 'Synchronizace selhala');
       }
 
       if (data.success) {
@@ -322,7 +311,7 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   },
 
   syncPohyby: async () => {
-    const { credentials, syncPohybyColumns } = get();
+    const { syncPohybyColumns } = get();
     if (syncPohybyColumns.length === 0) {
       toast.error('Vyberte alespon jeden sloupec');
       return;
@@ -331,21 +320,11 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     set({ isSyncingPohyby: true, syncPohybyProgress: 'Stahování pohybů z mServeru...' });
 
     try {
-      const response = await fetch('/api/pohoda/pohyby/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...credentials,
-          columns: syncPohybyColumns,
-        }),
-      });
+      const supabase = createClient();
+      const { data, error } = await supabase.functions.invoke('sync-pohyby');
 
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error(text || `Server vrátil chybu ${response.status}`);
+      if (error) {
+        throw new Error(error.message || 'Synchronizace pohybů selhala');
       }
 
       if (data.success) {
