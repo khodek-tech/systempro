@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import iconv from 'iconv-lite';
 import { requireAdmin } from '@/lib/supabase/api-auth';
 import { pohodaCredentialsSchema, parseBody } from '@/lib/api/schemas';
+import { fetchWithRetry } from '@/lib/api/fetch-retry';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -129,7 +130,7 @@ async function fetchAllStockData(
   const authHeader = createAuthHeader(username, password);
   const xmlRequest = createAllStockExportRequest(ico);
 
-  const response = await fetch(mserverUrl, {
+  const response = await fetchWithRetry(mserverUrl, {
     method: 'POST',
     headers: {
       'STW-Authorization': `Basic ${authHeader}`,

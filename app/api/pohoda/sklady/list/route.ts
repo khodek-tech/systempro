@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 import { requireAdmin } from '@/lib/supabase/api-auth';
 import { pohodaCredentialsSchema, parseBody } from '@/lib/api/schemas';
+import { fetchWithRetry } from '@/lib/api/fetch-retry';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const authHeader = createAuthHeader(username, password);
     const xmlRequest = createSkladyListRequest(ico);
 
-    const response = await fetch(mserverUrl, {
+    const response = await fetchWithRetry(mserverUrl, {
       method: 'POST',
       headers: {
         'STW-Authorization': `Basic ${authHeader}`,

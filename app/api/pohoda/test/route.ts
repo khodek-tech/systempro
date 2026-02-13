@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 import { requireAdmin } from '@/lib/supabase/api-auth';
 import { pohodaCredentialsSchema, parseBody } from '@/lib/api/schemas';
+import { fetchWithRetry } from '@/lib/api/fetch-retry';
 
 // Pomocna funkce pro vytvoreni autentizacni hlavicky
 function createAuthHeader(username: string, password: string): string {
@@ -33,14 +34,13 @@ export async function POST(request: NextRequest) {
     // Vytvoreni autentizacni hlavicky
     const authHeader = createAuthHeader(username, password);
 
-    // Volani mServeru
-    const response = await fetch(statusUrl, {
+    // Volani mServeru (s retry pro cold start)
+    const response = await fetchWithRetry(statusUrl, {
       method: 'GET',
       headers: {
         'STW-Authorization': `Basic ${authHeader}`,
         'Content-Type': 'application/xml; charset=Windows-1250',
       },
-      // Timeout 10 sekund
       signal: AbortSignal.timeout(10000),
     });
 
