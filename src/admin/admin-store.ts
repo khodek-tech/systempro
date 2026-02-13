@@ -173,19 +173,28 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   getFilteredData: () => {
     const { storeFilter, employeeFilter, dayFilter, monthFilter, yearFilter, attendanceRecords } = get();
 
-    return attendanceRecords.filter((d) => {
-      const parts = d.date.split('. ');
-      const day = parts[0];
-      const m = parts[1];
-      const y = parts[2];
-      const matchStore =
-        storeFilter === 'all' || d.store.toLowerCase().includes(storeFilter);
-      const matchEmployee = employeeFilter === 'all' || d.user === employeeFilter;
-      const matchDay = dayFilter === 'all' || day === dayFilter;
-      const matchMonth = monthFilter === 'all' || m === monthFilter;
-      const matchYear = yearFilter === 'all' || y === yearFilter;
-      return matchStore && matchEmployee && matchDay && matchMonth && matchYear;
-    });
+    return attendanceRecords
+      .filter((d) => {
+        const parts = d.date.split('. ');
+        const day = parts[0];
+        const m = parts[1];
+        const y = parts[2];
+        const matchStore =
+          storeFilter === 'all' || d.store.toLowerCase().includes(storeFilter);
+        const matchEmployee = employeeFilter === 'all' || d.user === employeeFilter;
+        const matchDay = dayFilter === 'all' || day === dayFilter;
+        const matchMonth = monthFilter === 'all' || m === monthFilter;
+        const matchYear = yearFilter === 'all' || y === yearFilter;
+        return matchStore && matchEmployee && matchDay && matchMonth && matchYear;
+      })
+      .sort((a, b) => {
+        const [aD, aM, aY] = a.date.split('. ').map(Number);
+        const [bD, bM, bY] = b.date.split('. ').map(Number);
+        if (aY !== bY) return aY - bY;
+        if (aM !== bM) return aM - bM;
+        if (aD !== bD) return aD - bD;
+        return (a.in || '99:99').localeCompare(b.in || '99:99');
+      });
   },
 
   getKpiData: () => {
