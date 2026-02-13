@@ -16,6 +16,7 @@ interface AdminState {
   selectedModuleId: string | null;
   storeFilter: string;
   employeeFilter: string;
+  dayFilter: string;
   monthFilter: string;
   yearFilter: string;
   attendanceRecords: AttendanceRecord[];
@@ -51,6 +52,7 @@ interface AdminActions {
   // Filters
   setStoreFilter: (filter: string) => void;
   setEmployeeFilter: (filter: string) => void;
+  setDayFilter: (filter: string) => void;
   setMonthFilter: (filter: string) => void;
   setYearFilter: (filter: string) => void;
   resetFilters: () => void;
@@ -68,6 +70,7 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   selectedModuleId: null,
   storeFilter: 'all',
   employeeFilter: 'all',
+  dayFilter: 'all',
   monthFilter: 'all',
   yearFilter: 'all',
   attendanceRecords: [],
@@ -154,30 +157,34 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   // Filters
   setStoreFilter: (filter) => set({ storeFilter: filter }),
   setEmployeeFilter: (filter) => set({ employeeFilter: filter }),
+  setDayFilter: (filter) => set({ dayFilter: filter }),
   setMonthFilter: (filter) => set({ monthFilter: filter }),
   setYearFilter: (filter) => set({ yearFilter: filter }),
   resetFilters: () =>
     set({
       storeFilter: 'all',
       employeeFilter: 'all',
+      dayFilter: 'all',
       monthFilter: 'all',
       yearFilter: 'all',
     }),
 
   // Computed data
   getFilteredData: () => {
-    const { storeFilter, employeeFilter, monthFilter, yearFilter, attendanceRecords } = get();
+    const { storeFilter, employeeFilter, dayFilter, monthFilter, yearFilter, attendanceRecords } = get();
 
     return attendanceRecords.filter((d) => {
       const parts = d.date.split('. ');
+      const day = parts[0];
       const m = parts[1];
       const y = parts[2];
       const matchStore =
         storeFilter === 'all' || d.store.toLowerCase().includes(storeFilter);
       const matchEmployee = employeeFilter === 'all' || d.user === employeeFilter;
+      const matchDay = dayFilter === 'all' || day === dayFilter;
       const matchMonth = monthFilter === 'all' || m === monthFilter;
       const matchYear = yearFilter === 'all' || y === yearFilter;
-      return matchStore && matchEmployee && matchMonth && matchYear;
+      return matchStore && matchEmployee && matchDay && matchMonth && matchYear;
     });
   },
 

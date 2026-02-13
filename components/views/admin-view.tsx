@@ -33,12 +33,14 @@ export function AdminView() {
     subView,
     storeFilter,
     employeeFilter,
+    dayFilter,
     monthFilter,
     yearFilter,
     storageUsageBytes,
     setSubView,
     setStoreFilter,
     setEmployeeFilter,
+    setDayFilter,
     setMonthFilter,
     setYearFilter,
     getFilteredData,
@@ -174,6 +176,18 @@ export function AdminView() {
                     {user.fullName}
                   </option>
                 ))}
+            </select>
+            <select
+              value={dayFilter}
+              onChange={(e) => setDayFilter(e.target.value)}
+              className="bg-slate-50 font-medium text-xs rounded-lg px-3 py-2 outline-none border border-slate-200"
+            >
+              <option value="all">Den: Vše</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                <option key={day} value={String(day)}>
+                  {day}.
+                </option>
+              ))}
             </select>
             <select
               value={monthFilter}
