@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger';
 import { formatCzechDate } from '@/shared/utils';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+let _attendanceVisibilityHandler: (() => void) | null = null;
+
 interface AttendanceState {
   isInWork: boolean;
   kasaConfirmed: boolean;
@@ -20,6 +22,7 @@ interface AttendanceState {
   arrivalTimes: Map<string, string>;
   _loaded: boolean;
   _realtimeChannel: RealtimeChannel | null;
+  _autoSyncInterval: ReturnType<typeof setInterval> | null;
 }
 
 interface AttendanceActions {
@@ -29,6 +32,8 @@ interface AttendanceActions {
   setWorkplace: (type: WorkplaceType, id: string, name: string, requiresKasa: boolean) => void;
   subscribeRealtime: () => void;
   unsubscribeRealtime: () => void;
+  startAutoSync: () => void;
+  stopAutoSync: () => void;
   // Global check-in tracking
   checkInUser: (userId: string) => void;
   checkOutUser: (userId: string) => void;
@@ -49,6 +54,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
   arrivalTimes: new Map<string, string>(),
   _loaded: false,
   _realtimeChannel: null,
+  _autoSyncInterval: null,
 
   fetchTodayAttendance: async () => {
     const supabase = createClient();
@@ -243,7 +249,13 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
           }
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) logger.error(`[attendance-realtime] ${status}:`, err);
+        // Re-fetch after reconnect to catch missed events
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchTodayAttendance();
+        }
+      });
 
     set({ _realtimeChannel: channel });
   },
@@ -251,6 +263,35 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
   unsubscribeRealtime: () => {
     get()._realtimeChannel?.unsubscribe();
     set({ _realtimeChannel: null });
+  },
+
+  startAutoSync: () => {
+    get().stopAutoSync();
+
+    const syncNow = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      get().fetchTodayAttendance();
+    };
+
+    _attendanceVisibilityHandler = () => {
+      if (document.visibilityState === 'visible') syncNow();
+    };
+    document.addEventListener('visibilitychange', _attendanceVisibilityHandler);
+
+    const interval = setInterval(syncNow, 30_000);
+    set({ _autoSyncInterval: interval });
+  },
+
+  stopAutoSync: () => {
+    const interval = get()._autoSyncInterval;
+    if (interval) {
+      clearInterval(interval);
+      set({ _autoSyncInterval: null });
+    }
+    if (_attendanceVisibilityHandler) {
+      document.removeEventListener('visibilitychange', _attendanceVisibilityHandler);
+      _attendanceVisibilityHandler = null;
+    }
   },
 
   // Global check-in tracking actions

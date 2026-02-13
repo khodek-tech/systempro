@@ -3,10 +3,14 @@
 import { Users } from 'lucide-react';
 import { usePresenceStore } from '@/stores/presence-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useAttendanceStore } from '@/features/attendance/attendance-store';
 
 export function PresenceModule() {
   const { activeRoleId } = useAuthStore();
   const { getTodayPresence, openPresenceView } = usePresenceStore();
+  // Subscribe reactively so the component re-renders when attendance data changes
+  void useAttendanceStore((s) => s.checkedInUsers);
+  void useAttendanceStore((s) => s.arrivalTimes);
 
   const records = activeRoleId ? getTodayPresence(activeRoleId) : [];
   const presentCount = records.filter((r) => r.status === 'present').length;

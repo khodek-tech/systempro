@@ -4,6 +4,7 @@ import { ArrowLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePresenceStore } from '@/stores/presence-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { cn } from '@/lib/utils';
 import { PresenceRecord } from '@/types';
 
@@ -21,6 +22,9 @@ function getStatusLabel(record: PresenceRecord): string {
 export function PresenceFullView() {
   const { activeRoleId } = useAuthStore();
   const { getTodayPresence, closePresenceView } = usePresenceStore();
+  // Subscribe reactively so the component re-renders when attendance data changes
+  void useAttendanceStore((s) => s.checkedInUsers);
+  void useAttendanceStore((s) => s.arrivalTimes);
 
   const records = activeRoleId ? getTodayPresence(activeRoleId) : [];
   const presentCount = records.filter((r) => r.status === 'present').length;

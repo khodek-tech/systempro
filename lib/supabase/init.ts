@@ -80,6 +80,7 @@ async function initializeStores() {
   useEmailStore.getState().subscribeRealtime();
   useChatStore.getState().subscribeRealtime();
   useTasksStore.getState().subscribeRealtime();
+  useAttendanceStore.getState().startAutoSync();
   useChatStore.getState().startAutoSync();
   useTasksStore.getState().startAutoSync();
 }
@@ -93,6 +94,7 @@ export function cleanupSubscriptions() {
   useEmailStore.getState().unsubscribeRealtime();
   useChatStore.getState().unsubscribeRealtime();
   useTasksStore.getState().unsubscribeRealtime();
+  useAttendanceStore.getState().stopAutoSync();
   useChatStore.getState().stopAutoSync();
   useTasksStore.getState().stopAutoSync();
 }
