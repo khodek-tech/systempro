@@ -19,6 +19,7 @@ import { exportAttendanceToXls } from '@/lib/export-attendance';
 import { months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
 import { useStoresStore } from '@/stores/stores-store';
+import { useUsersStore } from '@/stores/users-store';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useChatStore } from '@/stores/chat-store';
@@ -31,11 +32,13 @@ export function AdminView() {
   const {
     subView,
     storeFilter,
+    employeeFilter,
     monthFilter,
     yearFilter,
     storageUsageBytes,
     setSubView,
     setStoreFilter,
+    setEmployeeFilter,
     setMonthFilter,
     setYearFilter,
     getFilteredData,
@@ -43,6 +46,7 @@ export function AdminView() {
     fetchStorageUsage,
   } = useAdminStore();
   const { stores } = useStoresStore();
+  const { users } = useUsersStore();
   const { approvalViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
   const { chatViewMode } = useChatStore();
@@ -155,6 +159,21 @@ export function AdminView() {
                   {store.name.toUpperCase()}
                 </option>
               ))}
+            </select>
+            <select
+              value={employeeFilter}
+              onChange={(e) => setEmployeeFilter(e.target.value)}
+              className="bg-slate-50 font-medium text-xs rounded-lg px-3 py-2 outline-none border border-slate-200"
+            >
+              <option value="all">VŠICHNI ZAMĚSTNANCI</option>
+              {users
+                .filter((u) => u.active)
+                .sort((a, b) => a.fullName.localeCompare(b.fullName, 'cs'))
+                .map((user) => (
+                  <option key={user.id} value={user.fullName}>
+                    {user.fullName}
+                  </option>
+                ))}
             </select>
             <select
               value={monthFilter}

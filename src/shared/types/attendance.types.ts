@@ -6,6 +6,7 @@ import { WorkplaceType } from './base.types';
 
 // Attendance record with new workplace structure
 export interface AttendanceRecord {
+  id: number;
   date: string;
   store: string;
   workplaceType: WorkplaceType;

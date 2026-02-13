@@ -339,6 +339,7 @@ export function mapChatReadStatusToDb(status: ChatReadStatus): Record<string, an
 
 export function mapDbToAttendanceRecord(row: any): AttendanceRecord {
   return {
+    id: row.id,
     date: row.datum,
     store: row.prodejna ?? '',
     workplaceType: row.typ_pracoviste ?? 'store',

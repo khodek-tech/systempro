@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AttendanceRecord } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToAttendanceRecord } from '@/lib/supabase/mappers';
@@ -14,12 +15,14 @@ interface AdminState {
   settingsTab: SettingsTab;
   selectedModuleId: string | null;
   storeFilter: string;
+  employeeFilter: string;
   monthFilter: string;
   yearFilter: string;
   attendanceRecords: AttendanceRecord[];
   storageUsageBytes: number;
   _loaded: boolean;
   _loading: boolean;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface KpiData {
@@ -33,6 +36,10 @@ interface AdminActions {
   fetchAttendanceRecords: () => Promise<void>;
   fetchStorageUsage: () => Promise<void>;
 
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
+
   // Navigation
   setSubView: (view: AdminSubView) => void;
   goToMain: () => void;
@@ -43,6 +50,7 @@ interface AdminActions {
 
   // Filters
   setStoreFilter: (filter: string) => void;
+  setEmployeeFilter: (filter: string) => void;
   setMonthFilter: (filter: string) => void;
   setYearFilter: (filter: string) => void;
   resetFilters: () => void;
@@ -59,12 +67,14 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   settingsTab: 'stores',
   selectedModuleId: null,
   storeFilter: 'all',
+  employeeFilter: 'all',
   monthFilter: 'all',
   yearFilter: 'all',
   attendanceRecords: [],
   storageUsageBytes: 0,
   _loaded: false,
   _loading: false,
+  _realtimeChannel: null,
 
   // Fetch
   fetchAttendanceRecords: async () => {
@@ -85,6 +95,54 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
     set({ storageUsageBytes: bytes });
   },
 
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('admin-attendance-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'dochazka',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const record = mapDbToAttendanceRecord(payload.new);
+          set({ attendanceRecords: [...get().attendanceRecords, record] });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'dochazka',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const updated = mapDbToAttendanceRecord(payload.new);
+          set({
+            attendanceRecords: get().attendanceRecords.map((r) =>
+              r.id === updated.id ? updated : r
+            ),
+          });
+        },
+      )
+      .subscribe();
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
+  },
+
   // Navigation
   setSubView: (view) => set({ subView: view }),
   goToMain: () => set({ subView: 'main' }),
@@ -95,18 +153,20 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
 
   // Filters
   setStoreFilter: (filter) => set({ storeFilter: filter }),
+  setEmployeeFilter: (filter) => set({ employeeFilter: filter }),
   setMonthFilter: (filter) => set({ monthFilter: filter }),
   setYearFilter: (filter) => set({ yearFilter: filter }),
   resetFilters: () =>
     set({
       storeFilter: 'all',
+      employeeFilter: 'all',
       monthFilter: 'all',
       yearFilter: 'all',
     }),
 
   // Computed data
   getFilteredData: () => {
-    const { storeFilter, monthFilter, yearFilter, attendanceRecords } = get();
+    const { storeFilter, employeeFilter, monthFilter, yearFilter, attendanceRecords } = get();
 
     return attendanceRecords.filter((d) => {
       const parts = d.date.split('. ');
@@ -114,9 +174,10 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
       const y = parts[2];
       const matchStore =
         storeFilter === 'all' || d.store.toLowerCase().includes(storeFilter);
+      const matchEmployee = employeeFilter === 'all' || d.user === employeeFilter;
       const matchMonth = monthFilter === 'all' || m === monthFilter;
       const matchYear = yearFilter === 'all' || y === yearFilter;
-      return matchStore && matchMonth && matchYear;
+      return matchStore && matchEmployee && matchMonth && matchYear;
     });
   },
 
