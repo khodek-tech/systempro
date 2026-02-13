@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Database,
   Loader2,
@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
   ShoppingCart,
   Warehouse,
+  RotateCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePohodaStore } from '@/features/pohoda';
@@ -59,6 +60,16 @@ export function PohodaSettings() {
     setGenerateVsechnySkladyError,
     setLastUploadedFile,
     setPohodaView,
+    syncZasobyColumns,
+    syncZasobySklad,
+    isSyncingZasoby,
+    syncZasobyProgress,
+    syncZasobyLog,
+    setSyncZasobyColumns,
+    setSyncZasobySklad,
+    saveSyncZasobyConfig,
+    fetchSyncLog,
+    syncZasoby,
   } = usePohodaStore();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -799,6 +810,23 @@ export function PohodaSettings() {
         </div>
       )}
 
+      {/* Synchronizace zasob */}
+      {connectionStatus.isConnected && (
+        <SyncZasobyBlock
+          syncZasobyColumns={syncZasobyColumns}
+          syncZasobySklad={syncZasobySklad}
+          isSyncingZasoby={isSyncingZasoby}
+          syncZasobyProgress={syncZasobyProgress}
+          syncZasobyLog={syncZasobyLog}
+          sklady={sklady}
+          setSyncZasobyColumns={setSyncZasobyColumns}
+          setSyncZasobySklad={setSyncZasobySklad}
+          saveSyncZasobyConfig={saveSyncZasobyConfig}
+          fetchSyncLog={fetchSyncLog}
+          syncZasoby={syncZasoby}
+        />
+      )}
+
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
         <h4 className="font-semibold text-blue-900 mb-2">
@@ -810,6 +838,365 @@ export function PohodaSettings() {
           <li>Zkontrolujte, ze mServer bezi (iPodnik, port 4444)</li>
           <li>Vyplnte udaje vyse a otestujte spojeni</li>
         </ol>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Column categories for sync
+// =============================================================================
+
+const SYNC_COLUMN_CATEGORIES = [
+  {
+    label: 'Zakladni',
+    columns: [
+      { key: 'kod', label: 'Kod' },
+      { key: 'nazev', label: 'Nazev' },
+      { key: 'ean', label: 'EAN' },
+      { key: 'plu', label: 'PLU' },
+      { key: 'zkraceny_nazev', label: 'Zkraceny nazev' },
+      { key: 'doplnkovy_text', label: 'Doplnkovy text' },
+    ],
+  },
+  {
+    label: 'Stav',
+    columns: [
+      { key: 'stav_zasoby', label: 'Stav zasoby' },
+      { key: 'mnozstvi_k_vydeji', label: 'K vydeji' },
+      { key: 'prijate_objednavky', label: 'Prijate obj.' },
+      { key: 'rezervace', label: 'Rezervace' },
+      { key: 'mnozstvi_objednane', label: 'Objednane' },
+    ],
+  },
+  {
+    label: 'Ceny',
+    columns: [
+      { key: 'nakupni_cena', label: 'Nakupni cena' },
+      { key: 'prodejni_cena', label: 'Prodejni cena' },
+      { key: 'vazena_nakupni_cena', label: 'Vazena nakupni' },
+      { key: 'fixace_ceny', label: 'Fixace ceny' },
+    ],
+  },
+  {
+    label: 'Jednotky',
+    columns: [
+      { key: 'merna_jednotka', label: 'MJ' },
+      { key: 'merna_jednotka_2', label: 'MJ 2' },
+      { key: 'merna_jednotka_3', label: 'MJ 3' },
+      { key: 'koeficient_2', label: 'Koef. 2' },
+      { key: 'koeficient_3', label: 'Koef. 3' },
+    ],
+  },
+  {
+    label: 'Sklad',
+    columns: [
+      { key: 'cleneni_skladu', label: 'Cleneni skladu' },
+      { key: 'cenova_skupina', label: 'Cenova skupina' },
+      { key: 'dodavatel', label: 'Dodavatel' },
+    ],
+  },
+  {
+    label: 'Objednavky',
+    columns: [
+      { key: 'limit_min', label: 'Limit min' },
+      { key: 'limit_max', label: 'Limit max' },
+      { key: 'nazev_pro_objednavku', label: 'Nazev obj.' },
+      { key: 'mnozstvi_objednavka', label: 'Mnozstvi obj.' },
+    ],
+  },
+  {
+    label: 'Fyzicke',
+    columns: [
+      { key: 'hmotnost', label: 'Hmotnost' },
+      { key: 'objem', label: 'Objem' },
+    ],
+  },
+  {
+    label: 'E-shop',
+    columns: [
+      { key: 'novinka', label: 'Novinka' },
+      { key: 'doprodej', label: 'Doprodej' },
+      { key: 'akce', label: 'Akce' },
+      { key: 'doporucujeme', label: 'Doporucujeme' },
+      { key: 'sleva', label: 'Sleva' },
+      { key: 'pripravujeme', label: 'Pripravujeme' },
+      { key: 'dostupnost', label: 'Dostupnost' },
+    ],
+  },
+  {
+    label: 'Ucetni',
+    columns: [
+      { key: 'stredisko', label: 'Stredisko' },
+      { key: 'cinnost', label: 'Cinnost' },
+      { key: 'zakazka', label: 'Zakazka' },
+      { key: 'vynosovy_ucet', label: 'Vynosovy ucet' },
+      { key: 'nakladovy_ucet', label: 'Nakladovy ucet' },
+    ],
+  },
+  {
+    label: 'Ostatni',
+    columns: [
+      { key: 'typ_zasoby', label: 'Typ zasoby' },
+      { key: 'sazba_dph_nakup', label: 'DPH nakup' },
+      { key: 'sazba_dph_prodej', label: 'DPH prodej' },
+      { key: 'vyrobce', label: 'Vyrobce' },
+      { key: 'typ_zaruky', label: 'Typ zaruky' },
+      { key: 'delka_zaruky', label: 'Delka zaruky' },
+      { key: 'poznamka', label: 'Poznamka' },
+      { key: 'strucny_popis', label: 'Strucny popis' },
+      { key: 'podrobny_popis', label: 'Podrobny popis' },
+      { key: 'oznaceni_zaznamu', label: 'Oznaceni' },
+    ],
+  },
+];
+
+// =============================================================================
+// SyncZasobyBlock component
+// =============================================================================
+
+interface SyncZasobyBlockProps {
+  syncZasobyColumns: string[];
+  syncZasobySklad: string | null;
+  isSyncingZasoby: boolean;
+  syncZasobyProgress: string | null;
+  syncZasobyLog: import('@/shared/types').PohodaSyncLog[];
+  sklady: import('@/features/pohoda/pohoda-store').PohodaSklad[];
+  setSyncZasobyColumns: (cols: string[]) => void;
+  setSyncZasobySklad: (sklad: string | null) => void;
+  saveSyncZasobyConfig: () => Promise<void>;
+  fetchSyncLog: (typ: string) => Promise<void>;
+  syncZasoby: () => Promise<void>;
+}
+
+function SyncZasobyBlock({
+  syncZasobyColumns,
+  syncZasobySklad,
+  isSyncingZasoby,
+  syncZasobyProgress,
+  syncZasobyLog,
+  sklady,
+  setSyncZasobyColumns,
+  setSyncZasobySklad,
+  saveSyncZasobyConfig,
+  fetchSyncLog,
+  syncZasoby,
+}: SyncZasobyBlockProps) {
+  // Load log on mount
+  useEffect(() => {
+    fetchSyncLog('zasoby');
+  }, [fetchSyncLog]);
+
+  const toggleColumn = useCallback(
+    (key: string) => {
+      const next = syncZasobyColumns.includes(key)
+        ? syncZasobyColumns.filter((c) => c !== key)
+        : [...syncZasobyColumns, key];
+      setSyncZasobyColumns(next);
+      // Debounced save - use setTimeout to batch rapid toggles
+      const timer = setTimeout(() => {
+        saveSyncZasobyConfig();
+      }, 500);
+      return () => clearTimeout(timer);
+    },
+    [syncZasobyColumns, setSyncZasobyColumns, saveSyncZasobyConfig]
+  );
+
+  const handleSkladChange = useCallback(
+    (value: string) => {
+      const sklad = value === 'all' ? null : value;
+      setSyncZasobySklad(sklad);
+      saveSyncZasobyConfig();
+    },
+    [setSyncZasobySklad, saveSyncZasobyConfig]
+  );
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in fade-in duration-300">
+      <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <RotateCw className="w-5 h-5 text-slate-400" />
+        Synchronizace zasob
+      </h3>
+
+      <div className="space-y-5">
+        {/* Column selection */}
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-3">
+            Vyberte sloupce, ktere chcete stahovat:
+          </label>
+
+          <div className="space-y-4">
+            {SYNC_COLUMN_CATEGORIES.map((category) => (
+              <div key={category.label}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                  {category.label}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {category.columns.map((col) => {
+                    const isChecked = syncZasobyColumns.includes(col.key);
+                    return (
+                      <label
+                        key={col.key}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
+                          isChecked
+                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                            : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleColumn(col.key)}
+                          className="sr-only"
+                        />
+                        <span
+                          className={cn(
+                            'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
+                            isChecked
+                              ? 'bg-blue-600 border-blue-600'
+                              : 'border-slate-300'
+                          )}
+                        >
+                          {isChecked && (
+                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                        {col.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {syncZasobyColumns.length > 0 && (
+            <p className="text-xs text-slate-500 mt-3">
+              Vybrano {syncZasobyColumns.length} sloupcu
+            </p>
+          )}
+        </div>
+
+        {/* Sklad filter */}
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1.5">
+            Vyberte sklad
+          </label>
+          <select
+            value={syncZasobySklad || 'all'}
+            onChange={(e) => handleSkladChange(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-blue-300 transition-all"
+          >
+            <option value="all">Vsechny sklady</option>
+            {sklady.map((sklad) => (
+              <option key={sklad.id} value={sklad.ids}>
+                {sklad.name || sklad.ids}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sync button */}
+        <button
+          onClick={syncZasoby}
+          disabled={isSyncingZasoby || syncZasobyColumns.length === 0}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+            isSyncingZasoby || syncZasobyColumns.length === 0
+              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+          )}
+        >
+          {isSyncingZasoby ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Synchronizuji...
+            </>
+          ) : (
+            <>
+              <RotateCw className="w-4 h-4" />
+              Synchronizovat zasoby
+            </>
+          )}
+        </button>
+
+        {/* Progress */}
+        {syncZasobyProgress && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+            <p className="text-sm font-medium text-blue-800">{syncZasobyProgress}</p>
+          </div>
+        )}
+
+        {/* Sync log */}
+        {syncZasobyLog.length > 0 && (
+          <div>
+            <p className="text-sm font-medium text-slate-600 mb-2">
+              Posledni synchronizace:
+            </p>
+            <div className="shadow-sm border border-slate-200 bg-white rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Datum
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Status
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Zaznamy
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Doba trvani
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {syncZasobyLog.map((log) => (
+                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
+                        {new Date(log.vytvoreno).toLocaleString('cs-CZ', {
+                          day: 'numeric',
+                          month: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {log.stav === 'success' ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
+                            <CheckCircle2 className="w-4 h-4" />
+                            OK
+                          </span>
+                        ) : log.stav === 'error' ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-700" title={log.zprava || undefined}>
+                            <XCircle className="w-4 h-4" />
+                            Chyba
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Probiha
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                        {log.pocetZaznamu.toLocaleString('cs-CZ')}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                        {(log.trvaniMs / 1000).toFixed(1)}s
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -61,6 +61,9 @@ export type {
   ChatGroup,
 } from './chat.types';
 
+// Pohoda types
+export type { PohodaSyncLog } from './pohoda.types';
+
 // Email types
 export type {
   EmailFolderType,

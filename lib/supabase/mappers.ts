@@ -627,6 +627,7 @@ export function mapDbToEmailSyncLog(row: any): EmailSyncLog {
 // =============================================================================
 
 import type { PohodaCredentials } from '@/features/pohoda/pohoda-store';
+import type { PohodaSyncLog } from '@/shared/types';
 
 export function mapDbToPohodaCredentials(row: any): PohodaCredentials {
   return {
@@ -645,5 +646,20 @@ export function mapPohodaCredentialsToDb(creds: PohodaCredentials) {
     heslo: creds.password,
     ico: creds.ico,
     aktualizovano: new Date().toISOString(),
+  };
+}
+
+export function mapDbToPohodaSyncLog(row: any): PohodaSyncLog {
+  return {
+    id: row.id,
+    typ: row.typ,
+    stav: row.stav,
+    zprava: row.zprava ?? null,
+    pocetZaznamu: row.pocet_zaznamu ?? 0,
+    pocetNovych: row.pocet_novych ?? 0,
+    pocetAktualizovanych: row.pocet_aktualizovanych ?? 0,
+    sklad: row.sklad ?? null,
+    trvaniMs: row.trvani_ms ?? 0,
+    vytvoreno: row.vytvoreno,
   };
 }

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
-import { mapDbToPohodaCredentials, mapPohodaCredentialsToDb } from '@/lib/supabase/mappers';
+import { mapDbToPohodaCredentials, mapPohodaCredentialsToDb, mapDbToPohodaSyncLog } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
+import type { PohodaSyncLog } from '@/shared/types';
 
 export interface PohodaCredentials {
   url: string;
@@ -55,6 +56,13 @@ interface PohodaState {
   // Upload
   lastUploadedFile: string | null;
 
+  // Sync zásoby
+  syncZasobyColumns: string[];
+  syncZasobySklad: string | null;
+  isSyncingZasoby: boolean;
+  syncZasobyProgress: string | null;
+  syncZasobyLog: PohodaSyncLog[];
+
   // Navigation
   pohodaView: 'settings' | 'detail';
 }
@@ -78,6 +86,11 @@ interface PohodaActions {
   setLastUploadedFile: (filename: string | null) => void;
   clearCredentials: () => void;
   setPohodaView: (view: 'settings' | 'detail') => void;
+  setSyncZasobyColumns: (cols: string[]) => void;
+  setSyncZasobySklad: (sklad: string | null) => void;
+  saveSyncZasobyConfig: () => Promise<void>;
+  fetchSyncLog: (typ: string) => Promise<void>;
+  syncZasoby: () => Promise<void>;
 }
 
 const defaultCredentials: PohodaCredentials = {
@@ -112,6 +125,11 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   generateVsechnySkladyProgress: null,
   generateVsechnySkladyError: null,
   lastUploadedFile: null,
+  syncZasobyColumns: [],
+  syncZasobySklad: null,
+  isSyncingZasoby: false,
+  syncZasobyProgress: null,
+  syncZasobyLog: [],
   pohodaView: 'settings',
 
   // DB fetch
@@ -120,7 +138,13 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     const supabase = createClient();
     const { data } = await supabase.from('pohoda_konfigurace').select('*').eq('id', 1).single();
     if (data) {
-      set({ credentials: mapDbToPohodaCredentials(data), _loaded: true, _loading: false });
+      set({
+        credentials: mapDbToPohodaCredentials(data),
+        syncZasobyColumns: (data.sync_zasoby_sloupce as string[]) ?? [],
+        syncZasobySklad: (data.sync_zasoby_sklad as string) ?? null,
+        _loaded: true,
+        _loading: false,
+      });
     } else {
       set({ _loaded: true, _loading: false });
     }
@@ -174,4 +198,75 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     }),
 
   setPohodaView: (pohodaView) => set({ pohodaView }),
+
+  setSyncZasobyColumns: (syncZasobyColumns) => set({ syncZasobyColumns }),
+  setSyncZasobySklad: (syncZasobySklad) => set({ syncZasobySklad }),
+
+  saveSyncZasobyConfig: async () => {
+    const { syncZasobyColumns, syncZasobySklad } = get();
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('pohoda_konfigurace')
+      .update({
+        sync_zasoby_sloupce: syncZasobyColumns,
+        sync_zasoby_sklad: syncZasobySklad,
+        aktualizovano: new Date().toISOString(),
+      })
+      .eq('id', 1);
+    if (error) {
+      toast.error('Nepodařilo se uložit nastavení synchronizace');
+    }
+  },
+
+  fetchSyncLog: async (typ: string) => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('pohoda_sync_log')
+      .select('*')
+      .eq('typ', typ)
+      .order('vytvoreno', { ascending: false })
+      .limit(5);
+    if (data) {
+      set({ syncZasobyLog: data.map(mapDbToPohodaSyncLog) });
+    }
+  },
+
+  syncZasoby: async () => {
+    const { credentials, syncZasobyColumns, syncZasobySklad } = get();
+    if (syncZasobyColumns.length === 0) {
+      toast.error('Vyberte alespon jeden sloupec');
+      return;
+    }
+
+    set({ isSyncingZasoby: true, syncZasobyProgress: 'Stahování dat z mServeru...' });
+
+    try {
+      const response = await fetch('/api/pohoda/sklady/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...credentials,
+          skladId: syncZasobySklad,
+          columns: syncZasobyColumns,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        set({ syncZasobyProgress: null });
+        toast.success(`Synchronizace dokončena: ${data.pocetZaznamu} záznamů (${data.pocetNovych} nových, ${data.pocetAktualizovanych} aktualizovaných) za ${(data.trvaniMs / 1000).toFixed(1)}s`);
+      } else {
+        throw new Error(data.error || 'Synchronizace selhala');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Neznámá chyba';
+      toast.error(`Synchronizace selhala: ${msg}`);
+      set({ syncZasobyProgress: null });
+    } finally {
+      set({ isSyncingZasoby: false });
+      // Refresh log
+      get().fetchSyncLog('zasoby');
+    }
+  },
 }));
