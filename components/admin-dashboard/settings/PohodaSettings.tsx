@@ -101,6 +101,14 @@ export function PohodaSettings() {
         });
         // Po uspesnem pripojeni nacist sklady
         await loadSklady();
+        // Auto-reset po 5 sekundach - test je jen informativni
+        setTimeout(() => {
+          setConnectionStatus({
+            isConnected: false,
+            companyName: null,
+            error: null,
+          });
+        }, 5000);
       } else {
         setConnectionStatus({
           isConnected: false,
@@ -426,10 +434,10 @@ export function PohodaSettings() {
             {/* Tlacitko pro generovani */}
             <button
               onClick={generateOrder}
-              disabled={isGenerating || !connectionStatus.isConnected}
+              disabled={isGenerating}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
-                isGenerating || !connectionStatus.isConnected
+                isGenerating
                   ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
                   : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
               )}
@@ -467,15 +475,6 @@ export function PohodaSettings() {
               </div>
             )}
 
-            {/* Info pokud neni pripojeno */}
-            {!connectionStatus.isConnected && (
-              <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <XCircle className="w-5 h-5 text-orange-600" />
-                <p className="text-sm font-medium text-orange-800">
-                  Pro generovani je nutne pripojeni k mServeru
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -496,10 +495,10 @@ export function PohodaSettings() {
             {/* Tlacitko pro generovani */}
             <button
               onClick={generateVsechnySklady}
-              disabled={isGeneratingVsechnySklady || !connectionStatus.isConnected}
+              disabled={isGeneratingVsechnySklady}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
-                isGeneratingVsechnySklady || !connectionStatus.isConnected
+                isGeneratingVsechnySklady
                   ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
                   : 'bg-purple-600 text-white hover:bg-purple-700 active:scale-[0.98]'
               )}
@@ -537,15 +536,6 @@ export function PohodaSettings() {
               </div>
             )}
 
-            {/* Info pokud neni pripojeno */}
-            {!connectionStatus.isConnected && (
-              <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <XCircle className="w-5 h-5 text-orange-600" />
-                <p className="text-sm font-medium text-orange-800">
-                  Pro generovani je nutne pripojeni k mServeru
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -735,97 +725,93 @@ export function PohodaSettings() {
         </div>
       </div>
 
-      {/* Export skladu - zobrazi se pouze po pripojeni */}
-      {connectionStatus.isConnected && (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in fade-in duration-300">
-          <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-slate-400" />
-            Export skladu
-          </h3>
+      {/* Export skladu */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <Package className="w-5 h-5 text-slate-400" />
+          Export skladu
+        </h3>
 
-          <div className="space-y-4">
-            {/* Vyber skladu */}
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                Vyberte sklad
-              </label>
-              <div className="flex gap-3">
-                <select
-                  value={selectedSklad}
-                  onChange={(e) => setSelectedSklad(e.target.value)}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-blue-300 transition-all"
-                  disabled={isLoadingSklady}
-                >
-                  <option value="all">Vsechny sklady</option>
-                  {sklady.map((sklad) => (
-                    <option key={sklad.id} value={sklad.ids}>
-                      {sklad.name || sklad.ids}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={loadSklady}
-                  disabled={isLoadingSklady}
-                  className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
-                  title="Obnovit seznam skladu"
-                >
-                  {isLoadingSklady ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
-                  ) : (
-                    <RefreshCw className="w-5 h-5 text-slate-500" />
-                  )}
-                </button>
-              </div>
-              {sklady.length > 0 && (
-                <p className="text-xs text-slate-500 mt-1.5">
-                  Nalezeno {sklady.length} skladu
-                </p>
-              )}
+        <div className="space-y-4">
+          {/* Vyber skladu */}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1.5">
+              Vyberte sklad
+            </label>
+            <div className="flex gap-3">
+              <select
+                value={selectedSklad}
+                onChange={(e) => setSelectedSklad(e.target.value)}
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-blue-300 transition-all"
+                disabled={isLoadingSklady}
+              >
+                <option value="all">Vsechny sklady</option>
+                {sklady.map((sklad) => (
+                  <option key={sklad.id} value={sklad.ids}>
+                    {sklad.name || sklad.ids}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={loadSklady}
+                disabled={isLoadingSklady}
+                className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                title="Obnovit seznam skladu"
+              >
+                {isLoadingSklady ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                ) : (
+                  <RefreshCw className="w-5 h-5 text-slate-500" />
+                )}
+              </button>
             </div>
-
-            {/* Tlacitko stahnout */}
-            <button
-              onClick={downloadExcel}
-              disabled={isExporting}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
-                isExporting
-                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
-              )}
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Exportuji...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Stahnout jako Excel
-                </>
-              )}
-            </button>
+            {sklady.length > 0 && (
+              <p className="text-xs text-slate-500 mt-1.5">
+                Nalezeno {sklady.length} skladu
+              </p>
+            )}
           </div>
+
+          {/* Tlacitko stahnout */}
+          <button
+            onClick={downloadExcel}
+            disabled={isExporting}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+              isExporting
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
+            )}
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Exportuji...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Stahnout jako Excel
+              </>
+            )}
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Synchronizace zasob */}
-      {connectionStatus.isConnected && (
-        <SyncZasobyBlock
-          syncZasobyColumns={syncZasobyColumns}
-          syncZasobySklad={syncZasobySklad}
-          isSyncingZasoby={isSyncingZasoby}
-          syncZasobyProgress={syncZasobyProgress}
-          syncZasobyLog={syncZasobyLog}
-          sklady={sklady}
-          setSyncZasobyColumns={setSyncZasobyColumns}
-          setSyncZasobySklad={setSyncZasobySklad}
-          saveSyncZasobyConfig={saveSyncZasobyConfig}
-          fetchSyncLog={fetchSyncLog}
-          syncZasoby={syncZasoby}
-        />
-      )}
+      <SyncZasobyBlock
+        syncZasobyColumns={syncZasobyColumns}
+        syncZasobySklad={syncZasobySklad}
+        isSyncingZasoby={isSyncingZasoby}
+        syncZasobyProgress={syncZasobyProgress}
+        syncZasobyLog={syncZasobyLog}
+        sklady={sklady}
+        setSyncZasobyColumns={setSyncZasobyColumns}
+        setSyncZasobySklad={setSyncZasobySklad}
+        saveSyncZasobyConfig={saveSyncZasobyConfig}
+        fetchSyncLog={fetchSyncLog}
+        syncZasoby={syncZasoby}
+      />
 
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
