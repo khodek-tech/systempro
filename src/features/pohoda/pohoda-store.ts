@@ -321,18 +321,37 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
 
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.functions.invoke('sync-pohyby');
+      let totalZaznamu = 0;
+      let totalNovych = 0;
+      let totalAktualizovanych = 0;
+      let totalMs = 0;
+      let chunk = 0;
 
-      if (error) {
-        throw new Error(error.message || 'Synchronizace pohybů selhala');
+      // Loop: Edge Function processes 3-day chunks, returns hasMore
+      while (true) {
+        chunk++;
+        const { data, error } = await supabase.functions.invoke('sync-pohyby');
+
+        if (error) {
+          throw new Error(error.message || 'Synchronizace pohybů selhala');
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || 'Synchronizace pohybů selhala');
+        }
+
+        totalZaznamu += data.pocetZaznamu;
+        totalNovych += data.pocetNovych;
+        totalAktualizovanych += data.pocetAktualizovanych;
+        totalMs += data.trvaniMs;
+
+        if (!data.hasMore) break;
+
+        set({ syncPohybyProgress: `Chunk ${chunk}: ${data.dateFrom}..${data.dateTo} (${totalZaznamu} záznamů)...` });
       }
 
-      if (data.success) {
-        set({ syncPohybyProgress: null });
-        toast.success(`Synchronizace pohybů dokončena: ${data.pocetZaznamu} záznamů (${data.pocetNovych} nových, ${data.pocetAktualizovanych} aktualizovaných) za ${(data.trvaniMs / 1000).toFixed(1)}s`);
-      } else {
-        throw new Error(data.error || 'Synchronizace pohybů selhala');
-      }
+      set({ syncPohybyProgress: null });
+      toast.success(`Synchronizace pohybů dokončena: ${totalZaznamu} záznamů (${totalNovych} nových, ${totalAktualizovanych} aktualizovaných) za ${(totalMs / 1000).toFixed(1)}s`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Neznámá chyba';
       toast.error(`Synchronizace pohybů selhala: ${msg}`);
