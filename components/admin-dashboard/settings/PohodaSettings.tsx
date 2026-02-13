@@ -982,6 +982,8 @@ function SyncZasobyBlock({
   fetchSyncLog,
   syncZasoby,
 }: SyncZasobyBlockProps) {
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
   // Load log on mount
   useEffect(() => {
     fetchSyncLog('zasoby');
@@ -993,11 +995,11 @@ function SyncZasobyBlock({
         ? syncZasobyColumns.filter((c) => c !== key)
         : [...syncZasobyColumns, key];
       setSyncZasobyColumns(next);
-      // Debounced save - use setTimeout to batch rapid toggles
-      const timer = setTimeout(() => {
+      // Debounced save
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
         saveSyncZasobyConfig();
       }, 500);
-      return () => clearTimeout(timer);
     },
     [syncZasobyColumns, setSyncZasobyColumns, saveSyncZasobyConfig]
   );
@@ -1035,8 +1037,10 @@ function SyncZasobyBlock({
                   {category.columns.map((col) => {
                     const isChecked = syncZasobyColumns.includes(col.key);
                     return (
-                      <label
+                      <button
                         key={col.key}
+                        type="button"
+                        onClick={() => toggleColumn(col.key)}
                         className={cn(
                           'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
                           isChecked
@@ -1044,12 +1048,6 @@ function SyncZasobyBlock({
                             : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                         )}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleColumn(col.key)}
-                          className="sr-only"
-                        />
                         <span
                           className={cn(
                             'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
@@ -1065,7 +1063,7 @@ function SyncZasobyBlock({
                           )}
                         </span>
                         {col.label}
-                      </label>
+                      </button>
                     );
                   })}
                 </div>
