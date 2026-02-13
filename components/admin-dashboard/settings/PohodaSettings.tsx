@@ -1254,6 +1254,7 @@ const SYNC_POHYBY_COLUMN_CATEGORIES = [
   {
     label: 'Sklad',
     columns: [
+      { key: 'cleneni_skladu', label: 'Cleneni skladu' },
       { key: 'cenova_skupina', label: 'Cenova skupina' },
     ],
   },

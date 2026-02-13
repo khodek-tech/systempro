@@ -24,13 +24,13 @@ function createPohybyExportRequest(ico: string): string {
   version="2.0"
   note="Export skladovych pohybu">
   <dat:dataPackItem id="mov001" version="2.0">
-    <mov:listMovementRequest version="2.0" movementVersion="2.0">
-      <mov:requestMovement>
+    <lst:listMovementRequest version="2.0" movementVersion="2.0">
+      <lst:requestMovement>
         <ftr:filter>
           <ftr:dateFrom>2025-11-01</ftr:dateFrom>
         </ftr:filter>
-      </mov:requestMovement>
-    </mov:listMovementRequest>
+      </lst:requestMovement>
+    </lst:listMovementRequest>
   </dat:dataPackItem>
 </dat:dataPack>`;
 }
@@ -70,6 +70,8 @@ interface MovementItem {
   cinnostNazev: string | null;
   zakazkaId: number | null;
   zakazkaNazev: string | null;
+  cleneniSkladuId: number | null;
+  cleneniSkladuNazev: string | null;
   oznaceniZaznamu: boolean | null;
 }
 
@@ -124,22 +126,24 @@ function parseMovementItems(xmlText: string): MovementItem[] {
         const pohodaId = parseInt2(h?.id || h?.['@_id']);
         if (!pohodaId) continue;
 
-        const stockItem = h?.stockItem || {};
-        const address = h?.partnerIdentity?.address || {};
+        const outerStockItem = h?.stockItem || {};
+        const innerStockItem = outerStockItem?.stockItem || {};
+        const storage = outerStockItem?.storage || {};
+        const address = h?.address?.address || h?.partnerIdentity?.address || {};
 
         items.push({
           pohodaId,
           agenda: parseStr(h?.agenda),
-          typZasoby: parseStr(h?.stockType || stockItem?.stockType),
-          typPohybu: parseStr(h?.movType),
+          typZasoby: parseStr(h?.stockType || outerStockItem?.stockType),
+          typPohybu: parseStr(h?.movementType || h?.movType),
           datum: parseStr(h?.date),
-          cisloDokladu: parseStr(h?.number?.numberRequested),
+          cisloDokladu: parseStr(typeof h?.number === 'object' ? h?.number?.numberRequested : h?.number),
           regCislo: parseStr(h?.regNumber),
-          zasobaId: parseInt2(stockItem?.id || stockItem?.store?.id),
-          zasobaKod: parseStr(stockItem?.code || stockItem?.store?.ids),
-          zasobaNazev: parseStr(stockItem?.name),
-          zasobaEan: parseStr(stockItem?.EAN),
-          zasobaPlu: parseInt2(stockItem?.PLU),
+          zasobaId: parseInt2(innerStockItem?.id),
+          zasobaKod: parseStr(innerStockItem?.ids),
+          zasobaNazev: parseStr(innerStockItem?.name),
+          zasobaEan: parseStr(innerStockItem?.EAN),
+          zasobaPlu: parseInt2(innerStockItem?.PLU),
           mernaJednotka: parseStr(h?.unit),
           mnozstvi: parseNum(h?.quantity),
           jednotkovaCena: parseNum(h?.unitPrice),
@@ -147,8 +151,8 @@ function parseMovementItems(xmlText: string): MovementItem[] {
           vazenaNakupniCena: parseNum(h?.weightedPurchasePrice),
           oceneni: parseNum(h?.valuation),
           ziskJednotka: parseNum(h?.profitUnit),
-          ziskCelkem: parseNum(h?.profitTotal),
-          stavPoPohybu: parseNum(h?.countAfter),
+          ziskCelkem: parseNum(h?.profit || h?.profitTotal),
+          stavPoPohybu: parseNum(h?.count || h?.countAfter),
           cenovaSkupinaId: parseInt2(h?.typePrice?.id),
           cenovaSkupinaNazev: parseStr(h?.typePrice?.ids),
           adresaFirma: parseStr(address?.company),
@@ -162,6 +166,8 @@ function parseMovementItems(xmlText: string): MovementItem[] {
           cinnostNazev: parseStr(h?.activity?.ids),
           zakazkaId: parseInt2(h?.contract?.id),
           zakazkaNazev: parseStr(h?.contract?.ids),
+          cleneniSkladuId: parseInt2(storage?.id),
+          cleneniSkladuNazev: parseStr(storage?.ids),
           oznaceniZaznamu: parseBool(h?.markRecord),
         });
       }
@@ -208,6 +214,7 @@ function itemToDbRow(item: MovementItem, columns: string[]): Record<string, unkn
     stredisko: ['stredisko_id', item.strediskoId],
     cinnost: ['cinnost_id', item.cinnostId],
     zakazka: ['zakazka_id', item.zakazkaId],
+    cleneni_skladu: ['cleneni_skladu_id', item.cleneniSkladuId],
     oznaceni_zaznamu: ['oznaceni_zaznamu', item.oznaceniZaznamu],
   };
 
@@ -216,6 +223,7 @@ function itemToDbRow(item: MovementItem, columns: string[]): Record<string, unkn
     stredisko: ['stredisko_nazev'],
     cinnost: ['cinnost_nazev'],
     zakazka: ['zakazka_nazev'],
+    cleneni_skladu: ['cleneni_skladu_nazev'],
   };
 
   const pairedValues: Record<string, unknown> = {
@@ -223,6 +231,7 @@ function itemToDbRow(item: MovementItem, columns: string[]): Record<string, unkn
     stredisko_nazev: item.strediskoNazev,
     cinnost_nazev: item.cinnostNazev,
     zakazka_nazev: item.zakazkaNazev,
+    cleneni_skladu_nazev: item.cleneniSkladuNazev,
   };
 
   // Always include zasoba_id for reference
