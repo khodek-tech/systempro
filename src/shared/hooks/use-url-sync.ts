@@ -9,6 +9,7 @@ import { useAbsenceStore } from '@/stores/absence-store';
 import { useShiftsStore } from '@/stores/shifts-store';
 import { usePresenceStore } from '@/stores/presence-store';
 import { useAdminStore } from '@/stores/admin-store';
+import { closeAllViews } from '@/lib/navigation';
 
 /**
  * Derives the URL path from current store state.
@@ -57,15 +58,7 @@ function applySlugToStores(slug: string[]) {
   const admin = useAdminStore.getState();
 
   // Close all fullscreen views first
-  manual.closeManualView();
-  email.closeEmailView();
-  chat.closeChatView();
-  tasks.closeTasksView();
-  absence.closeAbsenceView();
-  absence.closeApprovalView();
-  shifts.closeShiftsView();
-  presence.closePresenceView();
-  admin.goToMain();
+  closeAllViews();
 
   const [first, second] = slug;
 

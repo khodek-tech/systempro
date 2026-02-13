@@ -12,10 +12,7 @@ import { useAdminStore } from '@/stores/admin-store';
 import { useUsersStore } from '@/stores/users-store';
 import { useModulesStore } from '@/stores/modules-store';
 import { useManualStore } from '@/stores/manual-store';
-import { useAbsenceStore } from '@/stores/absence-store';
-import { useTasksStore } from '@/stores/tasks-store';
-import { useChatStore } from '@/stores/chat-store';
-import { useEmailStore } from '@/stores/email-store';
+import { closeAllViews } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -51,12 +48,7 @@ export function Header() {
     checkOutUser,
   } = useAttendanceStore();
 
-  const { goToSettings, goToMain } = useAdminStore();
-  const { closeAbsenceView, closeApprovalView } = useAbsenceStore();
-  const { closeTasksView } = useTasksStore();
-  const { closeChatView } = useChatStore();
-  const { closeEmailView } = useEmailStore();
-  const { closeManualView } = useManualStore();
+  const { goToSettings } = useAdminStore();
   const usersLoaded = useUsersStore((state) => state._loaded);
 
   const allUsers = getAllActiveUsers();
@@ -95,15 +87,7 @@ export function Header() {
 
   // Navigate to home/main view when logo is clicked
   const handleLogoClick = () => {
-    // Close all fullscreen views
-    closeManualView();
-    closeEmailView();
-    closeChatView();
-    closeTasksView();
-    closeAbsenceView();
-    closeApprovalView();
-    // Reset admin view to main
-    goToMain();
+    closeAllViews();
   };
 
   return (
