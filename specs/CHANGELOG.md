@@ -2,6 +2,18 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.6.1] - 2026-02-13
+
+### Opraveno
+
+#### Crash při editaci zaměstnance se starým formátem pracovní doby
+- **Hlavní problém**: "Cannot read properties of undefined (reading 'sameAllWeek')" při otevření formuláře zaměstnance (např. Kunik Martin)
+- **Příčina**: `pracovni_hodiny` v DB měl starý plochý formát `{ sameAllWeek, monday, ... }`, ale kód od v2.4.0 očekává `{ alternating, oddWeek: { sameAllWeek, ... } }`
+- `lib/supabase/mappers.ts`: nová funkce `migrateWorkingHours()` — detekuje starý formát (chybí `alternating`) a automaticky obalí do `{ alternating: false, oddWeek: raw }`
+- **DB migrace**: `migrate_old_working_hours_format` — jednorázová konverze všech záznamů se starým formátem
+
+---
+
 ## [2.6.0] - 2026-02-13
 
 ### Opraveno

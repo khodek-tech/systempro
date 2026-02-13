@@ -25,6 +25,7 @@ import type {
   TaskRepeat,
   TaskAssigneeType,
   StoreOpeningHours,
+  EmployeeWorkingHours,
   EmailAccount,
   EmailAccountAccess,
   EmailFolder,
@@ -44,6 +45,18 @@ import type {
 // USERS (zamestnanci)
 // =============================================================================
 
+/**
+ * Migrates old flat working hours format to new nested format.
+ * Old format: { sameAllWeek, monday, ... } (flat, no alternating)
+ * New format: { alternating, oddWeek: { sameAllWeek, ... } }
+ */
+function migrateWorkingHours(raw: any): EmployeeWorkingHours | undefined {
+  if (!raw) return undefined;
+  if ('alternating' in raw) return raw;
+  // Old format: flat object with days + sameAllWeek directly
+  return { alternating: false, oddWeek: raw };
+}
+
 export function mapDbToUser(row: any): User {
   return {
     id: row.id,
@@ -54,7 +67,7 @@ export function mapDbToUser(row: any): User {
     defaultRoleId: row.vychozi_role_id ?? undefined,
     defaultStoreId: row.vychozi_prodejna_id ?? undefined,
     active: row.aktivni ?? true,
-    workingHours: row.pracovni_hodiny ?? undefined,
+    workingHours: migrateWorkingHours(row.pracovni_hodiny),
     authId: row.auth_id ?? undefined,
     mustChangePassword: row.vychozi_heslo ?? false,
   };

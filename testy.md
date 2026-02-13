@@ -541,6 +541,15 @@
 | 2 | Kliknout "Kopírovat z prodejny" | Předvyplnění dle otevírací doby prodejny |
 | 3 | Upravit dle potřeby | Admin může dále upravit |
 
+#### SHIFT-008: Zaměstnanec se starým formátem pracovní doby v DB
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít Nastavení → Zaměstnanci | Seznam zaměstnanců |
+| 2 | Kliknout na zaměstnance se starým formátem (plochý JSON bez `alternating`) | Formulář se otevře bez chyby |
+| 3 | Zkontrolovat pracovní dobu | Správné hodnoty (Po–Pá, So+Ne) |
+| 4 | Uložit bez změn | Uloží se v novém formátu s `alternating` + `oddWeek` |
+
 ---
 
 ## 10. Přítomnost (Presence)
