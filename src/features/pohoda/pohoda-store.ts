@@ -287,25 +287,40 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
 
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.functions.invoke('sync-zasoby');
+      let totalZaznamu = 0;
+      let totalNovych = 0;
+      let totalAktualizovanych = 0;
+      let totalMs = 0;
 
-      if (error) {
-        throw new Error(error.message || 'Synchronizace selhala');
+      while (true) {
+        const { data, error } = await supabase.functions.invoke('sync-zasoby');
+
+        if (error) {
+          throw new Error(error.message || 'Synchronizace selhala');
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || 'Synchronizace selhala');
+        }
+
+        totalZaznamu += data.pocetZaznamu;
+        totalNovych += data.pocetNovych;
+        totalAktualizovanych += data.pocetAktualizovanych;
+        totalMs += data.trvaniMs;
+
+        if (!data.hasMore) break;
+
+        set({ syncZasobyProgress: `Sklad ${data.currentStorage} (${data.storageIndex}/${data.totalStorages}): ${totalZaznamu} záznamů...` });
       }
 
-      if (data.success) {
-        set({ syncZasobyProgress: null });
-        toast.success(`Synchronizace dokončena: ${data.pocetZaznamu} záznamů (${data.pocetNovych} nových, ${data.pocetAktualizovanych} aktualizovaných) za ${(data.trvaniMs / 1000).toFixed(1)}s`);
-      } else {
-        throw new Error(data.error || 'Synchronizace selhala');
-      }
+      set({ syncZasobyProgress: null });
+      toast.success(`Synchronizace dokončena: ${totalZaznamu} záznamů (${totalNovych} nových, ${totalAktualizovanych} aktualizovaných) za ${(totalMs / 1000).toFixed(1)}s`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Neznámá chyba';
       toast.error(`Synchronizace selhala: ${msg}`);
       set({ syncZasobyProgress: null });
     } finally {
       set({ isSyncingZasoby: false });
-      // Refresh log
       get().fetchSyncLog('zasoby');
     }
   },
