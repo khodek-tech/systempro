@@ -107,6 +107,10 @@ export const pohodaSkladySyncSchema = pohodaCredentialsSchema.extend({
   columns: z.array(z.string()).min(1, 'Vyberte alespon jeden sloupec'),
 });
 
+export const pohodaPohybySyncSchema = pohodaCredentialsSchema.extend({
+  columns: z.array(z.string()).min(1, 'Vyberte alespon jeden sloupec'),
+});
+
 // =============================================================================
 // Helper: parse and return Zod error as 400 response
 // =============================================================================

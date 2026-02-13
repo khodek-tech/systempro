@@ -63,6 +63,12 @@ interface PohodaState {
   syncZasobyProgress: string | null;
   syncZasobyLog: PohodaSyncLog[];
 
+  // Sync pohyby
+  syncPohybyColumns: string[];
+  isSyncingPohyby: boolean;
+  syncPohybyProgress: string | null;
+  syncPohybyLog: PohodaSyncLog[];
+
   // Navigation
   pohodaView: 'settings' | 'detail';
 }
@@ -91,6 +97,10 @@ interface PohodaActions {
   saveSyncZasobyConfig: () => Promise<void>;
   fetchSyncLog: (typ: string) => Promise<void>;
   syncZasoby: () => Promise<void>;
+  setSyncPohybyColumns: (cols: string[]) => void;
+  saveSyncPohybyConfig: () => Promise<void>;
+  fetchSyncPohybyLog: () => Promise<void>;
+  syncPohyby: () => Promise<void>;
 }
 
 const defaultCredentials: PohodaCredentials = {
@@ -130,6 +140,10 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   isSyncingZasoby: false,
   syncZasobyProgress: null,
   syncZasobyLog: [],
+  syncPohybyColumns: [],
+  isSyncingPohyby: false,
+  syncPohybyProgress: null,
+  syncPohybyLog: [],
   pohodaView: 'settings',
 
   // DB fetch
@@ -142,6 +156,7 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         credentials: mapDbToPohodaCredentials(data),
         syncZasobyColumns: (data.sync_zasoby_sloupce as string[]) ?? [],
         syncZasobySklad: (data.sync_zasoby_sklad as string) ?? null,
+        syncPohybyColumns: (data.sync_pohyby_sloupce as string[]) ?? [],
         _loaded: true,
         _loading: false,
       });
@@ -231,6 +246,36 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     }
   },
 
+  setSyncPohybyColumns: (syncPohybyColumns) => set({ syncPohybyColumns }),
+
+  saveSyncPohybyConfig: async () => {
+    const { syncPohybyColumns } = get();
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('pohoda_konfigurace')
+      .update({
+        sync_pohyby_sloupce: syncPohybyColumns,
+        aktualizovano: new Date().toISOString(),
+      })
+      .eq('id', 1);
+    if (error) {
+      toast.error('Nepodařilo se uložit nastavení synchronizace pohybů');
+    }
+  },
+
+  fetchSyncPohybyLog: async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('pohoda_sync_log')
+      .select('*')
+      .eq('typ', 'pohyby')
+      .order('vytvoreno', { ascending: false })
+      .limit(5);
+    if (data) {
+      set({ syncPohybyLog: data.map(mapDbToPohodaSyncLog) });
+    }
+  },
+
   syncZasoby: async () => {
     const { credentials, syncZasobyColumns, syncZasobySklad } = get();
     if (syncZasobyColumns.length === 0) {
@@ -273,6 +318,49 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
       set({ isSyncingZasoby: false });
       // Refresh log
       get().fetchSyncLog('zasoby');
+    }
+  },
+
+  syncPohyby: async () => {
+    const { credentials, syncPohybyColumns } = get();
+    if (syncPohybyColumns.length === 0) {
+      toast.error('Vyberte alespon jeden sloupec');
+      return;
+    }
+
+    set({ isSyncingPohyby: true, syncPohybyProgress: 'Stahování pohybů z mServeru...' });
+
+    try {
+      const response = await fetch('/api/pohoda/pohyby/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...credentials,
+          columns: syncPohybyColumns,
+        }),
+      });
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(text || `Server vrátil chybu ${response.status}`);
+      }
+
+      if (data.success) {
+        set({ syncPohybyProgress: null });
+        toast.success(`Synchronizace pohybů dokončena: ${data.pocetZaznamu} záznamů (${data.pocetNovych} nových, ${data.pocetAktualizovanych} aktualizovaných) za ${(data.trvaniMs / 1000).toFixed(1)}s`);
+      } else {
+        throw new Error(data.error || 'Synchronizace pohybů selhala');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Neznámá chyba';
+      toast.error(`Synchronizace pohybů selhala: ${msg}`);
+      set({ syncPohybyProgress: null });
+    } finally {
+      set({ isSyncingPohyby: false });
+      get().fetchSyncPohybyLog();
     }
   },
 }));

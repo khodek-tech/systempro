@@ -22,6 +22,7 @@ import {
   ShoppingCart,
   Warehouse,
   RotateCw,
+  ArrowDownUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePohodaStore } from '@/features/pohoda';
@@ -70,6 +71,14 @@ export function PohodaSettings() {
     saveSyncZasobyConfig,
     fetchSyncLog,
     syncZasoby,
+    syncPohybyColumns,
+    isSyncingPohyby,
+    syncPohybyProgress,
+    syncPohybyLog,
+    setSyncPohybyColumns,
+    saveSyncPohybyConfig,
+    fetchSyncPohybyLog,
+    syncPohyby,
   } = usePohodaStore();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -813,6 +822,18 @@ export function PohodaSettings() {
         syncZasoby={syncZasoby}
       />
 
+      {/* Synchronizace pohybu */}
+      <SyncPohybyBlock
+        syncPohybyColumns={syncPohybyColumns}
+        isSyncingPohyby={isSyncingPohyby}
+        syncPohybyProgress={syncPohybyProgress}
+        syncPohybyLog={syncPohybyLog}
+        setSyncPohybyColumns={setSyncPohybyColumns}
+        saveSyncPohybyConfig={saveSyncPohybyConfig}
+        fetchSyncPohybyLog={fetchSyncPohybyLog}
+        syncPohyby={syncPohyby}
+      />
+
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
         <h4 className="font-semibold text-blue-900 mb-2">
@@ -1141,6 +1162,299 @@ function SyncZasobyBlock({
                 </thead>
                 <tbody>
                   {syncZasobyLog.map((log) => (
+                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
+                        {new Date(log.vytvoreno).toLocaleString('cs-CZ', {
+                          day: 'numeric',
+                          month: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {log.stav === 'success' ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
+                            <CheckCircle2 className="w-4 h-4" />
+                            OK
+                          </span>
+                        ) : log.stav === 'error' ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-700" title={log.zprava || undefined}>
+                            <XCircle className="w-4 h-4" />
+                            Chyba
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Probiha
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                        {log.pocetZaznamu.toLocaleString('cs-CZ')}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                        {(log.trvaniMs / 1000).toFixed(1)}s
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Column categories for pohyby sync
+// =============================================================================
+
+const SYNC_POHYBY_COLUMN_CATEGORIES = [
+  {
+    label: 'Zakladni',
+    columns: [
+      { key: 'agenda', label: 'Agenda' },
+      { key: 'typ_pohybu', label: 'Typ pohybu' },
+      { key: 'datum', label: 'Datum' },
+      { key: 'cislo_dokladu', label: 'Cislo dokladu' },
+      { key: 'reg_cislo', label: 'Reg. cislo' },
+    ],
+  },
+  {
+    label: 'Zasoba',
+    columns: [
+      { key: 'zasoba_kod', label: 'Kod zasoby' },
+      { key: 'zasoba_nazev', label: 'Nazev zasoby' },
+      { key: 'zasoba_ean', label: 'EAN' },
+      { key: 'zasoba_plu', label: 'PLU' },
+      { key: 'typ_zasoby', label: 'Typ zasoby' },
+    ],
+  },
+  {
+    label: 'Mnozstvi',
+    columns: [
+      { key: 'mnozstvi', label: 'Mnozstvi' },
+      { key: 'merna_jednotka', label: 'MJ' },
+      { key: 'stav_po_pohybu', label: 'Stav po pohybu' },
+    ],
+  },
+  {
+    label: 'Ceny',
+    columns: [
+      { key: 'jednotkova_cena', label: 'Jednotkova cena' },
+      { key: 'celkova_cena', label: 'Celkova cena' },
+      { key: 'vazena_nakupni_cena', label: 'Vazena nakupni' },
+      { key: 'oceneni', label: 'Oceneni' },
+      { key: 'zisk_jednotka', label: 'Zisk/jednotka' },
+      { key: 'zisk_celkem', label: 'Zisk celkem' },
+    ],
+  },
+  {
+    label: 'Sklad',
+    columns: [
+      { key: 'cenova_skupina', label: 'Cenova skupina' },
+    ],
+  },
+  {
+    label: 'Adresa',
+    columns: [
+      { key: 'adresa_firma', label: 'Firma' },
+      { key: 'adresa_jmeno', label: 'Jmeno' },
+      { key: 'adresa_ulice', label: 'Ulice' },
+      { key: 'adresa_mesto', label: 'Mesto' },
+      { key: 'adresa_psc', label: 'PSC' },
+    ],
+  },
+  {
+    label: 'Ucetni',
+    columns: [
+      { key: 'stredisko', label: 'Stredisko' },
+      { key: 'cinnost', label: 'Cinnost' },
+      { key: 'zakazka', label: 'Zakazka' },
+    ],
+  },
+  {
+    label: 'Ostatni',
+    columns: [
+      { key: 'oznaceni_zaznamu', label: 'Oznaceni' },
+    ],
+  },
+];
+
+// =============================================================================
+// SyncPohybyBlock component
+// =============================================================================
+
+interface SyncPohybyBlockProps {
+  syncPohybyColumns: string[];
+  isSyncingPohyby: boolean;
+  syncPohybyProgress: string | null;
+  syncPohybyLog: import('@/shared/types').PohodaSyncLog[];
+  setSyncPohybyColumns: (cols: string[]) => void;
+  saveSyncPohybyConfig: () => Promise<void>;
+  fetchSyncPohybyLog: () => Promise<void>;
+  syncPohyby: () => Promise<void>;
+}
+
+function SyncPohybyBlock({
+  syncPohybyColumns,
+  isSyncingPohyby,
+  syncPohybyProgress,
+  syncPohybyLog,
+  setSyncPohybyColumns,
+  saveSyncPohybyConfig,
+  fetchSyncPohybyLog,
+  syncPohyby,
+}: SyncPohybyBlockProps) {
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    fetchSyncPohybyLog();
+  }, [fetchSyncPohybyLog]);
+
+  const toggleColumn = useCallback(
+    (key: string) => {
+      const next = syncPohybyColumns.includes(key)
+        ? syncPohybyColumns.filter((c) => c !== key)
+        : [...syncPohybyColumns, key];
+      setSyncPohybyColumns(next);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveSyncPohybyConfig();
+      }, 500);
+    },
+    [syncPohybyColumns, setSyncPohybyColumns, saveSyncPohybyConfig]
+  );
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in fade-in duration-300">
+      <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <ArrowDownUp className="w-5 h-5 text-slate-400" />
+        Synchronizace pohybu
+      </h3>
+
+      <div className="space-y-5">
+        {/* Column selection */}
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-3">
+            Vyberte sloupce, ktere chcete stahovat:
+          </label>
+
+          <div className="space-y-4">
+            {SYNC_POHYBY_COLUMN_CATEGORIES.map((category) => (
+              <div key={category.label}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                  {category.label}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {category.columns.map((col) => {
+                    const isChecked = syncPohybyColumns.includes(col.key);
+                    return (
+                      <button
+                        key={col.key}
+                        type="button"
+                        onClick={() => toggleColumn(col.key)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
+                          isChecked
+                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                            : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
+                            isChecked
+                              ? 'bg-blue-600 border-blue-600'
+                              : 'border-slate-300'
+                          )}
+                        >
+                          {isChecked && (
+                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                        {col.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {syncPohybyColumns.length > 0 && (
+            <p className="text-xs text-slate-500 mt-3">
+              Vybrano {syncPohybyColumns.length} sloupcu
+            </p>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-500">
+          Stahuje pohyby od 1.11.2025. Pohoda API nepodporuje filtr na sklad pro pohyby.
+        </p>
+
+        {/* Sync button */}
+        <button
+          onClick={syncPohyby}
+          disabled={isSyncingPohyby || syncPohybyColumns.length === 0}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+            isSyncingPohyby || syncPohybyColumns.length === 0
+              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+          )}
+        >
+          {isSyncingPohyby ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Synchronizuji...
+            </>
+          ) : (
+            <>
+              <ArrowDownUp className="w-4 h-4" />
+              Synchronizovat pohyby
+            </>
+          )}
+        </button>
+
+        {/* Progress */}
+        {syncPohybyProgress && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+            <p className="text-sm font-medium text-blue-800">{syncPohybyProgress}</p>
+          </div>
+        )}
+
+        {/* Sync log */}
+        {syncPohybyLog.length > 0 && (
+          <div>
+            <p className="text-sm font-medium text-slate-600 mb-2">
+              Posledni synchronizace:
+            </p>
+            <div className="shadow-sm border border-slate-200 bg-white rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Datum
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Status
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Zaznamy
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Doba trvani
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {syncPohybyLog.map((log) => (
                     <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
                       <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
                         {new Date(log.vytvoreno).toLocaleString('cs-CZ', {
