@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 import { requireAdmin } from '@/lib/supabase/api-auth';
 import { pohodaSkladySyncSchema, parseBody } from '@/lib/api/schemas';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 
 function createAuthHeader(username: string, password: string): string {
   const credentials = `${username}:${password}`;
@@ -337,13 +337,6 @@ function itemToDbRow(item: FullStockItem, columns: string[]): Record<string, unk
   return row;
 }
 
-function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
-
 export async function POST(request: NextRequest) {
   const { error: authError } = await requireAdmin();
   if (authError) {
@@ -352,7 +345,7 @@ export async function POST(request: NextRequest) {
   }
 
   const startTime = Date.now();
-  const supabase = getSupabaseAdmin();
+  const supabase = await createClient();
   let logId: number | null = null;
 
   try {
