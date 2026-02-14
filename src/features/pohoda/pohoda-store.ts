@@ -287,46 +287,13 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
 
     try {
       const supabase = createClient();
-      let totalZaznamu = 0;
-      let totalNovych = 0;
-      let totalAktualizovanych = 0;
-      let totalMs = 0;
+      const { data, error } = await supabase.functions.invoke('sync-zasoby');
 
-      let retries = 0;
-      while (true) {
-        const { data, error } = await supabase.functions.invoke('sync-zasoby');
-
-        const failed = error || !data?.success;
-        if (failed && retries < 3) {
-          retries++;
-          set({ syncZasobyProgress: `Sklad selhal, retry ${retries}/3 za 60s...` });
-          await new Promise(r => setTimeout(r, 60000));
-          continue;
-        }
-
-        if (error) {
-          throw new Error(error.message || 'Synchronizace selhala');
-        }
-        if (!data.success) {
-          throw new Error(data.error || 'Synchronizace selhala');
-        }
-
-        retries = 0;
-        totalZaznamu += data.pocetZaznamu;
-        totalNovych += data.pocetNovych;
-        totalAktualizovanych += data.pocetAktualizovanych;
-        totalMs += data.trvaniMs;
-
-        if (!data.hasMore) break;
-
-        set({ syncZasobyProgress: `Sklad ${data.currentStorage} (${data.storageIndex}/${data.totalStorages}): ${totalZaznamu} záznamů...` });
-
-        // Pauza mezi sklady — mServer potřebuje ~60s mezi požadavky
-        await new Promise(r => setTimeout(r, 60000));
-      }
+      if (error) throw new Error(error.message || 'Synchronizace selhala');
+      if (!data.success) throw new Error(data.error || 'Synchronizace selhala');
 
       set({ syncZasobyProgress: null });
-      toast.success(`Synchronizace dokončena: ${totalZaznamu} záznamů (${totalNovych} nových, ${totalAktualizovanych} aktualizovaných) za ${(totalMs / 1000).toFixed(1)}s`);
+      toast.success(`Synchronizace dokončena: ${data.pocetZaznamu} záznamů (${data.pocetNovych} nových, ${data.pocetAktualizovanych} aktualizovaných) za ${(data.trvaniMs / 1000).toFixed(1)}s${data.attempts > 1 ? ` (${data.attempts} pokusů)` : ''}`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Neznámá chyba';
       toast.error(`Synchronizace selhala: ${msg}`);
