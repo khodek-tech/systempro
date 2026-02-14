@@ -297,9 +297,9 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         const { data, error } = await supabase.functions.invoke('sync-zasoby');
 
         const failed = error || !data?.success;
-        if (failed && retries < 1) {
+        if (failed && retries < 3) {
           retries++;
-          set({ syncZasobyProgress: `Sklad selhal, retry za 60s...` });
+          set({ syncZasobyProgress: `Sklad selhal, retry ${retries}/3 za 60s...` });
           await new Promise(r => setTimeout(r, 60000));
           continue;
         }
