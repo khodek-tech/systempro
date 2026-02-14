@@ -311,6 +311,9 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         if (!data.hasMore) break;
 
         set({ syncZasobyProgress: `Sklad ${data.currentStorage} (${data.storageIndex}/${data.totalStorages}): ${totalZaznamu} záznamů...` });
+
+        // Pauza mezi sklady, aby mServer nespadl
+        await new Promise(r => setTimeout(r, 2000));
       }
 
       set({ syncZasobyProgress: null });
