@@ -292,17 +292,26 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
       let totalAktualizovanych = 0;
       let totalMs = 0;
 
+      let retries = 0;
       while (true) {
         const { data, error } = await supabase.functions.invoke('sync-zasoby');
+
+        const failed = error || !data?.success;
+        if (failed && retries < 1) {
+          retries++;
+          set({ syncZasobyProgress: `Sklad selhal, retry za 60s...` });
+          await new Promise(r => setTimeout(r, 60000));
+          continue;
+        }
 
         if (error) {
           throw new Error(error.message || 'Synchronizace selhala');
         }
-
         if (!data.success) {
           throw new Error(data.error || 'Synchronizace selhala');
         }
 
+        retries = 0;
         totalZaznamu += data.pocetZaznamu;
         totalNovych += data.pocetNovych;
         totalAktualizovanych += data.pocetAktualizovanych;
@@ -312,8 +321,8 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
 
         set({ syncZasobyProgress: `Sklad ${data.currentStorage} (${data.storageIndex}/${data.totalStorages}): ${totalZaznamu} záznamů...` });
 
-        // Pauza mezi sklady, aby mServer nespadl (potřebuje ~30s)
-        await new Promise(r => setTimeout(r, 30000));
+        // Pauza mezi sklady — mServer potřebuje ~60s mezi požadavky
+        await new Promise(r => setTimeout(r, 60000));
       }
 
       set({ syncZasobyProgress: null });
