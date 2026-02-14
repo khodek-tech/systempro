@@ -23,6 +23,7 @@ import {
   Warehouse,
   RotateCw,
   ArrowDownUp,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePohodaStore } from '@/features/pohoda';
@@ -990,6 +991,7 @@ function SyncZasobyBlock({
   syncZasoby,
 }: SyncZasobyBlockProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [showColumns, setShowColumns] = useState(false);
 
   // Load log on mount
   useEffect(() => {
@@ -1028,60 +1030,71 @@ function SyncZasobyBlock({
       </h3>
 
       <div className="space-y-5">
-        {/* Column selection */}
+        {/* Column selection - collapsible */}
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-3">
-            Vyberte sloupce, ktere chcete stahovat:
-          </label>
+          <button
+            type="button"
+            onClick={() => setShowColumns(!showColumns)}
+            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 transition-transform duration-200',
+                !showColumns && '-rotate-90'
+              )}
+            />
+            Nastaveni sloupcu
+            {syncZasobyColumns.length > 0 && (
+              <span className="text-xs text-slate-400">
+                ({syncZasobyColumns.length} vybrano)
+              </span>
+            )}
+          </button>
 
-          <div className="space-y-4">
-            {SYNC_COLUMN_CATEGORIES.map((category) => (
-              <div key={category.label}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                  {category.label}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {category.columns.map((col) => {
-                    const isChecked = syncZasobyColumns.includes(col.key);
-                    return (
-                      <button
-                        key={col.key}
-                        type="button"
-                        onClick={() => toggleColumn(col.key)}
-                        className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
-                          isChecked
-                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                            : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-                        )}
-                      >
-                        <span
+          {showColumns && (
+            <div className="mt-3 space-y-4">
+              {SYNC_COLUMN_CATEGORIES.map((category) => (
+                <div key={category.label}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                    {category.label}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {category.columns.map((col) => {
+                      const isChecked = syncZasobyColumns.includes(col.key);
+                      return (
+                        <button
+                          key={col.key}
+                          type="button"
+                          onClick={() => toggleColumn(col.key)}
                           className={cn(
-                            'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
                             isChecked
-                              ? 'bg-blue-600 border-blue-600'
-                              : 'border-slate-300'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                              : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                           )}
                         >
-                          {isChecked && (
-                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </span>
-                        {col.label}
-                      </button>
-                    );
-                  })}
+                          <span
+                            className={cn(
+                              'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
+                              isChecked
+                                ? 'bg-blue-600 border-blue-600'
+                                : 'border-slate-300'
+                            )}
+                          >
+                            {isChecked && (
+                              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                          {col.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {syncZasobyColumns.length > 0 && (
-            <p className="text-xs text-slate-500 mt-3">
-              Vybrano {syncZasobyColumns.length} sloupcu
-            </p>
+              ))}
+            </div>
           )}
         </div>
 
@@ -1310,6 +1323,7 @@ function SyncPohybyBlock({
   syncPohyby,
 }: SyncPohybyBlockProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [showColumns, setShowColumns] = useState(false);
 
   useEffect(() => {
     fetchSyncPohybyLog();
@@ -1337,60 +1351,71 @@ function SyncPohybyBlock({
       </h3>
 
       <div className="space-y-5">
-        {/* Column selection */}
+        {/* Column selection - collapsible */}
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-3">
-            Vyberte sloupce, ktere chcete stahovat:
-          </label>
+          <button
+            type="button"
+            onClick={() => setShowColumns(!showColumns)}
+            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 transition-transform duration-200',
+                !showColumns && '-rotate-90'
+              )}
+            />
+            Nastaveni sloupcu
+            {syncPohybyColumns.length > 0 && (
+              <span className="text-xs text-slate-400">
+                ({syncPohybyColumns.length} vybrano)
+              </span>
+            )}
+          </button>
 
-          <div className="space-y-4">
-            {SYNC_POHYBY_COLUMN_CATEGORIES.map((category) => (
-              <div key={category.label}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                  {category.label}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {category.columns.map((col) => {
-                    const isChecked = syncPohybyColumns.includes(col.key);
-                    return (
-                      <button
-                        key={col.key}
-                        type="button"
-                        onClick={() => toggleColumn(col.key)}
-                        className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
-                          isChecked
-                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                            : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-                        )}
-                      >
-                        <span
+          {showColumns && (
+            <div className="mt-3 space-y-4">
+              {SYNC_POHYBY_COLUMN_CATEGORIES.map((category) => (
+                <div key={category.label}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                    {category.label}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {category.columns.map((col) => {
+                      const isChecked = syncPohybyColumns.includes(col.key);
+                      return (
+                        <button
+                          key={col.key}
+                          type="button"
+                          onClick={() => toggleColumn(col.key)}
                           className={cn(
-                            'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 select-none',
                             isChecked
-                              ? 'bg-blue-600 border-blue-600'
-                              : 'border-slate-300'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                              : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                           )}
                         >
-                          {isChecked && (
-                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </span>
-                        {col.label}
-                      </button>
-                    );
-                  })}
+                          <span
+                            className={cn(
+                              'w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0',
+                              isChecked
+                                ? 'bg-blue-600 border-blue-600'
+                                : 'border-slate-300'
+                            )}
+                          >
+                            {isChecked && (
+                              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                          {col.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {syncPohybyColumns.length > 0 && (
-            <p className="text-xs text-slate-500 mt-3">
-              Vybrano {syncPohybyColumns.length} sloupcu
-            </p>
+              ))}
+            </div>
           )}
         </div>
 
