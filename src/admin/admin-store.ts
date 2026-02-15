@@ -183,7 +183,7 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
           storeFilter === 'all' || d.store.toLowerCase().includes(storeFilter);
         const matchEmployee = employeeFilter === 'all' || d.user === employeeFilter;
         const matchDay = dayFilter === 'all' || day === dayFilter;
-        const matchMonth = monthFilter === 'all' || m === monthFilter;
+        const matchMonth = monthFilter === 'all' || m === String(parseInt(monthFilter));
         const matchYear = yearFilter === 'all' || y === yearFilter;
         return matchStore && matchEmployee && matchDay && matchMonth && matchYear;
       })
