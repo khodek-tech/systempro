@@ -58,22 +58,24 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
     const PAGE_SIZE = 1000;
 
     // Paginated fetch to get all rows (Supabase default limit is 1000)
-    async function fetchAll<T>(query: () => ReturnType<ReturnType<typeof supabase.from>['select']>): Promise<{ data: T[]; error: boolean }> {
-      const allRows: T[] = [];
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    async function fetchAllPages(buildQuery: () => any): Promise<{ data: any[]; error: boolean }> {
+      const allRows: any[] = [];
       let offset = 0;
       while (true) {
-        const { data, error } = await query().range(offset, offset + PAGE_SIZE - 1);
+        const { data, error } = await buildQuery().range(offset, offset + PAGE_SIZE - 1);
         if (error) return { data: [], error: true };
         if (!data || data.length === 0) break;
-        allRows.push(...(data as T[]));
+        allRows.push(...data);
         if (data.length < PAGE_SIZE) break;
         offset += PAGE_SIZE;
       }
       return { data: allRows, error: false };
     }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     // Fetch products from pohoda_zasoby for the selected warehouse
-    const { data: zasoby, error: zasobyError } = await fetchAll<{ kod: string; nazev: string; ean: string | null; prodejni_cena: number }>(
+    const { data: zasoby, error: zasobyError } = await fetchAllPages(
       () => supabase.from('pohoda_zasoby').select('kod, nazev, ean, prodejni_cena').eq('cleneni_skladu_nazev', settings.warehouseId!)
     );
 
@@ -84,7 +86,7 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
     }
 
     // Fetch motivation flags
-    const { data: motivace, error: motivaceError } = await fetchAll<{ kod: string; motivace: boolean; zmenil: string | null; zmeneno: string | null }>(
+    const { data: motivace, error: motivaceError } = await fetchAllPages(
       () => supabase.from('motivace_produkty').select('kod, motivace, zmenil, zmeneno')
     );
 
