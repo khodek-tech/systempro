@@ -25,6 +25,7 @@
 16. [DB Persistence audit](#16-db-persistence-audit-v160)
 17. [Produkční hardening audit](#17-produkční-hardening-audit-v180)
 18. [Centralizace synchronizace — Cron Jobs](#18-centralizace-synchronizace--cron-jobs-v200--v210)
+19. [Motivace prodejny](#19-motivace-prodejny)
 
 ---
 
@@ -33,13 +34,13 @@
 | Role | ID | Přístup k modulům |
 |------|-----|-------------------|
 | Prodavač | role-1 | cash-info, sales, collect, absence-report, tasks, attendance, shifts, chat, email |
-| Administrátor | role-2 | absence-approval, tasks, kpi-dashboard, reports, presence, chat, email |
+| Administrátor | role-2 | absence-approval, tasks, kpi-dashboard, reports, presence, chat, email, motivation |
 | Skladník | role-3 | absence-report, tasks, attendance, shifts, chat, email |
 | Vedoucí skladu | role-4 | absence-report, absence-approval, tasks, attendance, presence, chat, email |
 | Obsluha e-shopu | role-5 | absence-report, tasks, attendance, shifts, chat, email |
 | Obchodník | role-6 | absence-report, tasks, attendance, shifts, chat, email |
 | Vedoucí velkoobchodu | role-7 | absence-report, absence-approval, tasks, attendance, presence, chat, email |
-| Majitel | role-8 | absence-approval, tasks, kpi-dashboard, presence, chat, email |
+| Majitel | role-8 | absence-approval, tasks, kpi-dashboard, presence, chat, email, motivation |
 
 ---
 
@@ -1046,4 +1047,108 @@
 
 ---
 
-*Poslední aktualizace: 2026-02-13*
+## 19. Motivace prodejny
+
+**Modul:** MotivationModule
+**Store:** useMotivationStore
+**Badge:** Žádný
+
+### Přístupové role
+
+| Role | ID |
+|------|-----|
+| Administrátor | role-2 |
+| Majitel | role-8 |
+
+### Testovací scénáře
+
+#### MOTIV-001: Otevření modulu a zobrazení produktů
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Přihlásit se jako Administrátor | Dashboard s modulem Motivace |
+| 2 | Kliknout na modul Motivace | Otevře se fullscreen dialog |
+| 3 | Počkat na načtení | Produkty ze skladu se načtou (~5400) |
+| 4 | Scrollovat tabulkou | Plynulý scroll, sticky hlavička |
+
+#### MOTIV-002: Filtrování produktů
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Zadat do filtru "8400000097" | Zobrazí se odpovídající produkt |
+| 2 | Vymazat filtr | Zobrazí se všechny produkty |
+| 3 | Zadat "šňůrka" | Produkty obsahující text v názvu |
+| 4 | Zkontrolovat počet v patičce | Ukazuje počet vyfiltrovaných |
+
+#### MOTIV-003: Řazení podle sloupců
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Kliknout na hlavičku "Kód" | Seřadí ASC, šipka nahoru |
+| 2 | Kliknout znovu na "Kód" | Seřadí DESC, šipka dolů |
+| 3 | Kliknout na "Cena" | Seřadí podle ceny ASC |
+| 4 | Kliknout na "Motivace" | Označené produkty nahoře |
+
+#### MOTIV-004: Označení a uložení jednoho produktu
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Najít produkt v tabulce | Produkt nalezen |
+| 2 | Kliknout na řádek | Checkbox se zapne (zelený) |
+| 3 | Zkontrolovat patičku | "1 změna" se zobrazí |
+| 4 | Kliknout "Uložit" | Toast "Uloženo 1 změn" |
+| 5 | Zavřít a znovu otevřít modal | Produkt je stále označený |
+
+#### MOTIV-005: Hromadné označení vyfiltrovaných produktů
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Zadat filtr (např. "šňůrka") | Zobrazí se jen vyfiltrované |
+| 2 | Kliknout "Označit vše" | Všechny vyfiltrované se označí |
+| 3 | Zkontrolovat počet změn | Odpovídá počtu vyfiltrovaných |
+| 4 | Vymazat filtr | Ostatní produkty neoznačené |
+| 5 | Kliknout "Uložit" | Batch upsert, toast potvrzení |
+
+#### MOTIV-006: Hromadné odznačení
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Seřadit podle Motivace DESC | Označené nahoře |
+| 2 | Kliknout "Odznačit vše" | Všechny vyfiltrované se odznačí |
+| 3 | Kliknout "Uložit" | Změny uloženy do DB |
+
+#### MOTIV-007: Nastavení motivačního procenta a skladu (admin)
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít admin panel → Nastavení modulů | Seznam modulů |
+| 2 | Kliknout na modul Motivace | Detail nastavení |
+| 3 | V sekci "Nastavení motivace" změnit procento na 6 | Hodnota nastavena |
+| 4 | Vybrat sklad "ALL_Zdiby" | Sklad vybrán |
+| 5 | Kliknout "Uložit nastavení" | Toast "Nastavení motivace uloženo" |
+| 6 | Otevřít modul Motivace | Produkty z ALL_Zdiby se načtou |
+
+### Edge cases
+- Žádný sklad nevybrán → modal zobrazí prázdný stav s informační zprávou
+- Velký počet produktů (5000+) → paginovaný fetch po 1000 řádcích, plynulý scroll
+- Uložení bez změn → tlačítko "Uložit" je disabled
+- Více uživatelů současně → poslední zápis vyhraje (upsert on conflict)
+- Produkt smazán z Pohody → zůstane v motivace_produkty, ale nezobrazí se v tabulce
+
+---
+
+*Poslední aktualizace: 2026-02-16*

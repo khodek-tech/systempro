@@ -100,6 +100,7 @@ role_modules:
     - tasks
     - presence
     - chat
+    - motivation
   role-3:  # Skladník
     - absence-report
     - tasks
@@ -137,6 +138,7 @@ role_modules:
     - presence
     - shifts
     - chat
+    - motivation
 
 ui:
   location: header

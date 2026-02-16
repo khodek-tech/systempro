@@ -2,6 +2,24 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.7.0] - 2026-02-16
+
+### Přidáno
+
+#### Nový modul: Motivace prodejny
+- **Účel**: Označení produktů s vyšším procentem motivační odměny
+- **Přístup**: Administrátor (role-2), Majitel (role-8)
+- **DB migrace**: `create_motivace_tables` — tabulky `motivace_nastaveni` (singleton, globální procento + výběr skladu) a `motivace_produkty` (označení produktů přes kód)
+- **UI**: Fullscreen dialog (95vw × 95vh) s Excel-like tabulkou ~5400 produktů z Pohody
+- **Funkce**: Textový filtr (kód/název/EAN), řazení všech sloupců, toggle checkbox, hromadné označení/odznačení vyfiltrovaných, buffered save (batch upsert)
+- **Admin panel**: Nastavení motivačního procenta (%) a výběr skladu (z `pohoda_zasoby`)
+- **Paginace**: Fetch po 1000 řádcích pro překonání Supabase limitu
+- **Nové soubory**: `motivation.types.ts`, `motivation-store.ts`, `MotivationModule.tsx`, `motivation-modal.tsx`, `MotivationSettingsPanel.tsx`
+- **Upravené soubory**: `mappers.ts`, `ui-store.ts`, `init.ts`, `default-modules.ts`, `registry.ts`, `ModuleSettingsDetail.tsx`
+- **Specifikace**: `specs/modules/motivation.spec.yaml`, aktualizace `testy.md`, nápověda v `manual-content.ts`
+
+---
+
 ## [2.6.1] - 2026-02-13
 
 ### Opraveno

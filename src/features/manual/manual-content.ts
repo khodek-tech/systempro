@@ -18,6 +18,7 @@ export const MODULE_NAMES: Record<string, string> = {
   'shifts': 'Směny',
   'presence': 'Přítomnost',
   'chat': 'Chat',
+  'motivation': 'Motivace',
 };
 
 // Role names for display
@@ -345,6 +346,31 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
     ],
     tips: [
       'Používejte pro rychlý přehled o obsazenosti pracoviště.',
+    ],
+  },
+  'motivation': {
+    description: 'Motivační program prodejny - označení produktů s vyšším procentem odměny.',
+    purpose: 'Modul Motivace slouží k označení produktů, které budou mít v motivačním programu vyšší procento odměny. Administrátor nastaví jedno globální motivační procento a vybere sklad, ze kterého se načtou produkty. V tabulce pak označuje produkty, které do motivačního programu patří.',
+    howToUse: [
+      'Otevřete modul Motivace kliknutím na kartu na dashboardu.',
+      'Zobrazí se fullscreen tabulka se všemi produkty ze zvoleného skladu (~5400 položek).',
+      'Použijte vyhledávací pole nahoře pro filtrování podle kódu, názvu nebo EAN.',
+      'Klikněte na hlavičku sloupce pro řazení (kód, název, cena, motivace).',
+      'Klikněte na řádek produktu pro zapnutí/vypnutí motivace (zelený checkbox = v programu).',
+      'Pro hromadné označení vyfiltrovaných produktů použijte tlačítko "Označit vše" v patičce.',
+      'Po provedení změn klikněte na tlačítko "Uložit" - počet čekajících změn se zobrazuje vedle.',
+    ],
+    faq: [
+      { q: 'Kde nastavím motivační procento?', a: 'V administraci: Nastavení modulů → Motivace → Nastavení motivace. Zadejte procento a vyberte sklad.' },
+      { q: 'Proč nevidím žádné produkty?', a: 'Zkontrolujte, zda je v nastavení modulu vybrán sklad. Bez vybraného skladu se produkty nenačtou.' },
+      { q: 'Co znamená "Označit vše"?', a: 'Označí pouze aktuálně vyfiltrované produkty, ne všechny v tabulce. Pokud máte aktivní filtr, označí se jen viditelné položky.' },
+      { q: 'Jsou změny okamžité?', a: 'Ne, změny se ukládají lokálně (checkboxy) a do databáze se zapíší až po kliknutí na "Uložit". Počet čekajících změn vidíte v patičce.' },
+      { q: 'Co se stane, když zavřu okno bez uložení?', a: 'Neuložené změny se ztratí. Před zavřením vždy klikněte na "Uložit".' },
+    ],
+    tips: [
+      'Použijte filtr pro rychlé nalezení konkrétního produktu podle kódu nebo EAN.',
+      'Řazení podle sloupce "Motivace" zobrazí označené produkty na začátku seznamu.',
+      'Při hromadných změnách nejprve vyfiltrujte skupinu produktů a pak použijte "Označit vše".',
     ],
   },
   'chat': {

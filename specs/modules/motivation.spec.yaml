@@ -1,0 +1,287 @@
+# SYSTEM.PRO - Motivation Module Specification
+# Modul pro motivacni program prodejny
+
+module:
+  id: motivation
+  name: Motivace
+  description: Motivacni program prodejny - oznaceni produktu s vyssim procentem odmeny
+  component: MotivationModule
+  store: useMotivationStore
+  icon: TrendingUp
+
+access:
+  roles:
+    - role-2  # Administrator
+    - role-8  # Majitel
+
+  notes:
+    - Modul je urcen pro vedeni firmy
+    - Umoznuje oznacit produkty s vyssi motivacni odmenou
+    - Data produktu se ctou z pohoda_zasoby (jeden sklad)
+    - Oznaceni se uklada do tabulky motivace_produkty
+
+data_model:
+  motivationSettings:
+    id: integer  # singleton, vzdy 1
+    percentage: number  # globalni motivacni procento
+    warehouseId: string | null  # cleneni_skladu_nazev z pohoda_zasoby
+    updatedAt: string  # timestamptz
+
+  motivationProduct:
+    kod: string  # kod produktu z Pohody (unique)
+    nazev: string  # nazev produktu
+    ean: string | null  # EAN kod
+    prodejniCena: number  # prodejni cena
+    motivation: boolean  # zda je produkt v motivacnim programu
+    changedBy: string | null  # kdo naposledy zmenil
+    changedAt: string | null  # kdy naposledy zmeneno
+
+  storeState:
+    products: MotivationProduct[]
+    settings: MotivationSettings | null
+    pendingChanges: Map<string, boolean>  # lokalni zmeny pred ulozenim
+    _loaded: boolean
+    _loading: boolean
+    _saving: boolean
+
+db_tables:
+  motivace_nastaveni:
+    description: Singleton tabulka (id=1) s globalnim nastavenim motivace
+    columns:
+      - id: integer PK DEFAULT 1 CHECK (id = 1)
+      - procento: numeric DEFAULT 0
+      - sklad_id: text
+      - aktualizovano: timestamptz DEFAULT now()
+    rls: enabled
+    policies:
+      - SELECT pro authenticated
+      - INSERT pro authenticated
+      - UPDATE pro authenticated
+
+  motivace_produkty:
+    description: Oznaceni produktu pro motivacni program
+    columns:
+      - id: serial PK
+      - kod: text UNIQUE NOT NULL
+      - motivace: boolean DEFAULT false
+      - zmenil: text
+      - zmeneno: timestamptz DEFAULT now()
+    indexes:
+      - idx_motivace_produkty_kod (kod)
+      - idx_motivace_produkty_active (motivace) WHERE motivace = true
+    rls: enabled
+    policies:
+      - SELECT pro authenticated
+      - INSERT pro authenticated
+      - UPDATE pro authenticated
+
+features:
+  - id: product_table
+    name: Tabulka produktu
+    description: Excel-like tabulka se vsemi produkty ze zvol. skladu (~5400 radku)
+    acceptance_criteria:
+      - Zobrazuje kod, nazev, EAN, cenu a checkbox motivace
+      - Nativni scroll pro ~5400 radku
+      - Sticky hlavicka tabulky
+      - Fullscreen dialog (95vw x 95vh)
+
+  - id: filter
+    name: Filtrovani
+    description: Textove vyhledavani pres kod, nazev a EAN
+    acceptance_criteria:
+      - Case-insensitive fulltextovy filtr
+      - Filtrovani v realnem case
+      - Zobrazuje pocet vyfiltrovanych produktu
+
+  - id: sort
+    name: Razeni
+    description: Razeni podle vsech sloupcu
+    acceptance_criteria:
+      - Klik na hlavicku prepina ASC/DESC
+      - Vizualni indikator smeru razeni (sipka)
+      - Razeni podle kodu, nazvu, ceny a motivace
+
+  - id: toggle
+    name: Oznaceni produktu
+    description: Checkbox pro zapnuti/vypnuti motivace na produktu
+    acceptance_criteria:
+      - Klik na radek toggle motivaci
+      - Zmena se ulozi do pendingChanges (lokalne)
+      - Vizualni indikator (zeleny check vs sedy ctverec)
+
+  - id: bulk_actions
+    name: Hromadne akce
+    description: Oznacit/odznacit vsechny vyfiltrované produkty
+    acceptance_criteria:
+      - "Oznacit vse" pracuje POUZE s aktualne vyfiltrovanyni polozkami
+      - "Odznacit vse" odznaci vsechny vyfiltrované
+      - Zmeny se ukladaji do pendingChanges
+
+  - id: buffered_save
+    name: Ulozeni zmen
+    description: Jedno tlacitko "Ulozit" pro batch upsert vsech zmen
+    acceptance_criteria:
+      - Zobrazuje pocet cekajicich zmen
+      - Tlacitko disabled pokud nejsou zmeny
+      - Upsert do motivace_produkty (onConflict kod)
+      - Toast potvrzeni po uspesnem ulozeni
+      - Uklada jmeno uzivatele a cas zmeny
+
+  - id: admin_settings
+    name: Nastaveni motivace (admin panel)
+    description: Nastaveni globalniho procenta a vyberu skladu
+    acceptance_criteria:
+      - Numeric input pro motivacni procento (%)
+      - Dropdown pro vyber skladu (z DISTINCT cleneni_skladu_nazev)
+      - Tlacitko pro ulozeni
+      - Upsert do motivace_nastaveni (id=1)
+
+notifications:
+  badge:
+    type: none
+    description: Modul nema badge notifikace
+
+scenarios:
+  - id: MOTIV-001
+    name: Otevreni modulu a zobrazeni produktu
+    preconditions:
+      - Uzivatel je prihlasen jako Administrator
+      - V nastaveni je vybran sklad (napr. ALL_Zdiby)
+    steps:
+      - Kliknu na modul Motivace
+      - Otevre se fullscreen dialog
+      - Nacitaji se produkty z vybraneho skladu
+      - Vidim tabulku s ~5400 produkty
+      - Scrolluji tabulkou
+    expected:
+      - Vsechny produkty se nacetly (ne jen 1000)
+      - Scroll je plynuly
+      - Hlavicka zustava sticky
+
+  - id: MOTIV-002
+    name: Filtrovani produktu
+    preconditions:
+      - Motivace modal je otevreny s nactenyni produkty
+    steps:
+      - Zadam do filtru "8400000097"
+      - Zobrazí se pouze odpovidajici produkt
+      - Vymazim filtr
+      - Zobrazí se vsechny produkty
+      - Zadam do filtru "snurka"
+      - Zobrazí se produkty obsahujici text v nazvu
+    expected:
+      - Filtr funguje pres kod, nazev i EAN
+      - Case-insensitive
+      - Pocet produktu se aktualizuje
+
+  - id: MOTIV-003
+    name: Razeni podle sloupcu
+    preconditions:
+      - Motivace modal je otevreny
+    steps:
+      - Kliknu na hlavicku "Kod" - seradi ASC
+      - Kliknu znovu na "Kod" - seradi DESC
+      - Kliknu na "Cena" - seradi podle ceny ASC
+      - Kliknu na "Motivace" - oznacene nahore
+    expected:
+      - Razeni funguje na vsech sloupcich
+      - Sipka indikuje smer
+      - Razeni se kombinuje s filtrem
+
+  - id: MOTIV-004
+    name: Oznaceni a ulozeni jednoho produktu
+    preconditions:
+      - Motivace modal je otevreny
+    steps:
+      - Najdu produkt v tabulce
+      - Kliknu na radek - checkbox se zapne (zeleny)
+      - Vidim "1 zmena" v patickce
+      - Kliknu "Ulozit"
+      - Toast "Ulozeno 1 zmen"
+      - Zavru a znovu otevru modal
+      - Produkt je stale oznaceny
+    expected:
+      - Data persistuji v DB
+      - Po reloadu zustanou zachovana
+
+  - id: MOTIV-005
+    name: Hromadne oznaceni vyfiltrovanych produktu
+    preconditions:
+      - Motivace modal je otevreny
+    steps:
+      - Zadam do filtru "snurka" (napr. 5 vysledku)
+      - Kliknu "Oznacit vse"
+      - Vsech 5 vyfiltrovanych se oznaci
+      - Pocet zmen ukazuje 5
+      - Vymazim filtr
+      - Ostatni produkty zustavaji neoznacene
+      - Kliknu "Ulozit"
+    expected:
+      - Bulk select funguje pouze na vyfiltrovaných
+      - Neovlivnuje ostatni produkty
+      - Batch upsert ulozi vsechny zmeny najednou
+
+  - id: MOTIV-006
+    name: Hromadne odznaceni
+    preconditions:
+      - Nektere produkty jsou oznacene
+    steps:
+      - Vyfiltruji oznacene (razeni podle Motivace DESC)
+      - Kliknu "Odznacit vse"
+      - Vsechny vyfiltrované se odznaci
+      - Kliknu "Ulozit"
+    expected:
+      - Odznaceni funguje korektne
+      - Zmeny se ulozi do DB
+
+  - id: MOTIV-007
+    name: Nastaveni motivacniho procenta a skladu (admin)
+    preconditions:
+      - Uzivatel je prihlasen jako Administrator
+      - Otevreny admin panel > Nastaveni modulu > Motivace
+    steps:
+      - Vidim nastaveni motivace pod kartou modulu
+      - Zmenim procento na 6
+      - Vyberu sklad "ALL_Zdiby"
+      - Kliknu "Ulozit nastaveni"
+      - Toast "Nastaveni motivace ulozeno"
+    expected:
+      - Procento a sklad se ulozi do motivace_nastaveni
+      - Pri dalsim otevreni modulu se nacitaji produkty ze zvol. skladu
+
+edge_cases:
+  - id: MOTIV-E001
+    name: Zadny sklad nevybran
+    description: Admin jeste nevybral sklad v nastaveni
+    expected: >
+      Modal zobrazi prazdny stav s textem
+      "Nebyl vybran sklad nebo sklad neobsahuje zadne produkty."
+
+  - id: MOTIV-E002
+    name: Velky pocet produktu (5000+)
+    description: Sklad obsahuje vice nez 5000 produktu
+    expected: >
+      Paginovany fetch stahuje po 1000 radcich.
+      Vsechny produkty se nacitaji korektne.
+      Scroll zustava plynuly.
+
+  - id: MOTIV-E003
+    name: Ulozeni bez zmen
+    description: Uzivatel klikne Ulozit bez zmeny
+    expected: >
+      Tlacitko Ulozit je disabled (sedy).
+      Nic se neodešle do DB.
+
+  - id: MOTIV-E004
+    name: Vice uzivatelu soucasne
+    description: Dva admini oznacuji produkty soucasne
+    expected: >
+      Posledni zapis vyhraje (upsert on conflict kod).
+      Zadne chyby pri konfliktu.
+
+  - id: MOTIV-E005
+    name: Produkt existuje v motivace_produkty ale ne v pohoda_zasoby
+    description: Produkt byl smazan z Pohody ale oznaceni zustalo
+    expected: >
+      Oznaceni v motivace_produkty zustava, ale produkt
+      se nezobrazuje v tabulce (join pres pohoda_zasoby).
