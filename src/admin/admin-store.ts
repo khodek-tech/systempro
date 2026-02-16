@@ -22,6 +22,8 @@ interface AdminState {
   attendanceRecords: AttendanceRecord[];
   pohodaTrzby: Record<string, number>;
   _pohodaTrzbyLoaded: boolean;
+  motivaceProdukty: Record<string, number>;
+  _motivaceProduktyLoaded: boolean;
   storageUsageBytes: number;
   _loaded: boolean;
   _loading: boolean;
@@ -38,6 +40,7 @@ interface AdminActions {
   // Fetch
   fetchAttendanceRecords: () => Promise<void>;
   fetchPohodaTrzby: () => Promise<void>;
+  fetchMotivaceProdukty: () => Promise<void>;
   fetchStorageUsage: () => Promise<void>;
 
   // Realtime
@@ -79,6 +82,8 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   attendanceRecords: [],
   pohodaTrzby: {},
   _pohodaTrzbyLoaded: false,
+  motivaceProdukty: {},
+  _motivaceProduktyLoaded: false,
   storageUsageBytes: 0,
   _loaded: false,
   _loading: false,
@@ -113,6 +118,24 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
       set({ pohodaTrzby: map, _pohodaTrzbyLoaded: true });
     } else {
       logger.error('Failed to fetch Pohoda sales summary');
+    }
+  },
+
+  fetchMotivaceProdukty: async () => {
+    if (get()._motivaceProduktyLoaded) return;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .rpc('get_motivace_produkty_summary');
+    if (!error && data) {
+      const map: Record<string, number> = {};
+      for (const row of data as { prodejna: string; datum: string; total: string }[]) {
+        const storeName = row.prodejna.replace(/_/g, ' ');
+        const key = `${storeName}|${row.datum}`;
+        map[key] = parseFloat(row.total);
+      }
+      set({ motivaceProdukty: map, _motivaceProduktyLoaded: true });
+    } else {
+      logger.error('Failed to fetch motivace produkty summary');
     }
   },
 

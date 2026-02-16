@@ -1,11 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Banknote, Truck } from 'lucide-react';
 import { AttendanceRecord } from '@/types';
 
 interface SalesTableProps {
   data: AttendanceRecord[];
   pohodaTrzby: Record<string, number>;
+  motivaceProdukty: Record<string, number>;
 }
 
 function czDateToIso(czDate: string): string {
@@ -16,7 +18,18 @@ function czDateToIso(czDate: string): string {
   return `${y}-${m}-${d}`;
 }
 
-export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
+export function SalesTable({ data, pohodaTrzby, motivaceProdukty }: SalesTableProps) {
+  // Precompute total sales per store+date for proportional motivace split
+  const storeDateTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const row of data) {
+      const isoDate = czDateToIso(row.date);
+      const key = `${row.store}|${isoDate}`;
+      totals[key] = (totals[key] || 0) + row.cash + row.card;
+    }
+    return totals;
+  }, [data]);
+
   return (
     <div className="excel-outer-wrapper">
       <div className="p-4 bg-slate-50 border-b flex items-center space-x-2">
@@ -76,7 +89,18 @@ export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
                       ? `${row.motivaceAmount.toLocaleString('cs-CZ')} Kc`
                       : '-'}
                   </td>
-                  <td className="col-money font-medium text-slate-400">-</td>
+                  <td className="col-money font-medium text-orange-600">
+                    {(() => {
+                      const storeMotivace = motivaceProdukty[key];
+                      if (!storeMotivace) return '-';
+                      const storeTotal = storeDateTotals[key] || 0;
+                      const employeeShare = storeTotal > 0
+                        ? (row.cash + row.card) / storeTotal
+                        : 0;
+                      const amount = Math.round(storeMotivace * employeeShare);
+                      return amount > 0 ? `${amount.toLocaleString('cs-CZ')} Kc` : '-';
+                    })()}
+                  </td>
                   <td className="col-note italic text-slate-400">{row.saleNote}</td>
                   <td className="col-money text-purple-600 font-medium text-xs">
                     {row.collected ? (

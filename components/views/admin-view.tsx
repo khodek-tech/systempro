@@ -38,6 +38,7 @@ export function AdminView() {
     yearFilter,
     storageUsageBytes,
     pohodaTrzby,
+    motivaceProdukty,
     setSubView,
     setStoreFilter,
     setEmployeeFilter,
@@ -48,6 +49,7 @@ export function AdminView() {
     getKpiData,
     fetchStorageUsage,
     fetchPohodaTrzby,
+    fetchMotivaceProdukty,
   } = useAdminStore();
   const { stores } = useStoresStore();
   const { users } = useUsersStore();
@@ -67,8 +69,9 @@ export function AdminView() {
     }
     if (subView === 'reports') {
       fetchPohodaTrzby();
+      fetchMotivaceProdukty();
     }
-  }, [subView, fetchStorageUsage, fetchPohodaTrzby]);
+  }, [subView, fetchStorageUsage, fetchPohodaTrzby, fetchMotivaceProdukty]);
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
@@ -234,7 +237,7 @@ export function AdminView() {
 
         {/* Tables */}
         <AttendanceTable data={filteredData} />
-        <SalesTable data={filteredData} pohodaTrzby={pohodaTrzby} />
+        <SalesTable data={filteredData} pohodaTrzby={pohodaTrzby} motivaceProdukty={motivaceProdukty} />
 
         {/* Bottom panels */}
         <div className="grid grid-cols-1 gap-6">
