@@ -24,6 +24,7 @@ import {
   RotateCw,
   ArrowDownUp,
   ChevronDown,
+  Receipt,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePohodaStore } from '@/features/pohoda';
@@ -80,6 +81,11 @@ export function PohodaSettings() {
     saveSyncPohybyConfig,
     fetchSyncPohybyLog,
     syncPohyby,
+    isSyncingProdejky,
+    syncProdejkyProgress,
+    syncProdejkyLog,
+    fetchSyncProdejkyLog,
+    syncProdejky,
   } = usePohodaStore();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -835,6 +841,15 @@ export function PohodaSettings() {
         syncPohyby={syncPohyby}
       />
 
+      {/* Synchronizace prodejek */}
+      <SyncProdejkyBlock
+        isSyncingProdejky={isSyncingProdejky}
+        syncProdejkyProgress={syncProdejkyProgress}
+        syncProdejkyLog={syncProdejkyLog}
+        fetchSyncProdejkyLog={fetchSyncProdejkyLog}
+        syncProdejky={syncProdejky}
+      />
+
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
         <h4 className="font-semibold text-blue-900 mb-2">
@@ -1481,6 +1496,144 @@ function SyncPohybyBlock({
                 </thead>
                 <tbody>
                   {syncPohybyLog.map((log) => (
+                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
+                        {new Date(log.vytvoreno).toLocaleString('cs-CZ', {
+                          day: 'numeric',
+                          month: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {log.stav === 'success' ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
+                            <CheckCircle2 className="w-4 h-4" />
+                            OK
+                          </span>
+                        ) : log.stav === 'error' ? (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-700" title={log.zprava || undefined}>
+                            <XCircle className="w-4 h-4" />
+                            Chyba
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Probiha
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                        {log.pocetZaznamu.toLocaleString('cs-CZ')}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                        {(log.trvaniMs / 1000).toFixed(1)}s
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// SyncProdejkyBlock component
+// =============================================================================
+
+interface SyncProdejkyBlockProps {
+  isSyncingProdejky: boolean;
+  syncProdejkyProgress: string | null;
+  syncProdejkyLog: import('@/shared/types').PohodaSyncLog[];
+  fetchSyncProdejkyLog: () => Promise<void>;
+  syncProdejky: () => Promise<void>;
+}
+
+function SyncProdejkyBlock({
+  isSyncingProdejky,
+  syncProdejkyProgress,
+  syncProdejkyLog,
+  fetchSyncProdejkyLog,
+  syncProdejky,
+}: SyncProdejkyBlockProps) {
+  useEffect(() => {
+    fetchSyncProdejkyLog();
+  }, [fetchSyncProdejkyLog]);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in fade-in duration-300">
+      <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <Receipt className="w-5 h-5 text-slate-400" />
+        Synchronizace prodejek
+      </h3>
+
+      <div className="space-y-5">
+        <p className="text-xs text-slate-500">
+          Stahuje prodejky od 1.2.2026. Pouziva se pro sloupec POHODA ve Vykazu trzeb.
+        </p>
+
+        {/* Sync button */}
+        <button
+          onClick={syncProdejky}
+          disabled={isSyncingProdejky}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+            isSyncingProdejky
+              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+          )}
+        >
+          {isSyncingProdejky ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Synchronizuji...
+            </>
+          ) : (
+            <>
+              <Receipt className="w-4 h-4" />
+              Synchronizovat prodejky
+            </>
+          )}
+        </button>
+
+        {/* Progress */}
+        {syncProdejkyProgress && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+            <p className="text-sm font-medium text-blue-800">{syncProdejkyProgress}</p>
+          </div>
+        )}
+
+        {/* Sync log */}
+        {syncProdejkyLog.length > 0 && (
+          <div>
+            <p className="text-sm font-medium text-slate-600 mb-2">
+              Posledni synchronizace:
+            </p>
+            <div className="shadow-sm border border-slate-200 bg-white rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Datum
+                    </th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Status
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Zaznamy
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Doba trvani
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {syncProdejkyLog.map((log) => (
                     <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
                       <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
                         {new Date(log.vytvoreno).toLocaleString('cs-CZ', {

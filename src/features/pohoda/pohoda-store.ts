@@ -69,6 +69,11 @@ interface PohodaState {
   syncPohybyProgress: string | null;
   syncPohybyLog: PohodaSyncLog[];
 
+  // Sync prodejky
+  isSyncingProdejky: boolean;
+  syncProdejkyProgress: string | null;
+  syncProdejkyLog: PohodaSyncLog[];
+
   // Navigation
   pohodaView: 'settings' | 'detail';
 }
@@ -101,6 +106,8 @@ interface PohodaActions {
   saveSyncPohybyConfig: () => Promise<void>;
   fetchSyncPohybyLog: () => Promise<void>;
   syncPohyby: () => Promise<void>;
+  fetchSyncProdejkyLog: () => Promise<void>;
+  syncProdejky: () => Promise<void>;
 }
 
 const defaultCredentials: PohodaCredentials = {
@@ -144,6 +151,9 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   isSyncingPohyby: false,
   syncPohybyProgress: null,
   syncPohybyLog: [],
+  isSyncingProdejky: false,
+  syncProdejkyProgress: null,
+  syncProdejkyLog: [],
   pohodaView: 'settings',
 
   // DB fetch
@@ -353,6 +363,64 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     } finally {
       set({ isSyncingPohyby: false });
       get().fetchSyncPohybyLog();
+    }
+  },
+
+  fetchSyncProdejkyLog: async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('pohoda_sync_log')
+      .select('*')
+      .eq('typ', 'prodejky')
+      .order('vytvoreno', { ascending: false })
+      .limit(5);
+    if (data) {
+      set({ syncProdejkyLog: data.map(mapDbToPohodaSyncLog) });
+    }
+  },
+
+  syncProdejky: async () => {
+    set({ isSyncingProdejky: true, syncProdejkyProgress: 'Stahování prodejek z mServeru...' });
+
+    try {
+      const supabase = createClient();
+      let totalZaznamu = 0;
+      let totalNovych = 0;
+      let totalAktualizovanych = 0;
+      let totalMs = 0;
+      let chunk = 0;
+
+      while (true) {
+        chunk++;
+        const { data, error } = await supabase.functions.invoke('sync-prodejky');
+
+        if (error) {
+          throw new Error(error.message || 'Synchronizace prodejek selhala');
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || 'Synchronizace prodejek selhala');
+        }
+
+        totalZaznamu += data.pocetZaznamu;
+        totalNovych += data.pocetNovych;
+        totalAktualizovanych += data.pocetAktualizovanych;
+        totalMs += data.trvaniMs;
+
+        if (!data.hasMore) break;
+
+        set({ syncProdejkyProgress: `Chunk ${chunk}: ${data.dateFrom}..${data.dateTo} (${totalZaznamu} prodejek)...` });
+      }
+
+      set({ syncProdejkyProgress: null });
+      toast.success(`Synchronizace prodejek dokončena: ${totalZaznamu} prodejek (${totalNovych} nových, ${totalAktualizovanych} aktualizovaných) za ${(totalMs / 1000).toFixed(1)}s`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Neznámá chyba';
+      toast.error(`Synchronizace prodejek selhala: ${msg}`);
+      set({ syncProdejkyProgress: null });
+    } finally {
+      set({ isSyncingProdejky: false });
+      get().fetchSyncProdejkyLog();
     }
   },
 }));
