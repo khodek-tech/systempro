@@ -46,7 +46,8 @@ export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
               const isoDate = czDateToIso(row.date);
               const key = `${row.store}|${isoDate}`;
               const pohodaAmount = pohodaTrzby[key];
-              const hasMismatch = pohodaAmount !== undefined && Math.round(pohodaAmount) !== Math.round(total);
+              const pohodaComparable = row.cash + row.card;
+              const hasMismatch = pohodaAmount !== undefined && Math.round(pohodaAmount) !== Math.round(pohodaComparable);
               return (
                 <tr key={index}>
                   <td className="col-date font-black text-slate-400">{row.date}</td>
@@ -60,7 +61,7 @@ export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
                     {row.partner.toLocaleString('cs-CZ')}
                   </td>
                   <td className="col-money text-slate-400">{row.flows}</td>
-                  <td className={`col-money font-black ${hasMismatch ? 'text-red-600 bg-red-50' : 'text-blue-700 bg-blue-50'}`}>
+                  <td className="col-money font-black">
                     {total.toLocaleString('cs-CZ')} Kc
                   </td>
                   <td className={`col-money font-black ${hasMismatch ? 'text-red-600 bg-red-50' : 'text-green-700 bg-green-50'}`}>
