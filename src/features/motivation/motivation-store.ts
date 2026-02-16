@@ -55,12 +55,27 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
 
     set({ _loading: true });
     const supabase = createClient();
+    const PAGE_SIZE = 1000;
+
+    // Paginated fetch to get all rows (Supabase default limit is 1000)
+    async function fetchAll<T>(query: () => ReturnType<ReturnType<typeof supabase.from>['select']>): Promise<{ data: T[]; error: boolean }> {
+      const allRows: T[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await query().range(offset, offset + PAGE_SIZE - 1);
+        if (error) return { data: [], error: true };
+        if (!data || data.length === 0) break;
+        allRows.push(...(data as T[]));
+        if (data.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      return { data: allRows, error: false };
+    }
 
     // Fetch products from pohoda_zasoby for the selected warehouse
-    const { data: zasoby, error: zasobyError } = await supabase
-      .from('pohoda_zasoby')
-      .select('kod, nazev, ean, prodejni_cena')
-      .eq('cleneni_skladu_nazev', settings.warehouseId);
+    const { data: zasoby, error: zasobyError } = await fetchAll<{ kod: string; nazev: string; ean: string | null; prodejni_cena: number }>(
+      () => supabase.from('pohoda_zasoby').select('kod, nazev, ean, prodejni_cena').eq('cleneni_skladu_nazev', settings.warehouseId!)
+    );
 
     if (zasobyError) {
       logger.error('Failed to fetch pohoda_zasoby');
@@ -69,9 +84,9 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
     }
 
     // Fetch motivation flags
-    const { data: motivace, error: motivaceError } = await supabase
-      .from('motivace_produkty')
-      .select('kod, motivace, zmenil, zmeneno');
+    const { data: motivace, error: motivaceError } = await fetchAll<{ kod: string; motivace: boolean; zmenil: string | null; zmeneno: string | null }>(
+      () => supabase.from('motivace_produkty').select('kod, motivace, zmenil, zmeneno')
+    );
 
     if (motivaceError) {
       logger.error('Failed to fetch motivace_produkty');
@@ -80,13 +95,13 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
     }
 
     const motivaceMap = new Map(
-      (motivace ?? []).map((m: { kod: string; motivace: boolean; zmenil: string | null; zmeneno: string | null }) => [
+      motivace.map((m) => [
         m.kod,
         { motivation: m.motivace, changedBy: m.zmenil, changedAt: m.zmeneno },
       ])
     );
 
-    const products: MotivationProduct[] = (zasoby ?? []).map((z: { kod: string; nazev: string; ean: string | null; prodejni_cena: number }) => {
+    const products: MotivationProduct[] = zasoby.map((z) => {
       const m = motivaceMap.get(z.kod);
       return {
         kod: z.kod,
