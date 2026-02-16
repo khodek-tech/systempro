@@ -20,6 +20,8 @@ interface AdminState {
   monthFilter: string;
   yearFilter: string;
   attendanceRecords: AttendanceRecord[];
+  pohodaTrzby: Record<string, number>;
+  _pohodaTrzbyLoaded: boolean;
   storageUsageBytes: number;
   _loaded: boolean;
   _loading: boolean;
@@ -35,6 +37,7 @@ interface KpiData {
 interface AdminActions {
   // Fetch
   fetchAttendanceRecords: () => Promise<void>;
+  fetchPohodaTrzby: () => Promise<void>;
   fetchStorageUsage: () => Promise<void>;
 
   // Realtime
@@ -74,6 +77,8 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   monthFilter: 'all',
   yearFilter: 'all',
   attendanceRecords: [],
+  pohodaTrzby: {},
+  _pohodaTrzbyLoaded: false,
   storageUsageBytes: 0,
   _loaded: false,
   _loading: false,
@@ -90,6 +95,24 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
       logger.error('Failed to fetch attendance records');
       toast.error('Nepodařilo se načíst docházku');
       set({ _loading: false });
+    }
+  },
+
+  fetchPohodaTrzby: async () => {
+    if (get()._pohodaTrzbyLoaded) return;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .rpc('get_pohoda_trzby_summary');
+    if (!error && data) {
+      const map: Record<string, number> = {};
+      for (const row of data as { cleneni: string; datum: string; total: string }[]) {
+        const storeName = row.cleneni.replace(/_/g, ' ');
+        const key = `${storeName}|${row.datum}`;
+        map[key] = parseFloat(row.total);
+      }
+      set({ pohodaTrzby: map, _pohodaTrzbyLoaded: true });
+    } else {
+      logger.error('Failed to fetch Pohoda sales summary');
     }
   },
 

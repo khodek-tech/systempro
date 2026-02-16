@@ -5,9 +5,18 @@ import { AttendanceRecord } from '@/types';
 
 interface SalesTableProps {
   data: AttendanceRecord[];
+  pohodaTrzby: Record<string, number>;
 }
 
-export function SalesTable({ data }: SalesTableProps) {
+function czDateToIso(czDate: string): string {
+  const parts = czDate.split('. ');
+  const d = parts[0].padStart(2, '0');
+  const m = parts[1].padStart(2, '0');
+  const y = parts[2];
+  return `${y}-${m}-${d}`;
+}
+
+export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
   return (
     <div className="excel-outer-wrapper">
       <div className="p-4 bg-slate-50 border-b flex items-center space-x-2">
@@ -26,6 +35,7 @@ export function SalesTable({ data }: SalesTableProps) {
               <th className="col-money">Partner</th>
               <th className="col-money">Pohyby</th>
               <th className="col-money text-blue-600">Moje Tržba</th>
+              <th className="col-money text-green-600">Pohoda</th>
               <th className="col-note text-left">Poznámka k tržbe</th>
               <th className="col-money">Odvod</th>
             </tr>
@@ -33,6 +43,10 @@ export function SalesTable({ data }: SalesTableProps) {
           <tbody>
             {data.map((row, index) => {
               const total = row.cash + row.card + row.partner;
+              const isoDate = czDateToIso(row.date);
+              const key = `${row.store}|${isoDate}`;
+              const pohodaAmount = pohodaTrzby[key];
+              const hasMismatch = pohodaAmount !== undefined && Math.round(pohodaAmount) !== Math.round(total);
               return (
                 <tr key={index}>
                   <td className="col-date font-black text-slate-400">{row.date}</td>
@@ -46,8 +60,13 @@ export function SalesTable({ data }: SalesTableProps) {
                     {row.partner.toLocaleString('cs-CZ')}
                   </td>
                   <td className="col-money text-slate-400">{row.flows}</td>
-                  <td className="col-money font-black text-blue-700 bg-blue-50">
+                  <td className={`col-money font-black ${hasMismatch ? 'text-red-600 bg-red-50' : 'text-blue-700 bg-blue-50'}`}>
                     {total.toLocaleString('cs-CZ')} Kc
+                  </td>
+                  <td className={`col-money font-black ${hasMismatch ? 'text-red-600 bg-red-50' : 'text-green-700 bg-green-50'}`}>
+                    {pohodaAmount !== undefined
+                      ? `${Math.round(pohodaAmount).toLocaleString('cs-CZ')} Kc`
+                      : '-'}
                   </td>
                   <td className="col-note italic text-slate-400">{row.saleNote}</td>
                   <td className="col-money text-purple-600 font-medium text-xs">

@@ -37,6 +37,7 @@ export function AdminView() {
     monthFilter,
     yearFilter,
     storageUsageBytes,
+    pohodaTrzby,
     setSubView,
     setStoreFilter,
     setEmployeeFilter,
@@ -46,6 +47,7 @@ export function AdminView() {
     getFilteredData,
     getKpiData,
     fetchStorageUsage,
+    fetchPohodaTrzby,
   } = useAdminStore();
   const { stores } = useStoresStore();
   const { users } = useUsersStore();
@@ -63,7 +65,10 @@ export function AdminView() {
     if (subView === 'settings') {
       fetchStorageUsage();
     }
-  }, [subView, fetchStorageUsage]);
+    if (subView === 'reports') {
+      fetchPohodaTrzby();
+    }
+  }, [subView, fetchStorageUsage, fetchPohodaTrzby]);
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
@@ -229,7 +234,7 @@ export function AdminView() {
 
         {/* Tables */}
         <AttendanceTable data={filteredData} />
-        <SalesTable data={filteredData} />
+        <SalesTable data={filteredData} pohodaTrzby={pohodaTrzby} />
 
         {/* Bottom panels */}
         <div className="grid grid-cols-1 gap-6">
