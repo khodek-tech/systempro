@@ -359,6 +359,7 @@ export function mapDbToAttendanceRecord(row: any): AttendanceRecord {
     collected: row.vybrano === 'false' || row.vybrano === false ? false : row.vybrano,
     motivacePercent: row.motivace_procenta ?? 2.0,
     motivaceAmount: row.motivace_castka ?? 0,
+    motivaceProduktyCastka: row.motivace_produkty_castka ?? 0,
   };
 }
 

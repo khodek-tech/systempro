@@ -91,14 +91,20 @@ export function SalesTable({ data, pohodaTrzby, motivaceProdukty }: SalesTablePr
                   </td>
                   <td className="col-money font-medium text-orange-600">
                     {(() => {
+                      // Prefer DB value, fall back to live RPC calculation
+                      if (row.motivaceProduktyCastka > 0) {
+                        return `${row.motivaceProduktyCastka.toLocaleString('cs-CZ', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Kc`;
+                      }
                       const storeMotivace = motivaceProdukty[key];
                       if (!storeMotivace) return '-';
                       const storeTotal = storeDateTotals[key] || 0;
                       const employeeShare = storeTotal > 0
                         ? (row.cash + row.card) / storeTotal
                         : 0;
-                      const amount = Math.round(storeMotivace * employeeShare);
-                      return amount > 0 ? `${amount.toLocaleString('cs-CZ')} Kc` : '-';
+                      const amount = Math.round(storeMotivace * employeeShare * 10) / 10;
+                      return amount > 0
+                        ? `${amount.toLocaleString('cs-CZ', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Kc`
+                        : '-';
                     })()}
                   </td>
                   <td className="col-note italic text-slate-400">{row.saleNote}</td>

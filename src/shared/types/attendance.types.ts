@@ -26,4 +26,5 @@ export interface AttendanceRecord {
   collected: string | false;
   motivacePercent: number;
   motivaceAmount: number;
+  motivaceProduktyCastka: number;
 }
