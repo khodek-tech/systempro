@@ -5,6 +5,7 @@ interface UIState {
   salesModalOpen: boolean;
   collectModalOpen: boolean;
   absenceModalOpen: boolean;
+  motivationModalOpen: boolean;
 }
 
 interface UIActions {
@@ -18,6 +19,7 @@ interface UIActions {
   setSalesModalOpen: (open: boolean) => void;
   setCollectModalOpen: (open: boolean) => void;
   setAbsenceModalOpen: (open: boolean) => void;
+  setMotivationModalOpen: (open: boolean) => void;
 }
 
 export const useUIStore = create<UIState & UIActions>((set) => ({
@@ -25,6 +27,7 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   salesModalOpen: false,
   collectModalOpen: false,
   absenceModalOpen: false,
+  motivationModalOpen: false,
 
   // Modal actions
   openSalesModal: () => set({ salesModalOpen: true }),
@@ -36,4 +39,5 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   setSalesModalOpen: (open) => set({ salesModalOpen: open }),
   setCollectModalOpen: (open) => set({ collectModalOpen: open }),
   setAbsenceModalOpen: (open) => set({ absenceModalOpen: open }),
+  setMotivationModalOpen: (open) => set({ motivationModalOpen: open }),
 }));

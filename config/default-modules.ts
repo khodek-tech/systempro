@@ -93,6 +93,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'EmailModule',
     icon: 'Mail',
   },
+  {
+    id: 'motivation',
+    name: 'Motivace',
+    description: 'Motivační program prodejny',
+    component: 'MotivationModule',
+    icon: 'TrendingUp',
+  },
 ];
 
 // Default module configuration
@@ -215,6 +222,13 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     moduleId: 'email',
     roleIds: ['role-1', 'role-2', 'role-3', 'role-4', 'role-5', 'role-6', 'role-7', 'role-8'],
     order: 8,
+    column: 'left',
+    enabled: true,
+  },
+  {
+    moduleId: 'motivation',
+    roleIds: ['role-2', 'role-8'],
+    order: 9,
     column: 'left',
     enabled: true,
   },

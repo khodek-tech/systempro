@@ -6,6 +6,7 @@ import { useModulesStore } from '@/stores/modules-store';
 import { useRolesStore } from '@/stores/roles-store';
 import { cn } from '@/lib/utils';
 import { ChatGroupsSettings } from './ChatGroupsSettings';
+import { MotivationSettingsPanel } from './MotivationSettingsPanel';
 import {
   Info,
   Wallet,
@@ -20,6 +21,7 @@ import {
   Truck,
   ChartNoAxesCombined,
   MessagesSquare,
+  TrendingUp,
 } from 'lucide-react';
 
 interface ModuleSettingsDetailProps {
@@ -41,6 +43,7 @@ const iconMap: Record<string, React.ElementType> = {
   Truck,
   ChartNoAxesCombined,
   MessagesSquare,
+  TrendingUp,
 };
 
 const colorSchemes: Record<string, { bg: string; text: string }> = {
@@ -56,6 +59,7 @@ const colorSchemes: Record<string, { bg: string; text: string }> = {
   'shifts': { bg: 'bg-blue-50', text: 'text-blue-500' },
   'presence': { bg: 'bg-sky-50', text: 'text-sky-500' },
   'chat': { bg: 'bg-rose-50', text: 'text-rose-500' },
+  'motivation': { bg: 'bg-amber-50', text: 'text-amber-500' },
 };
 
 export function ModuleSettingsDetail({ moduleId, onBack }: ModuleSettingsDetailProps) {
@@ -278,6 +282,13 @@ export function ModuleSettingsDetail({ moduleId, onBack }: ModuleSettingsDetailP
       {moduleId === 'chat' && (
         <div className="mt-8 pt-8 border-t border-slate-200">
           <ChatGroupsSettings />
+        </div>
+      )}
+
+      {/* Motivation settings - only for motivation module */}
+      {moduleId === 'motivation' && (
+        <div className="mt-8 pt-8 border-t border-slate-200">
+          <MotivationSettingsPanel />
         </div>
       )}
     </div>

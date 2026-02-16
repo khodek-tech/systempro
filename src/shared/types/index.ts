@@ -64,6 +64,12 @@ export type {
 // Pohoda types
 export type { PohodaSyncLog } from './pohoda.types';
 
+// Motivation types
+export type {
+  MotivationSettings,
+  MotivationProduct,
+} from './motivation.types';
+
 // Email types
 export type {
   EmailFolderType,

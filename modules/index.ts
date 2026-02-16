@@ -9,4 +9,5 @@ export { ShiftsModule } from './ShiftsModule';
 export { PresenceModule } from './PresenceModule';
 export { ChatModule } from './ChatModule';
 export { EmailModule } from './EmailModule';
+export { MotivationModule } from './MotivationModule';
 export { MODULE_REGISTRY, getModuleComponent } from './registry';

@@ -623,6 +623,26 @@ export function mapDbToEmailSyncLog(row: any): EmailSyncLog {
 }
 
 // =============================================================================
+// MOTIVATION SETTINGS (motivace_nastaveni)
+import type { MotivationSettings } from '@/shared/types';
+
+export function mapDbToMotivationSettings(row: any): MotivationSettings {
+  return {
+    id: row.id,
+    percentage: Number(row.procento) || 0,
+    warehouseId: row.sklad_id ?? null,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapMotivationSettingsToDb(settings: Partial<MotivationSettings>) {
+  const row: Record<string, any> = { id: 1 };
+  if (settings.percentage !== undefined) row.procento = settings.percentage;
+  if (settings.warehouseId !== undefined) row.sklad_id = settings.warehouseId;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
 // POHODA CONFIG (pohoda_konfigurace)
 // =============================================================================
 
