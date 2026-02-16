@@ -24,4 +24,6 @@ export interface AttendanceRecord {
   flows: string;
   saleNote: string;
   collected: string | false;
+  motivacePercent: number;
+  motivaceAmount: number;
 }

@@ -248,6 +248,9 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
       .limit(1)
       .single();
 
+    const motivaceProcenta = 2.0;
+    const motivaceCastka = Math.round((formData.cash + formData.card + formData.partner) * (motivaceProcenta / 100));
+
     const salesData = {
       hotovost: formData.cash,
       karta: formData.card,
@@ -255,6 +258,8 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
       pohyby: pohyby,
       poznamka_trzba: poznamkaTrzba,
       vybrano: null,
+      motivace_procenta: motivaceProcenta,
+      motivace_castka: motivaceCastka,
     };
 
     const { error } = existing

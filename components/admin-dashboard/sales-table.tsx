@@ -36,6 +36,8 @@ export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
               <th className="col-money">Pohyby</th>
               <th className="col-money text-blue-600">Moje Tržba</th>
               <th className="col-money text-green-600">Pohoda</th>
+              <th className="col-money">2 %</th>
+              <th className="col-money">Motivace</th>
               <th className="col-note text-left">Poznámka k tržbe</th>
               <th className="col-money">Odvod</th>
             </tr>
@@ -69,6 +71,12 @@ export function SalesTable({ data, pohodaTrzby }: SalesTableProps) {
                       ? `${Math.round(pohodaAmount).toLocaleString('cs-CZ')} Kc`
                       : '-'}
                   </td>
+                  <td className="col-money font-medium text-slate-600">
+                    {row.motivaceAmount > 0
+                      ? `${row.motivaceAmount.toLocaleString('cs-CZ')} Kc`
+                      : '-'}
+                  </td>
+                  <td className="col-money font-medium text-slate-400">-</td>
                   <td className="col-note italic text-slate-400">{row.saleNote}</td>
                   <td className="col-money text-purple-600 font-medium text-xs">
                     {row.collected ? (

@@ -357,6 +357,8 @@ export function mapDbToAttendanceRecord(row: any): AttendanceRecord {
     flows: row.pohyby ?? '0',
     saleNote: row.poznamka_trzba ?? '',
     collected: row.vybrano === 'false' || row.vybrano === false ? false : row.vybrano,
+    motivacePercent: row.motivace_procenta ?? 2.0,
+    motivaceAmount: row.motivace_castka ?? 0,
   };
 }
 
