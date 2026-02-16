@@ -361,8 +361,6 @@ export const MODULE_CONTENT: Record<string, { description: string; purpose: stri
       'Po provedení změn klikněte na tlačítko "Uložit" - počet čekajících změn se zobrazuje vedle.',
     ],
     faq: [
-      { q: 'Kde nastavím motivační procento?', a: 'V administraci: Nastavení modulů → Motivace → Nastavení motivace. Zadejte procento a vyberte sklad.' },
-      { q: 'Proč nevidím žádné produkty?', a: 'Zkontrolujte, zda je v nastavení modulu vybrán sklad. Bez vybraného skladu se produkty nenačtou.' },
       { q: 'Co znamená "Označit vše"?', a: 'Označí pouze aktuálně vyfiltrované produkty, ne všechny v tabulce. Pokud máte aktivní filtr, označí se jen viditelné položky.' },
       { q: 'Jsou změny okamžité?', a: 'Ne, změny se ukládají lokálně (checkboxy) a do databáze se zapíší až po kliknutí na "Uložit". Počet čekajících změn vidíte v patičce.' },
       { q: 'Co se stane, když zavřu okno bez uložení?', a: 'Neuložené změny se ztratí. Před zavřením vždy klikněte na "Uložit".' },
