@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { MotivationProduct, MotivationSettings } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToMotivationSettings, mapMotivationSettingsToDb } from '@/lib/supabase/mappers';
@@ -12,6 +13,7 @@ interface MotivationState {
   _loaded: boolean;
   _loading: boolean;
   _saving: boolean;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface MotivationActions {
@@ -21,6 +23,8 @@ interface MotivationActions {
   markAllFiltered: (kods: string[], value: boolean) => void;
   saveChanges: (userId: string) => Promise<void>;
   saveSettings: (settings: Partial<MotivationSettings>) => Promise<void>;
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
 }
 
 export const useMotivationStore = create<MotivationState & MotivationActions>((set, get) => ({
@@ -30,6 +34,7 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
   _loaded: false,
   _loading: false,
   _saving: false,
+  _realtimeChannel: null,
 
   fetchSettings: async () => {
     const supabase = createClient();
@@ -202,5 +207,73 @@ export const useMotivationStore = create<MotivationState & MotivationActions>((s
         : null,
     }));
     toast.success('Nastavení motivace uloženo.');
+  },
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('motivation-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'motivace_nastaveni',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            set({ settings: mapDbToMotivationSettings(payload.new) });
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'motivace_produkty',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const { products } = get();
+          if (products.length === 0) return;
+
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const kod = payload.new.kod;
+            const motivation = payload.new.motivace ?? false;
+            const changedBy = payload.new.zmenil ?? null;
+            const changedAt = payload.new.zmeneno ?? null;
+            set({
+              products: products.map((p) =>
+                p.kod === kod ? { ...p, motivation, changedBy, changedAt } : p
+              ),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const kod = payload.old?.kod;
+            if (kod) {
+              set({
+                products: products.map((p) =>
+                  p.kod === kod ? { ...p, motivation: false, changedBy: null, changedAt: null } : p
+                ),
+              });
+            }
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) logger.error(`[motivation-realtime] ${status}:`, err);
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
   },
 }));
