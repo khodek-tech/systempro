@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AbsenceType, AbsenceFormData, AbsenceRequest, AbsenceRequestStatus, RoleType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToAbsenceRequest, mapAbsenceRequestToDb } from '@/lib/supabase/mappers';
@@ -15,6 +16,7 @@ interface AbsenceState {
   absenceRequests: AbsenceRequest[];
   _loaded: boolean;
   _loading: boolean;
+  _realtimeChannel: RealtimeChannel | null;
   // View mode
   absenceViewMode: 'card' | 'view';
   approvalViewMode: 'card' | 'view';
@@ -77,6 +79,10 @@ interface AbsenceActions {
   setApprovalFilter: (filter: AbsenceRequestStatus | 'all') => void;
   setApprovalMonthFilter: (month: string) => void;
   setApprovalYearFilter: (year: string) => void;
+
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
 }
 
 const initialFormData: AbsenceFormData = {
@@ -94,6 +100,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
   absenceRequests: [],
   _loaded: false,
   _loading: false,
+  _realtimeChannel: null,
   absenceViewMode: 'card',
   approvalViewMode: 'card',
   myRequestsMonthFilter: 'all',
@@ -510,4 +517,57 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
   setApprovalFilter: (filter: AbsenceRequestStatus | 'all') => set({ approvalFilter: filter }),
   setApprovalMonthFilter: (month: string) => set({ approvalMonthFilter: month }),
   setApprovalYearFilter: (year: string) => set({ approvalYearFilter: year }),
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('absence-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'zadosti_o_absenci',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const newRequest = mapDbToAbsenceRequest(payload.new);
+            const exists = get().absenceRequests.some((r) => r.id === newRequest.id);
+            if (!exists) {
+              set({ absenceRequests: [...get().absenceRequests, newRequest] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapDbToAbsenceRequest(payload.new);
+            set({
+              absenceRequests: get().absenceRequests.map((r) =>
+                r.id === updated.id ? updated : r,
+              ),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({ absenceRequests: get().absenceRequests.filter((r) => r.id !== oldId) });
+            }
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) logger.error(`[absence-realtime] ${status}:`, err);
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchAbsenceRequests();
+        }
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
+  },
 }));
