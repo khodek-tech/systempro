@@ -31,13 +31,13 @@ export function ChatGroupList() {
       })
     : groups;
 
-  // Split own conversations from admin-visible others' DMs
+  // Split own conversations from admin-visible others' conversations
   const visibleGroups = filteredGroups.filter(
-    (g) => g.type === 'group' || (g.type === 'direct' && currentUser && g.memberIds.includes(currentUser.id))
+    (g) => currentUser && g.memberIds.includes(currentUser.id)
   );
-  const othersDms = sortGroupsByLastMessage(
+  const othersConversations = sortGroupsByLastMessage(
     filteredGroups.filter(
-      (g) => g.type === 'direct' && currentUser && !g.memberIds.includes(currentUser.id)
+      (g) => currentUser && !g.memberIds.includes(currentUser.id)
     ),
     messages
   );
@@ -67,7 +67,7 @@ export function ChatGroupList() {
 
       {/* Groups list */}
       <div className="flex-1 overflow-y-auto">
-        {visibleGroups.length === 0 && othersDms.length === 0 ? (
+        {visibleGroups.length === 0 && othersConversations.length === 0 ? (
           <div className="p-4 text-center text-slate-500 text-sm">
             {searchQuery.trim() ? 'Žádné konverzace nenalezeny' : 'Nejste členem žádné skupiny'}
           </div>
@@ -82,8 +82,8 @@ export function ChatGroupList() {
               />
             ))}
 
-            {/* Others' DMs toggle (admin only) */}
-            {isAdmin && othersDms.length > 0 && (
+            {/* Others' conversations toggle (admin only) */}
+            {isAdmin && othersConversations.length > 0 && (
               <>
                 <button
                   onClick={() => setShowOthersDms((v) => !v)}
@@ -96,11 +96,11 @@ export function ChatGroupList() {
                   )}
                   {showOthersDms
                     ? `− Skrýt cizí konverzace`
-                    : `+ Zobrazit cizí konverzace (${othersDms.length})`}
+                    : `+ Zobrazit cizí konverzace (${othersConversations.length})`}
                 </button>
 
                 {showOthersDms &&
-                  othersDms.map((group) => (
+                  othersConversations.map((group) => (
                     <ChatGroupItem
                       key={group.id}
                       group={group}
