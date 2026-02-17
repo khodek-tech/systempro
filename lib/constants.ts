@@ -4,50 +4,22 @@
  * Centralized constants for role IDs, column types, and other magic strings.
  */
 
-import { RoleType } from '@/types';
-
 // ============================================================================
 // ROLE IDS
 // ============================================================================
 
 /**
- * Role ID constants matching the mock data definitions.
- * Use these instead of hardcoded strings like 'role-1'.
+ * Kept only for backward compatibility — use getAdminRoleId() from store-helpers
+ * for dynamic lookup whenever possible.
  */
 export const ROLE_IDS = {
-  PRODAVAC: 'role-1',
   ADMINISTRATOR: 'role-2',
-  SKLADNIK: 'role-3',
-  VEDOUCI_SKLADU: 'role-4',
-  OBSLUHA_ESHOPU: 'role-5',
-  OBCHODNIK: 'role-6',
-  VEDOUCI_VELKOOBCHODU: 'role-7',
-  MAJITEL: 'role-8',
 } as const;
 
 /**
- * Role type to ID mapping
+ * Protected role types that cannot be deactivated or deleted
  */
-export const ROLE_TYPE_TO_ID: Record<RoleType, string> = {
-  prodavac: ROLE_IDS.PRODAVAC,
-  administrator: ROLE_IDS.ADMINISTRATOR,
-  skladnik: ROLE_IDS.SKLADNIK,
-  'vedouci-sklad': ROLE_IDS.VEDOUCI_SKLADU,
-  'obsluha-eshop': ROLE_IDS.OBSLUHA_ESHOPU,
-  obchodnik: ROLE_IDS.OBCHODNIK,
-  'vedouci-velkoobchod': ROLE_IDS.VEDOUCI_VELKOOBCHODU,
-  majitel: ROLE_IDS.MAJITEL,
-};
-
-/**
- * Roles that cannot report absence
- */
-export const ROLES_WITHOUT_ABSENCE: RoleType[] = ['administrator', 'majitel'];
-
-/**
- * Protected role types that cannot be deactivated
- */
-export const PROTECTED_ROLE_TYPES: RoleType[] = ['administrator'];
+export const PROTECTED_ROLE_TYPES: string[] = ['administrator'];
 
 // ============================================================================
 // MODULE COLUMNS

@@ -4,7 +4,6 @@
  * Contains approval hierarchy logic and permission checking utilities.
  */
 
-import { RoleType } from '@/shared/types';
 import { useModulesStore } from '@/core/stores/modules-store';
 import { getUsers, getRoles } from '@/core/stores/store-helpers';
 
@@ -13,21 +12,18 @@ const getModuleConfig = () => useModulesStore.getState().getModuleConfig('absenc
 
 /**
  * Get dynamic approval hierarchy from module configuration
- * Returns a map of role types to their subordinate role types
+ * Returns a map of role types to their subordinate role types.
+ * Dynamically built from all existing roles — works with any custom role.
  */
-export function getApprovalHierarchy(): Record<RoleType, RoleType[]> {
+export function getApprovalHierarchy(): Record<string, string[]> {
   const config = getModuleConfig();
   const roles = getRoles();
-  const hierarchy: Record<RoleType, RoleType[]> = {
-    prodavac: [],
-    skladnik: [],
-    administrator: [],
-    'vedouci-sklad': [],
-    'obsluha-eshop': [],
-    obchodnik: [],
-    'vedouci-velkoobchod': [],
-    majitel: [],
-  };
+
+  // Initialize hierarchy with all existing role types
+  const hierarchy: Record<string, string[]> = {};
+  for (const role of roles) {
+    hierarchy[role.type] = [];
+  }
 
   if (!config?.approvalMappings) return hierarchy;
 
@@ -35,7 +31,7 @@ export function getApprovalHierarchy(): Record<RoleType, RoleType[]> {
     const approverRole = roles.find((r) => r.id === mapping.approverRoleId);
     if (!approverRole) continue;
 
-    const subordinateTypes: RoleType[] = [];
+    const subordinateTypes: string[] = [];
     for (const subRoleId of mapping.subordinateRoleIds) {
       const subRole = roles.find((r) => r.id === subRoleId);
       if (subRole) {
@@ -52,7 +48,7 @@ export function getApprovalHierarchy(): Record<RoleType, RoleType[]> {
 /**
  * Get user's primary role type (first role in their roleIds array)
  */
-export function getUserPrimaryRoleType(userId: string): RoleType | null {
+export function getUserPrimaryRoleType(userId: string): string | null {
   const user = getUsers().find((u) => u.id === userId);
   if (!user || user.roleIds.length === 0) return null;
 
@@ -63,7 +59,7 @@ export function getUserPrimaryRoleType(userId: string): RoleType | null {
 /**
  * Check if an approver can approve requests from a user with given role type
  */
-export function canApproveUser(approverRoleType: RoleType, userRoleType: RoleType): boolean {
+export function canApproveUser(approverRoleType: string, userRoleType: string): boolean {
   const hierarchy = getApprovalHierarchy();
   const subordinates = hierarchy[approverRoleType] || [];
   return subordinates.includes(userRoleType);
@@ -100,7 +96,7 @@ export function validateApproverPermission(
 export function filterRequestsForApproval<T extends { userId: string; status: string; createdAt: string }>(
   requests: T[],
   approverId: string,
-  roleType: RoleType,
+  roleType: string,
   statusFilter: string = 'all'
 ): T[] {
   return requests

@@ -2,16 +2,8 @@
  * Base types - Role, Store, User
  */
 
-// Role types - 8 available roles
-export type RoleType =
-  | 'prodavac'
-  | 'skladnik'
-  | 'administrator'
-  | 'vedouci-sklad'
-  | 'obsluha-eshop'
-  | 'obchodnik'
-  | 'vedouci-velkoobchod'
-  | 'majitel';
+// Role types - dynamic, any string slug
+export type RoleType = string;
 
 // Workplace types
 export type WorkplaceType = 'store' | 'role';

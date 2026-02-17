@@ -4,7 +4,8 @@ import { User, Role, Store, RoleType } from '@/shared/types';
 import { useUsersStore } from './users-store';
 import { useRolesStore } from './roles-store';
 import { useStoresStore } from './stores-store';
-import { ROLE_IDS, ROLES_WITHOUT_ABSENCE, STORAGE_KEYS } from '@/lib/constants';
+import { STORAGE_KEYS } from '@/lib/constants';
+import { getAdminRoleId } from './store-helpers';
 
 // Helpers to get data from other stores
 const getUsers = () => useUsersStore.getState().users;
@@ -40,7 +41,6 @@ interface AuthActions {
   getAllActiveUsers: () => User[];
   needsStoreSelection: () => boolean;
   getActiveRoleType: () => RoleType | null;
-  canReportAbsence: () => boolean;
   isLoggedInAdmin: () => boolean;
   resetAuth: () => void;
 }
@@ -95,15 +95,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     if (!currentUser) return;
 
     // Check if the user has this role OR is administrator (can access all)
-    const isAdmin = currentUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
+    const isAdmin = currentUser.roleIds.includes(getAdminRoleId());
     const hasRole = currentUser.roleIds.includes(roleId);
 
     if (isAdmin || hasRole) {
       set({ activeRoleId: roleId });
 
-      // If switching to a role that needs a store, set first available store
-      const role = getRoles().find((r) => r.id === roleId);
-      if (role?.type === 'prodavac' && currentUser.storeIds.length > 0) {
+      // If user has stores, ensure a store is selected
+      if (currentUser.storeIds.length > 0) {
         const { activeStoreId } = get();
         if (!activeStoreId || !currentUser.storeIds.includes(activeStoreId)) {
           set({ activeStoreId: currentUser.storeIds[0] });
@@ -127,10 +126,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     if (!user || !user.active) return;
 
     const defaultRoleId = user.defaultRoleId || user.roleIds[0];
-    const role = getRoles().find((r) => r.id === defaultRoleId);
 
     let storeId: string | null = null;
-    if (role?.type === 'prodavac' && user.storeIds.length > 0) {
+    if (user.storeIds.length > 0) {
       storeId = user.defaultStoreId || user.storeIds[0];
     }
 
@@ -150,7 +148,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const newRole = getActiveRole();
 
     if (newRole) {
-      if (newRole.type === 'prodavac') {
+      const { currentUser: newCurrentUser } = get();
+      if (newCurrentUser && newCurrentUser.storeIds.length > 0) {
         const stores = getAvailableStores();
         if (stores.length > 0) {
           setWorkplace('store', stores[0].id, stores[0].name, true);
@@ -181,7 +180,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const roles = get().getAvailableRoles();
     const role = roles.find((r) => r.id === roleId);
     if (role) {
-      if (role.type === 'prodavac') {
+      const { currentUser: cu } = get();
+      if (cu && cu.storeIds.length > 0) {
         const stores = get().getAvailableStores();
         if (stores.length > 0) {
           const store = stores[0];
@@ -197,13 +197,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
   // Sync workplace with current role (for hydration)
   syncWorkplaceWithRole: (setWorkplace) => {
-    const { activeRoleId, activeStoreId } = get();
+    const { activeRoleId, activeStoreId, currentUser } = get();
     if (!activeRoleId) return;
 
     const role = get().getActiveRole();
     if (!role) return;
 
-    if (role.type === 'prodavac') {
+    if (currentUser && currentUser.storeIds.length > 0) {
       const stores = get().getAvailableStores();
       if (stores.length > 0) {
         const store = stores.find((s) => s.id === activeStoreId) || stores[0];
@@ -228,7 +228,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     if (!currentUser) return [];
 
     // Administrator can access ALL roles
-    const isAdmin = currentUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
+    const isAdmin = currentUser.roleIds.includes(getAdminRoleId());
     if (isAdmin) {
       return getRoles().filter((r) => r.active);
     }
@@ -254,13 +254,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const { currentUser, activeRoleId } = get();
     if (!currentUser || !activeRoleId) return false;
 
-    const role = getRoles().find((r) => r.id === activeRoleId);
-    if (!role) return false;
-
-    // Only prodavac needs store selection
-    if (role.type !== 'prodavac') return false;
-
-    // Check if user has multiple stores
+    // Users with multiple stores need store selection
     return currentUser.storeIds.length > 1;
   },
 
@@ -269,16 +263,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     return role?.type || null;
   },
 
-  canReportAbsence: () => {
-    const roleType = get().getActiveRoleType();
-    if (!roleType) return false;
-    return !ROLES_WITHOUT_ABSENCE.includes(roleType);
-  },
-
   isLoggedInAdmin: () => {
     const { loggedInUser } = get();
     if (!loggedInUser) return false;
-    return loggedInUser.roleIds.includes(ROLE_IDS.ADMINISTRATOR);
+    return loggedInUser.roleIds.includes(getAdminRoleId());
   },
 
   resetAuth: () => {

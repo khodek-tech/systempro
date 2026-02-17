@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { Role, RoleType } from '@/shared/types';
+import { Role } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToRole, mapRoleToDb } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
@@ -34,7 +34,7 @@ interface RolesActions {
   canDeleteRole: (id: string) => { canDelete: boolean; reason?: string };
   getActiveRoles: () => Role[];
   getRoleById: (id: string) => Role | undefined;
-  getRoleByType: (type: RoleType) => Role | undefined;
+  getRoleByType: (type: string) => Role | undefined;
 }
 
 export const useRolesStore = create<RolesState & RolesActions>()((set, get) => ({
@@ -152,9 +152,9 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
     const role = get().getRoleById(id);
     if (!role) return { canDelete: false, reason: 'Role nenalezena' };
 
-    // Administrator nelze smazat
-    if (role.type === 'administrator') {
-      return { canDelete: false, reason: 'Roli Administrátor nelze smazat' };
+    // Chráněné role nelze smazat
+    if (PROTECTED_ROLE_TYPES.includes(role.type)) {
+      return { canDelete: false, reason: 'Tuto roli nelze smazat' };
     }
 
     // Zkontrolovat, zda někdo roli používá

@@ -5,7 +5,7 @@ import { Search, MessageCirclePlus, ChevronDown, ChevronRight } from 'lucide-rea
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { getDirectGroupDisplayName, getDirectGroupBothNames, sortGroupsByLastMessage } from '@/features/chat';
-import { ROLE_IDS } from '@/lib/constants';
+import { getAdminRoleId } from '@/core/stores/store-helpers';
 import { ChatGroupItem } from './ChatGroupItem';
 import { ChatNewDmModal } from './ChatNewDmModal';
 
@@ -15,7 +15,7 @@ export function ChatGroupList() {
   const { currentUser, activeRoleId } = useAuthStore();
   const [showOthersDms, setShowOthersDms] = useState(false);
 
-  const isAdmin = activeRoleId === ROLE_IDS.ADMINISTRATOR;
+  const isAdmin = activeRoleId === getAdminRoleId();
   const groups = currentUser ? getGroupsForUser(currentUser.id) : [];
 
   const filteredGroups = searchQuery.trim()

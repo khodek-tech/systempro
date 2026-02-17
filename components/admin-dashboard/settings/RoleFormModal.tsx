@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRolesStore } from '@/stores/roles-store';
-import { Role, RoleType } from '@/types';
+import { Role } from '@/types';
 
 interface RoleFormModalProps {
   open: boolean;
@@ -12,34 +12,59 @@ interface RoleFormModalProps {
   role: Role | null;
 }
 
-const ROLE_TYPES: { value: RoleType; label: string }[] = [
-  { value: 'prodavac', label: 'Prodavač' },
-  { value: 'skladnik', label: 'Skladník' },
-  { value: 'administrator', label: 'Administrátor' },
-  { value: 'vedouci-sklad', label: 'Vedoucí skladu' },
-  { value: 'obsluha-eshop', label: 'Obsluha e-shopu' },
-  { value: 'obchodnik', label: 'Obchodník' },
-  { value: 'vedouci-velkoobchod', label: 'Vedoucí velkoobchodu' },
-  { value: 'majitel', label: 'Majitel' },
-];
+/**
+ * Slugify: lowercase, remove diacritics, spaces → hyphens, keep only a-z0-9-
+ */
+function slugify(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
 
 export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
-  const { addRole, updateRole } = useRolesStore();
+  const { addRole, updateRole, roles } = useRolesStore();
   const isEditing = !!role;
 
   // Initialize from props - component remounts with new key when role changes
   const [name, setName] = useState(role?.name ?? '');
-  const [type, setType] = useState<RoleType>(role?.type ?? 'prodavac');
+  const [type, setType] = useState(role?.type ?? '');
+  const [autoSlug, setAutoSlug] = useState(!isEditing);
+
+  // Collect unique existing role types for datalist suggestions
+  const existingTypes = useMemo(() => {
+    const types = new Set(roles.map((r) => r.type));
+    return Array.from(types).sort((a, b) => a.localeCompare(b, 'cs'));
+  }, [roles]);
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (autoSlug) {
+      setType(slugify(value));
+    }
+  };
+
+  const handleTypeChange = (value: string) => {
+    setType(value);
+    setAutoSlug(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) return;
+    if (!name.trim() || !type.trim()) return;
+
+    const finalType = slugify(type);
+    if (!finalType) return;
 
     if (isEditing && role) {
-      updateRole(role.id, { name: name.trim(), type });
+      updateRole(role.id, { name: name.trim(), type: finalType });
     } else {
-      addRole({ name: name.trim(), type, active: true });
+      addRole({ name: name.trim(), type: finalType, active: true });
     }
 
     onClose();
@@ -70,25 +95,32 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               placeholder="např. Prodavač"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-orange-300"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-2">Typ role</label>
-            <select
+            <label className="block text-sm font-medium text-slate-500 mb-2">Typ role (slug)</label>
+            <input
+              type="text"
               value={type}
-              onChange={(e) => setType(e.target.value as RoleType)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-orange-300"
-            >
-              {ROLE_TYPES.map((roleType) => (
-                <option key={roleType.value} value={roleType.value}>
-                  {roleType.label}
-                </option>
+              onChange={(e) => handleTypeChange(e.target.value)}
+              placeholder="např. prodavac"
+              list="role-type-suggestions"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-medium outline-none focus:border-orange-300"
+            />
+            <datalist id="role-type-suggestions">
+              {existingTypes.map((t) => (
+                <option key={t} value={t} />
               ))}
-            </select>
+            </datalist>
+            {type && type !== slugify(type) && (
+              <p className="text-xs text-slate-400 mt-1">
+                Bude uloženo jako: <span className="font-mono font-semibold text-slate-600">{slugify(type)}</span>
+              </p>
+            )}
           </div>
 
           {/* Actions */}
@@ -103,6 +135,7 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
             </Button>
             <Button
               type="submit"
+              disabled={!name.trim() || !slugify(type)}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all"
             >
               {isEditing ? 'Uložit' : 'Přidat'}

@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/core/stores/auth-store';
-import { ROLE_IDS } from '@/lib/constants';
+import { getAdminRoleId } from '@/core/stores/store-helpers';
 import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
 
 let _chatVisibilityHandler: (() => void) | null = null;
@@ -629,7 +629,7 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   // Getters
   getGroupsForUser: (userId) => {
     const { groups, messages } = get();
-    const isAdmin = useAuthStore.getState().activeRoleId === ROLE_IDS.ADMINISTRATOR;
+    const isAdmin = useAuthStore.getState().activeRoleId === getAdminRoleId();
     const userGroups = isAdmin
       ? groups
       : groups.filter((g) => g.memberIds.includes(userId));

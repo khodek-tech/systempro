@@ -5,7 +5,7 @@
 import { ChatMessage, ChatReactionType, ChatGroup } from '@/shared/types';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { useUsersStore } from '@/core/stores/users-store';
-import { ROLE_IDS } from '@/lib/constants';
+import { getAdminRoleId } from '@/core/stores/store-helpers';
 
 /**
  * Format message time for display
@@ -97,7 +97,7 @@ export function getAllReactions(): { type: ChatReactionType; emoji: string }[] {
  * Check if user can access a chat group
  */
 export function canUserAccessGroup(userId: string, group: ChatGroup): boolean {
-  const isAdmin = useAuthStore.getState().activeRoleId === ROLE_IDS.ADMINISTRATOR;
+  const isAdmin = useAuthStore.getState().activeRoleId === getAdminRoleId();
   return isAdmin || group.memberIds.includes(userId);
 }
 

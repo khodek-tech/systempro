@@ -10,6 +10,7 @@ import { ObsluhaEshopView } from '@/components/views/obsluha-eshop-view';
 import { ObchodnikView } from '@/components/views/obchodnik-view';
 import { VedouciVelkoobchodView } from '@/components/views/vedouci-velkoobchod-view';
 import { MajitelView } from '@/components/views/majitel-view';
+import { RoleView } from '@/components/views/RoleView';
 import { ChangePasswordOverlay } from '@/components/auth/change-password-overlay';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from 'sonner';
@@ -116,7 +117,7 @@ export function HomePage({ slug }: HomePageProps) {
         return <MajitelView />;
 
       default:
-        return <ProdavacView isWarehouse={false} />;
+        return <RoleView showAbsenceFullView showTasksFullView showChatFullView showEmailFullView />;
     }
   };
 

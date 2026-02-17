@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import { mapDbToUser, mapUserToDb } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { getRoles } from './store-helpers';
 
 interface UsersState {
   users: User[];
@@ -247,14 +246,6 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
     // Check at least one role is assigned
     if (!user.roleIds || user.roleIds.length === 0) {
       return { valid: false, error: 'Musí být přiřazena alespoň jedna role' };
-    }
-
-    // Check: if user has Prodavač role, they must have at least one store
-    const prodavacRole = getRoles().find((r) => r.type === 'prodavac');
-    if (prodavacRole && user.roleIds?.includes(prodavacRole.id)) {
-      if (!user.storeIds || user.storeIds.length === 0) {
-        return { valid: false, error: 'Prodavač musí mít přiřazenou alespoň jednu prodejnu' };
-      }
     }
 
     return { valid: true };

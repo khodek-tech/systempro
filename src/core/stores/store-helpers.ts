@@ -30,3 +30,12 @@ export const getUsersWithRole = (roleId: string): User[] => {
 export const getRoleByType = (type: string): Role | undefined => {
   return getRoles().find((r) => r.type === type);
 };
+
+/**
+ * Dynamically find the administrator role ID from the roles store.
+ * Falls back to the legacy constant 'role-2' if no role with type 'administrator' is found.
+ */
+export const getAdminRoleId = (): string => {
+  const adminRole = getRoles().find((r) => r.type === 'administrator');
+  return adminRole?.id ?? 'role-2';
+};
