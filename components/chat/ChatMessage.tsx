@@ -8,8 +8,10 @@ import { useUsersStore } from '@/stores/users-store';
 import { formatMessageTime, getReactionEmoji } from '@/features/chat';
 import { ChatReactionPicker } from './ChatReactionPicker';
 import { ChatAttachmentPreview } from './ChatAttachmentPreview';
+import { LinkPreviewCard } from './LinkPreviewCard';
 import { cn } from '@/lib/utils';
-import { linkifyText } from '@/lib/linkify';
+import { linkifyText, extractFirstUrl } from '@/lib/linkify';
+import { useLinkPreview } from '@/lib/hooks/use-link-preview';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -28,6 +30,8 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
 
   const sender = getUserById(message.userId);
   const isOwnMessage = currentUser?.id === message.userId;
+  const firstUrl = extractFirstUrl(message.text);
+  const linkPreview = useLinkPreview(firstUrl);
 
   // Group reactions by type with user info
   const groupedReactions = message.reactions.reduce(
@@ -125,6 +129,9 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
         <p className="text-sm whitespace-pre-wrap break-words">
           {linkifyText(message.text, 'text-blue-600 underline break-all')}
         </p>
+
+        {/* Link preview */}
+        {linkPreview && <LinkPreviewCard preview={linkPreview} />}
 
         {/* Attachments */}
         {message.attachments.length > 0 && (

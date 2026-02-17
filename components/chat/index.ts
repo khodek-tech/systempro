@@ -5,3 +5,4 @@ export { ChatMessage } from './ChatMessage';
 export { ChatMessageInput } from './ChatMessageInput';
 export { ChatReactionPicker } from './ChatReactionPicker';
 export { ChatAttachmentPreview } from './ChatAttachmentPreview';
+export { LinkPreviewCard } from './LinkPreviewCard';

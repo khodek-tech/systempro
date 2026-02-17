@@ -70,6 +70,9 @@ export type {
   MotivationProduct,
 } from './motivation.types';
 
+// Link preview types
+export type { LinkPreview } from './link-preview.types';
+
 // Email types
 export type {
   EmailFolderType,
