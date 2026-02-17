@@ -323,7 +323,7 @@ export function TaskFormModal() {
                       }
                     />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-[100]">
+                  <SelectContent position="popper" className="max-h-[300px] bg-white border border-slate-200 rounded-xl shadow-lg z-[100]">
                     {assigneeType === 'employee'
                       ? activeUsers.map((user) => (
                           <SelectItem
