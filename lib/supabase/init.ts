@@ -77,6 +77,10 @@ async function initializeStores() {
   ]);
 
   // Phase 4: Start Realtime subscriptions + auto-sync polling as fallback
+  useRolesStore.getState().subscribeRealtime();
+  useStoresStore.getState().subscribeRealtime();
+  useUsersStore.getState().subscribeRealtime();
+  useModulesStore.getState().subscribeRealtime();
   useAttendanceStore.getState().subscribeRealtime();
   useAdminStore.getState().subscribeRealtime();
   useEmailStore.getState().subscribeRealtime();
@@ -92,6 +96,10 @@ async function initializeStores() {
  * Tear down Realtime subscriptions.
  */
 export function cleanupSubscriptions() {
+  useRolesStore.getState().unsubscribeRealtime();
+  useStoresStore.getState().unsubscribeRealtime();
+  useUsersStore.getState().unsubscribeRealtime();
+  useModulesStore.getState().unsubscribeRealtime();
   useAttendanceStore.getState().unsubscribeRealtime();
   useAdminStore.getState().unsubscribeRealtime();
   useEmailStore.getState().unsubscribeRealtime();

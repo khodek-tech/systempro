@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { ModuleDefinition, ModuleConfig } from '@/shared/types';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
@@ -11,6 +12,7 @@ interface ModulesState {
   configs: ModuleConfig[];
   _loaded: boolean;
   _loading: boolean;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface ModulesActions {
@@ -19,6 +21,10 @@ interface ModulesActions {
   toggleRoleAccess: (moduleId: string, roleId: string) => Promise<void>;
   setModuleColumn: (moduleId: string, column: 'left' | 'right' | 'full' | 'top' | 'sidebar') => Promise<void>;
   toggleModuleEnabled: (moduleId: string) => Promise<void>;
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
+
   getModulesForRole: (roleId: string) => (ModuleDefinition & ModuleConfig)[];
   getModuleDefinition: (moduleId: string) => ModuleDefinition | undefined;
   getModuleConfig: (moduleId: string) => ModuleConfig | undefined;
@@ -34,6 +40,7 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
   configs: DEFAULT_MODULE_CONFIGS,
   _loaded: false,
   _loading: false,
+  _realtimeChannel: null,
 
   fetchModules: async () => {
     set({ _loading: true });
@@ -279,5 +286,84 @@ export const useModulesStore = create<ModulesState & ModulesActions>()((set, get
 
     const mapping = config.viewMappings.find((m) => m.viewerRoleId === viewerRoleId);
     return mapping?.visibleRoleIds || [];
+  },
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('modules-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'definice_modulu',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const newDef = mapDbToModuleDefinition(payload.new);
+            const exists = get().definitions.some((d) => d.id === newDef.id);
+            if (!exists) {
+              set({ definitions: [...get().definitions, newDef] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapDbToModuleDefinition(payload.new);
+            set({
+              definitions: get().definitions.map((d) => (d.id === updated.id ? updated : d)),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({ definitions: get().definitions.filter((d) => d.id !== oldId) });
+            }
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'konfigurace_modulu',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const newConfig = mapDbToModuleConfig(payload.new);
+            const exists = get().configs.some((c) => c.moduleId === newConfig.moduleId);
+            if (!exists) {
+              set({ configs: [...get().configs, newConfig] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapDbToModuleConfig(payload.new);
+            set({
+              configs: get().configs.map((c) => (c.moduleId === updated.moduleId ? updated : c)),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id_modulu;
+            if (oldId) {
+              set({ configs: get().configs.filter((c) => c.moduleId !== oldId) });
+            }
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) logger.error(`[modules-realtime] ${status}:`, err);
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchModules();
+        }
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
   },
 }));

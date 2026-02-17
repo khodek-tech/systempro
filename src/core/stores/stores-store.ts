@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Store } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToStore, mapStoreToDb } from '@/lib/supabase/mappers';
@@ -10,6 +11,7 @@ interface StoresState {
   stores: Store[];
   _loaded: boolean;
   _loading: boolean;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface StoresActions {
@@ -22,6 +24,10 @@ interface StoresActions {
   toggleStoreActive: (id: string) => Promise<{ success: boolean; error?: string }>;
   deleteStore: (id: string) => Promise<{ success: boolean; error?: string }>;
 
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
+
   // Computed
   getActiveStores: () => Store[];
   getStoreById: (id: string) => Store | undefined;
@@ -33,6 +39,7 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
   stores: [],
   _loaded: false,
   _loading: false,
+  _realtimeChannel: null,
 
   // Fetch
   fetchStores: async () => {
@@ -143,5 +150,56 @@ export const useStoresStore = create<StoresState & StoresActions>()((set, get) =
       };
     }
     return { canDelete: true };
+  },
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('stores-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'prodejny',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const newStore = mapDbToStore(payload.new);
+            const exists = get().stores.some((s) => s.id === newStore.id);
+            if (!exists) {
+              set({ stores: [...get().stores, newStore] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapDbToStore(payload.new);
+            set({
+              stores: get().stores.map((s) => (s.id === updated.id ? updated : s)),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({ stores: get().stores.filter((s) => s.id !== oldId) });
+            }
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) logger.error(`[stores-realtime] ${status}:`, err);
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchStores();
+        }
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
   },
 }));

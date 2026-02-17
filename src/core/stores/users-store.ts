@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { User } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToUser, mapUserToDb } from '@/lib/supabase/mappers';
@@ -10,6 +11,7 @@ interface UsersState {
   users: User[];
   _loaded: boolean;
   _loading: boolean;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface UsersActions {
@@ -21,6 +23,10 @@ interface UsersActions {
   updateUser: (id: string, updates: Partial<Omit<User, 'id'>>) => Promise<{ success: boolean; error?: string }>;
   toggleUserActive: (id: string) => Promise<void>;
   deleteUser: (id: string) => Promise<{ success: boolean; error?: string }>;
+
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
 
   // Password
   resetPassword: (userId: string) => Promise<{ success: boolean; error?: string }>;
@@ -38,6 +44,7 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
   users: [],
   _loaded: false,
   _loading: false,
+  _realtimeChannel: null,
 
   // Fetch
   fetchUsers: async () => {
@@ -251,5 +258,56 @@ export const useUsersStore = create<UsersState & UsersActions>()((set, get) => (
     }
 
     return { valid: true };
+  },
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('users-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'zamestnanci',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const newUser = mapDbToUser(payload.new);
+            const exists = get().users.some((u) => u.id === newUser.id);
+            if (!exists) {
+              set({ users: [...get().users, newUser] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapDbToUser(payload.new);
+            set({
+              users: get().users.map((u) => (u.id === updated.id ? updated : u)),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({ users: get().users.filter((u) => u.id !== oldId) });
+            }
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) logger.error(`[users-realtime] ${status}:`, err);
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchUsers();
+        }
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
   },
 }));

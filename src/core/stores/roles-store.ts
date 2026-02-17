@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Role, RoleType } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToRole, mapRoleToDb } from '@/lib/supabase/mappers';
@@ -11,6 +12,7 @@ interface RolesState {
   roles: Role[];
   _loaded: boolean;
   _loading: boolean;
+  _realtimeChannel: RealtimeChannel | null;
 }
 
 interface RolesActions {
@@ -22,6 +24,10 @@ interface RolesActions {
   updateRole: (id: string, updates: Partial<Omit<Role, 'id'>>) => Promise<{ success: boolean; error?: string }>;
   toggleRoleActive: (id: string) => Promise<boolean>;
   deleteRole: (id: string) => Promise<{ success: boolean; error?: string }>;
+
+  // Realtime
+  subscribeRealtime: () => void;
+  unsubscribeRealtime: () => void;
 
   // Computed
   canDeactivateRole: (id: string) => boolean;
@@ -36,6 +42,7 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
   roles: [],
   _loaded: false,
   _loading: false,
+  _realtimeChannel: null,
 
   // Fetch
   fetchRoles: async () => {
@@ -171,5 +178,56 @@ export const useRolesStore = create<RolesState & RolesActions>()((set, get) => (
 
   getRoleByType: (type) => {
     return get().roles.find((r) => r.type === type);
+  },
+
+  // Realtime
+  subscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel('roles-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'role',
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const newRole = mapDbToRole(payload.new);
+            const exists = get().roles.some((r) => r.id === newRole.id);
+            if (!exists) {
+              set({ roles: [...get().roles, newRole] });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapDbToRole(payload.new);
+            set({
+              roles: get().roles.map((r) => (r.id === updated.id ? updated : r)),
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldId = payload.old?.id;
+            if (oldId) {
+              set({ roles: get().roles.filter((r) => r.id !== oldId) });
+            }
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) logger.error(`[roles-realtime] ${status}:`, err);
+        if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchRoles();
+        }
+      });
+
+    set({ _realtimeChannel: channel });
+  },
+
+  unsubscribeRealtime: () => {
+    get()._realtimeChannel?.unsubscribe();
+    set({ _realtimeChannel: null });
   },
 }));
