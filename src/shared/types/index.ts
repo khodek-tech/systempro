@@ -62,7 +62,7 @@ export type {
 } from './chat.types';
 
 // Pohoda types
-export type { PohodaSyncLog } from './pohoda.types';
+export type { PohodaSyncLog, PohodaSyncLogDetail } from './pohoda.types';
 
 // Motivation types
 export type {

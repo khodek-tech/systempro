@@ -1,3 +1,9 @@
+export interface PohodaSyncLogDetail {
+  sklad: string;
+  pocetZaznamu: number;
+  trvaniMs: number;
+}
+
 export interface PohodaSyncLog {
   id: number;
   typ: 'zasoby' | 'pohyby';
@@ -8,5 +14,6 @@ export interface PohodaSyncLog {
   pocetAktualizovanych: number;
   sklad: string | null;
   trvaniMs: number;
+  detail: PohodaSyncLogDetail[] | null;
   vytvoreno: string;
 }

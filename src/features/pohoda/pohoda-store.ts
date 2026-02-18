@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
 import { mapDbToPohodaCredentials, mapPohodaCredentialsToDb, mapDbToPohodaSyncLog } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
-import type { PohodaSyncLog } from '@/shared/types';
+import type { PohodaSyncLog, PohodaSyncLogDetail } from '@/shared/types';
 
 export interface PohodaCredentials {
   url: string;
@@ -302,6 +302,7 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
       let totalAktualizovanych = 0;
       let totalMs = 0;
       let storeIndex = 0;
+      const storeDetails: PohodaSyncLogDetail[] = [];
 
       while (true) {
         const { data, error } = await supabase.functions.invoke('sync-zasoby', {
@@ -315,6 +316,11 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         totalNovych += data.pocetNovych;
         totalAktualizovanych += data.pocetAktualizovanych;
         totalMs += data.trvaniMs;
+        storeDetails.push({
+          sklad: data.store,
+          pocetZaznamu: data.pocetZaznamu,
+          trvaniMs: data.trvaniMs,
+        });
 
         if (!data.hasMore) break;
 
@@ -322,10 +328,28 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         set({ syncZasobyProgress: `Sklad ${storeIndex}/${data.totalStores}: ${data.store} (${totalZaznamu} záznamů)...` });
       }
 
+      // Write one summary log entry
+      await supabase.from('pohoda_sync_log').insert({
+        typ: 'zasoby',
+        stav: 'success',
+        pocet_zaznamu: totalZaznamu,
+        pocet_novych: totalNovych,
+        pocet_aktualizovanych: totalAktualizovanych,
+        trvani_ms: totalMs,
+        zprava: `${storeDetails.length} skladů, ${totalZaznamu.toLocaleString('cs-CZ')} záznamů`,
+        detail: storeDetails,
+      });
+
       set({ syncZasobyProgress: null });
-      toast.success(`Synchronizace dokončena: ${totalZaznamu} záznamů (${totalNovych} nových, ${totalAktualizovanych} aktualizovaných) za ${(totalMs / 1000).toFixed(1)}s`);
+      toast.success(`Synchronizace dokončena: ${storeDetails.length} skladů, ${totalZaznamu.toLocaleString('cs-CZ')} záznamů za ${(totalMs / 1000).toFixed(1)}s`);
     } catch (error) {
+      const supabase = createClient();
       const msg = error instanceof Error ? error.message : 'Neznámá chyba';
+      await supabase.from('pohoda_sync_log').insert({
+        typ: 'zasoby',
+        stav: 'error',
+        zprava: msg,
+      });
       toast.error(`Synchronizace selhala: ${msg}`);
       set({ syncZasobyProgress: null });
     } finally {

@@ -683,6 +683,7 @@ export function mapDbToPohodaSyncLog(row: any): PohodaSyncLog {
     pocetAktualizovanych: row.pocet_aktualizovanych ?? 0,
     sklad: row.sklad ?? null,
     trvaniMs: row.trvani_ms ?? 0,
+    detail: row.detail ?? null,
     vytvoreno: row.vytvoreno,
   };
 }

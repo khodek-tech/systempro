@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, Fragment } from 'react';
 import {
   Database,
   Loader2,
@@ -1007,6 +1007,7 @@ function SyncZasobyBlock({
 }: SyncZasobyBlockProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [showColumns, setShowColumns] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
   // Load log on mount
   useEffect(() => {
@@ -1189,42 +1190,88 @@ function SyncZasobyBlock({
                   </tr>
                 </thead>
                 <tbody>
-                  {syncZasobyLog.map((log) => (
-                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50">
-                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
-                        {new Date(log.vytvoreno).toLocaleString('cs-CZ', {
-                          day: 'numeric',
-                          month: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {log.stav === 'success' ? (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
-                            <CheckCircle2 className="w-4 h-4" />
-                            OK
-                          </span>
-                        ) : log.stav === 'error' ? (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-700" title={log.zprava || undefined}>
-                            <XCircle className="w-4 h-4" />
-                            Chyba
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Probiha
-                          </span>
+                  {syncZasobyLog.map((log) => {
+                    const hasDetail = log.detail && log.detail.length > 0;
+                    const isExpanded = expandedLogId === log.id;
+                    return (
+                      <Fragment key={log.id}>
+                        <tr
+                          className={cn(
+                            'border-t border-slate-100 transition-colors',
+                            hasDetail ? 'cursor-pointer hover:bg-slate-50' : '',
+                            isExpanded && 'bg-slate-50'
+                          )}
+                          onClick={() => hasDetail && setExpandedLogId(isExpanded ? null : log.id)}
+                        >
+                          <td className="px-4 py-2.5 text-sm font-medium text-slate-600">
+                            <span className="flex items-center gap-1.5">
+                              {hasDetail && (
+                                <ChevronDown className={cn(
+                                  'w-3.5 h-3.5 text-slate-400 transition-transform duration-200 flex-shrink-0',
+                                  !isExpanded && '-rotate-90'
+                                )} />
+                              )}
+                              {new Date(log.vytvoreno).toLocaleString('cs-CZ', {
+                                day: 'numeric',
+                                month: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {log.stav === 'success' ? (
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
+                                <CheckCircle2 className="w-4 h-4" />
+                                {hasDetail ? `${log.detail!.length} skladů` : 'OK'}
+                              </span>
+                            ) : log.stav === 'error' ? (
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-red-700" title={log.zprava || undefined}>
+                                <XCircle className="w-4 h-4" />
+                                Chyba
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Probiha
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                            {log.pocetZaznamu.toLocaleString('cs-CZ')}
+                          </td>
+                          <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
+                            {(log.trvaniMs / 1000).toFixed(1)}s
+                          </td>
+                        </tr>
+                        {isExpanded && hasDetail && (
+                          <tr>
+                            <td colSpan={4} className="px-4 pb-3 pt-0">
+                              <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                                <table className="w-full">
+                                  <tbody>
+                                    {log.detail!.map((d, i) => (
+                                      <tr key={i} className={i > 0 ? 'border-t border-slate-100' : ''}>
+                                        <td className="px-3 py-1.5 text-xs font-medium text-slate-600">
+                                          {d.sklad}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-xs font-medium text-slate-500 text-right">
+                                          {d.pocetZaznamu.toLocaleString('cs-CZ')}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-xs font-medium text-slate-500 text-right w-20">
+                                          {(d.trvaniMs / 1000).toFixed(1)}s
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
-                        {log.pocetZaznamu.toLocaleString('cs-CZ')}
-                      </td>
-                      <td className="px-4 py-2.5 text-sm font-medium text-slate-600 text-right">
-                        {(log.trvaniMs / 1000).toFixed(1)}s
-                      </td>
-                    </tr>
-                  ))}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
