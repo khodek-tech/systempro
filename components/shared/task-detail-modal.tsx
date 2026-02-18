@@ -322,7 +322,7 @@ export function TaskDetailModal() {
           {task.returnReason && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
               <p className="text-sm font-semibold text-orange-700 mb-1">Důvod vrácení:</p>
-              <p className="text-sm text-orange-600">{task.returnReason}</p>
+              <p className="text-sm text-orange-600 whitespace-pre-wrap">{linkifyText(task.returnReason, 'text-orange-700 underline break-all')}</p>
             </div>
           )}
 
