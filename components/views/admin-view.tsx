@@ -28,6 +28,8 @@ import { useChatStore } from '@/stores/chat-store';
 import { useEmailStore } from '@/stores/email-store';
 import { useManualStore } from '@/stores/manual-store';
 import { usePresenceStore } from '@/stores/presence-store';
+import { usePrevodkyStore } from '@/stores/prevodky-store';
+import { PickingView } from '@/components/prevodky/PickingView';
 import { formatBytes } from '@/lib/supabase/storage';
 
 export function AdminView() {
@@ -61,6 +63,7 @@ export function AdminView() {
   const { emailViewMode } = useEmailStore();
   const { manualViewMode } = useManualStore();
   const { presenceViewMode } = usePresenceStore();
+  const { pickingPrevodkaId } = usePrevodkyStore();
 
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
 
@@ -76,6 +79,11 @@ export function AdminView() {
       fetchMotivaceProdukty();
     }
   }, [subView, fetchStorageUsage, fetchPohodaTrzby, fetchMotivaceProdukty]);
+
+  // Fullscreen picking view has highest priority
+  if (pickingPrevodkaId) {
+    return <PickingView />;
+  }
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
