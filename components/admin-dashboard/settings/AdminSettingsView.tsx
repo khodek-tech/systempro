@@ -1,6 +1,6 @@
 'use client';
 
-import { Store, Users, Shield, LayoutGrid, Database, Mail } from 'lucide-react';
+import { Store, Users, Shield, LayoutGrid, Database, Mail, Zap } from 'lucide-react';
 import { useAdminStore } from '@/stores/admin-store';
 import { StoresSettings } from './StoresSettings';
 import { RolesSettings } from './RolesSettings';
@@ -8,6 +8,7 @@ import { EmployeesSettings } from './EmployeesSettings';
 import { ModulesSettings } from './ModulesSettings';
 import { PohodaSettings } from './PohodaSettings';
 import { EmailSettings } from './EmailSettings';
+import { AutomatizaceSettings } from './AutomatizaceSettings';
 import { cn } from '@/lib/utils';
 
 const tabs = [
@@ -17,6 +18,7 @@ const tabs = [
   { id: 'modules' as const, label: 'Moduly', icon: LayoutGrid },
   { id: 'pohoda' as const, label: 'Pohoda', icon: Database },
   { id: 'email' as const, label: 'E-mail', icon: Mail },
+  { id: 'automatizace' as const, label: 'Automatizace', icon: Zap },
 ];
 
 export function AdminSettingsView() {
@@ -57,6 +59,7 @@ export function AdminSettingsView() {
         {settingsTab === 'modules' && <ModulesSettings />}
         {settingsTab === 'pohoda' && <PohodaSettings />}
         {settingsTab === 'email' && <EmailSettings />}
+        {settingsTab === 'automatizace' && <AutomatizaceSettings />}
       </div>
     </div>
   );

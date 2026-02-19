@@ -82,6 +82,11 @@ interface PohodaState {
   podkladyRowCount: number;
   podkladyFileName: string | null;
 
+  // Rozdeleni zbozi
+  isGeneratingRozdeleni: boolean;
+  generateRozdeleniProgress: string | null;
+  generateRozdeleniError: string | null;
+
   // Navigation
   pohodaView: 'settings' | 'detail';
 }
@@ -117,6 +122,7 @@ interface PohodaActions {
   fetchSyncProdejkyLog: () => Promise<void>;
   syncProdejky: () => Promise<void>;
   uploadPodklady: (file: File) => Promise<void>;
+  generateRozdeleni: () => Promise<void>;
 }
 
 const defaultCredentials: PohodaCredentials = {
@@ -169,6 +175,9 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   podkladyLastUpload: null,
   podkladyRowCount: 0,
   podkladyFileName: null,
+  isGeneratingRozdeleni: false,
+  generateRozdeleniProgress: null,
+  generateRozdeleniError: null,
   pohodaView: 'settings',
 
   // DB fetch
@@ -469,6 +478,41 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     } finally {
       set({ isSyncingProdejky: false });
       get().fetchSyncProdejkyLog();
+    }
+  },
+
+  generateRozdeleni: async () => {
+    set({ isGeneratingRozdeleni: true, generateRozdeleniProgress: 'Vypočítávám rozdělení...', generateRozdeleniError: null });
+
+    try {
+      const response = await fetch('/api/automatizace/rozdeleni');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || `Chyba ${response.status}`);
+      }
+
+      set({ generateRozdeleniProgress: 'Stahuji Excel...' });
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = response.headers.get('Content-Disposition');
+      const filename = disposition?.match(/filename="(.+)"/)?.[1] || 'rozdeleni.xlsx';
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      set({ generateRozdeleniProgress: null, generateRozdeleniError: null });
+      toast.success('Rozdělení vygenerováno a staženo');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Neznámá chyba';
+      set({ generateRozdeleniError: msg, generateRozdeleniProgress: null });
+      toast.error(`Generování selhalo: ${msg}`);
+    } finally {
+      set({ isGeneratingRozdeleni: false });
     }
   },
 

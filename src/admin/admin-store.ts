@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 
 type AdminSubView = 'main' | 'reports' | 'settings';
-type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda' | 'email';
+type SettingsTab = 'stores' | 'roles' | 'employees' | 'modules' | 'pohoda' | 'email' | 'automatizace';
 
 interface AdminState {
   subView: AdminSubView;
