@@ -100,15 +100,17 @@ export async function POST(request: NextRequest) {
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber === 1) return; // skip header
 
-      const kodCell = row.getCell(kodCol + 1); // exceljs is 1-indexed
+      // headers array is 1-indexed (from ExcelJS eachCell colNumber),
+      // so findIndex already returns 1-based indices — no +1 needed for getCell
+      const kodCell = row.getCell(kodCol);
       const kod = String(kodCell.text).trim();
       if (!kod) return;
 
-      const nazev = nazevCol !== -1 ? String(row.getCell(nazevCol + 1).text).trim() || null : null;
+      const nazev = nazevCol !== -1 ? String(row.getCell(nazevCol).text).trim() || null : null;
 
       const ciloveStavy: Record<string, number> = {};
       for (const sc of storeColumns) {
-        const val = row.getCell(sc.colIndex + 1).value;
+        const val = row.getCell(sc.colIndex).value;
         const num = typeof val === 'number' ? val : Number(val);
         if (!isNaN(num)) {
           ciloveStavy[sc.name] = num;
@@ -117,14 +119,14 @@ export async function POST(request: NextRequest) {
 
       let nasobekVal: number | null = null;
       if (nasobekCol !== -1) {
-        const v = row.getCell(nasobekCol + 1).value;
+        const v = row.getCell(nasobekCol).value;
         const n = typeof v === 'number' ? v : Number(v);
         if (!isNaN(n)) nasobekVal = n;
       }
 
       let objVal = 0;
       if (objCol !== -1) {
-        const v = row.getCell(objCol + 1).value;
+        const v = row.getCell(objCol).value;
         const n = typeof v === 'number' ? v : Number(v);
         if (!isNaN(n)) objVal = n;
       }
