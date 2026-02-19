@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AttendanceRecord } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
-import { mapDbToAttendanceRecord } from '@/lib/supabase/mappers';
+import { mapDbToAttendanceRecord, mapAttendanceRecordToDb } from '@/lib/supabase/mappers';
 import { getStorageUsage } from '@/lib/supabase/storage';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
@@ -37,6 +37,9 @@ interface KpiData {
 }
 
 interface AdminActions {
+  // CRUD
+  updateAttendanceRecord: (id: number, updates: Partial<AttendanceRecord>) => Promise<{ success: boolean }>;
+
   // Fetch
   fetchAttendanceRecords: () => Promise<void>;
   fetchPohodaTrzby: () => Promise<void>;
@@ -88,6 +91,39 @@ export const useAdminStore = create<AdminState & AdminActions>((set, get) => ({
   _loaded: false,
   _loading: false,
   _realtimeChannel: null,
+
+  // CRUD
+  updateAttendanceRecord: async (id, updates) => {
+    const supabase = createClient();
+    // Build DB columns only for changed fields
+    const fullForMapping = mapAttendanceRecordToDb({ ...updates } as AttendanceRecord);
+    // Keep only keys that correspond to provided updates
+    const dbUpdates: Record<string, unknown> = {};
+    const keyMap: Record<string, string> = {
+      in: 'prichod', out: 'odchod', hrs: 'hodiny', abs: 'absence',
+      absNote: 'poznamka_absence', cash: 'hotovost', card: 'karta',
+      partner: 'partner', flows: 'pohyby', saleNote: 'poznamka_trzba',
+    };
+    for (const [tsKey, dbKey] of Object.entries(keyMap)) {
+      if (tsKey in updates) {
+        dbUpdates[dbKey] = fullForMapping[dbKey];
+      }
+    }
+    const { error } = await supabase.from('dochazka').update(dbUpdates).eq('id', id);
+    if (error) {
+      logger.error('Failed to update attendance record', error);
+      toast.error('Nepodařilo se aktualizovat záznam');
+      return { success: false };
+    }
+    // Optimistic local update (realtime will also sync)
+    set({
+      attendanceRecords: get().attendanceRecords.map((r) =>
+        r.id === id ? { ...r, ...updates } : r
+      ),
+    });
+    toast.success('Záznam aktualizován');
+    return { success: true };
+  },
 
   // Fetch
   fetchAttendanceRecords: async () => {

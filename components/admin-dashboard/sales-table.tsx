@@ -8,6 +8,7 @@ interface SalesTableProps {
   data: AttendanceRecord[];
   pohodaTrzby: Record<string, number>;
   motivaceProdukty: Record<string, number>;
+  onRowClick?: (record: AttendanceRecord) => void;
 }
 
 function czDateToIso(czDate: string): string {
@@ -18,7 +19,7 @@ function czDateToIso(czDate: string): string {
   return `${y}-${m}-${d}`;
 }
 
-export function SalesTable({ data, pohodaTrzby, motivaceProdukty }: SalesTableProps) {
+export function SalesTable({ data, pohodaTrzby, motivaceProdukty, onRowClick }: SalesTableProps) {
   // Precompute total sales per store+date for proportional motivace split
   const storeDateTotals = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -64,7 +65,11 @@ export function SalesTable({ data, pohodaTrzby, motivaceProdukty }: SalesTablePr
               const pohodaComparable = row.cash + row.card;
               const hasMismatch = pohodaAmount !== undefined && Math.round(pohodaAmount) !== Math.round(pohodaComparable);
               return (
-                <tr key={index}>
+                <tr
+                  key={index}
+                  onClick={() => onRowClick?.(row)}
+                  className={onRowClick ? 'cursor-pointer hover:bg-blue-50 transition-colors duration-200' : ''}
+                >
                   <td className="col-date font-black text-slate-400">{row.date}</td>
                   <td className="col-store text-blue-600 font-extrabold uppercase text-[10px] tracking-widest">
                     {row.store}

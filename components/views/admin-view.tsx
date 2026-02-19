@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KpiCards } from '@/components/admin-dashboard/kpi-cards';
 import { AttendanceTable } from '@/components/admin-dashboard/attendance-table';
 import { SalesTable } from '@/components/admin-dashboard/sales-table';
+import { AttendanceEditModal } from '@/components/admin-dashboard/AttendanceEditModal';
 import { AbsenceRequests } from '@/components/admin-dashboard/absence-requests';
 import { AdminSettingsView } from '@/components/admin-dashboard/settings/AdminSettingsView';
 import { ModuleRenderer } from '@/components/ModuleRenderer';
@@ -15,6 +16,7 @@ import { ChatFullView } from '@/components/views/chat-full-view';
 import { EmailFullView } from '@/components/views/email-full-view';
 import { PresenceFullView } from '@/components/views/presence-full-view';
 import { ManualFullView } from '@/components/views/manual-full-view';
+import { AttendanceRecord } from '@/types';
 import { exportAttendanceToXls } from '@/lib/export-attendance';
 import { months, years } from '@/lib/mock-data';
 import { useAdminStore } from '@/stores/admin-store';
@@ -59,6 +61,8 @@ export function AdminView() {
   const { emailViewMode } = useEmailStore();
   const { manualViewMode } = useManualStore();
   const { presenceViewMode } = usePresenceStore();
+
+  const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
 
   const filteredData = getFilteredData();
   const kpiData = getKpiData();
@@ -236,8 +240,13 @@ export function AdminView() {
         />
 
         {/* Tables */}
-        <AttendanceTable data={filteredData} />
-        <SalesTable data={filteredData} pohodaTrzby={pohodaTrzby} motivaceProdukty={motivaceProdukty} />
+        <AttendanceTable data={filteredData} onRowClick={setEditRecord} />
+        <SalesTable data={filteredData} pohodaTrzby={pohodaTrzby} motivaceProdukty={motivaceProdukty} onRowClick={setEditRecord} />
+
+        {/* Edit modal */}
+        {editRecord && (
+          <AttendanceEditModal record={editRecord} onClose={() => setEditRecord(null)} />
+        )}
 
         {/* Bottom panels */}
         <div className="grid grid-cols-1 gap-6">

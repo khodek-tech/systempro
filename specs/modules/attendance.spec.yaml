@@ -141,6 +141,50 @@ scenarios:
       - checkedInUsers obsahuje správné userId
       - Modul Přítomnost reflektuje aktuální stav
 
+  - id: admin_edit_attendance
+    name: Editace docházkového záznamu adminem
+    description: Admin může kliknout na řádek v tabulce a editovat záznam
+    acceptance_criteria:
+      - Klik na řádek v AttendanceTable nebo SalesTable otevře editační modal
+      - Modal zobrazuje readonly info (datum, pracoviště, zaměstnanec)
+      - Sekce Docházka: příchod, odchod, hodiny (auto), absence, poznámka
+      - Sekce Tržby: hotovost, karta, partner, pohyby, poznámka
+      - Auto-kalkulace hodin z příchod/odchod
+      - Uložení přes updateAttendanceRecord (DB + lokální stav)
+
+scenarios:
+  - id: ATT-005
+    name: Admin editace záznamu docházky
+    preconditions:
+      - Uživatel je Administrátor
+      - Existuje docházkový záznam v tabulce
+    steps:
+      - Otevřu reporty v admin dashboardu
+      - Kliknu na řádek v tabulce docházky
+      - Zobrazí se editační modal s daty záznamu
+      - Upravím čas odchodu
+      - Hodiny se automaticky přepočítají
+      - Kliknu Uložit
+    expected:
+      - Modal se otevře s předvyplněnými daty
+      - Hodiny se přepočítají z příchod/odchod
+      - Záznam se uloží do DB
+      - Tabulka se aktualizuje
+
+  - id: ATT-006
+    name: Admin editace tržby
+    preconditions:
+      - Uživatel je Administrátor
+      - Existuje záznam s tržbami
+    steps:
+      - Kliknu na řádek v tabulce tržeb
+      - Zobrazí se stejný editační modal
+      - Upravím hotovost a kartu
+      - Kliknu Uložit
+    expected:
+      - Tržby se aktualizují v DB
+      - Tabulka tržeb zobrazí nové hodnoty
+
 edge_cases:
   - id: ATT-E001
     name: Dvojí příchod

@@ -5,9 +5,10 @@ import { AttendanceRecord } from '@/types';
 
 interface AttendanceTableProps {
   data: AttendanceRecord[];
+  onRowClick?: (record: AttendanceRecord) => void;
 }
 
-export function AttendanceTable({ data }: AttendanceTableProps) {
+export function AttendanceTable({ data, onRowClick }: AttendanceTableProps) {
   return (
     <div className="excel-outer-wrapper">
       <div className="p-4 bg-slate-50 border-b flex items-center space-x-2">
@@ -30,7 +31,11 @@ export function AttendanceTable({ data }: AttendanceTableProps) {
           </thead>
           <tbody>
             {data.map((row, index) => (
-              <tr key={index}>
+              <tr
+                key={index}
+                onClick={() => onRowClick?.(row)}
+                className={onRowClick ? 'cursor-pointer hover:bg-blue-50 transition-colors duration-200' : ''}
+              >
                 <td className="col-date font-black text-slate-400">{row.date}</td>
                 <td className="col-store text-blue-600 font-extrabold uppercase text-[10px] tracking-widest">
                   {row.workplaceName}

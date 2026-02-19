@@ -2,6 +2,19 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.8.0] - 2026-02-19
+
+### Přidáno
+
+#### Editace docházky v admin dashboardu
+- **Účel**: Admin může kliknout na řádek v tabulce docházky/tržeb a editovat záznam
+- **UI**: Editační modal se sekcemi Docházka (příchod, odchod, hodiny, absence) a Tržby (hotovost, karta, partner, pohyby, poznámka)
+- **Auto-kalkulace**: Hodiny se automaticky přepočítají z příchod/odchod
+- **DB**: `updateAttendanceRecord` aktualizuje pouze změněná pole v tabulce `dochazka`
+- **Nové soubory**: `AttendanceEditModal.tsx`
+- **Upravené soubory**: `admin-store.ts`, `attendance-table.tsx`, `sales-table.tsx`, `admin-view.tsx`
+- **Specifikace**: Scénáře ATT-005, ATT-006 v `attendance.spec.yaml` a `testy.md`
+
 ## [2.7.0] - 2026-02-16
 
 ### Přidáno

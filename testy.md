@@ -493,6 +493,26 @@
 | 4 | Zaškrtnout potvrzení | Checkbox zaškrtnut |
 | 5 | Kliknout "Odchod" znovu | Odchod proveden |
 
+#### ATT-005: Admin editace záznamu docházky
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít reporty v admin dashboardu | Tabulky docházky a tržeb viditelné |
+| 2 | Kliknout na řádek v tabulce docházky | Editační modal se otevře |
+| 3 | Vidět datum, pracoviště, zaměstnanec (readonly) | Info zobrazeno, nelze editovat |
+| 4 | Upravit čas odchodu | Hodiny se automaticky přepočítají |
+| 5 | Kliknout Uložit | Záznam uložen, modal se zavře |
+| 6 | Ověřit tabulku | Nové hodnoty v tabulce |
+
+#### ATT-006: Admin editace tržby
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Kliknout na řádek v tabulce tržeb | Editační modal se otevře |
+| 2 | Upravit hotovost a kartu | Nové hodnoty v inputech |
+| 3 | Kliknout Uložit | Tržby aktualizovány v DB |
+| 4 | Ověřit tabulku tržeb | Nové hodnoty zobrazeny |
+
 ---
 
 ## 9. Směny (Shifts)
