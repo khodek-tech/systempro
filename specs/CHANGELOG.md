@@ -2,6 +2,25 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.9.0] - 2026-02-19
+
+### Přidáno
+
+#### Nový modul: Převodky (picking + EAN skenování)
+- **Účel**: Digitalizace procesu distribuce zboží na prodejny — místo tištěného Excelu systém generuje interní převodky (transfer orders) a přiřazuje je zaměstnancům jako úkoly
+- **Přístup**: Administrator (role-2), Majitel (role-8) pro správu; všichni zaměstnanci jako pickeři
+- **DB migrace**: `create_prevodky_tables` — tabulky `prevodky` + `prevodky_polozky` s RLS + indexy, sloupec `typ_ukolu` v `ukoly`
+- **Workflow**: nova → picking → vychystano → odeslano → potvrzeno (+ zrusena)
+- **Generování**: Admin vybere pickery per prodejna, systém vytvoří N převodek + N úkolů (výpočet z `get_rozdeleni_data` RPC)
+- **Picking UI**: Fullscreen view s EAN scanner podporou — auto-focus input, qty=1 auto-confirm, qty>1 dialog, partial picking s povinnou poznámkou
+- **Admin UI**: Sekce "Převodky" v Automatizace s tabulkou přehledu, filtry stavu, detail view s položkami
+- **Task integrace**: Úkol typu `prevodka` automaticky otevírá picking UI, tlačítko "Otevřít picking" v task detail modalu
+- **Realtime**: Subscriptions na `prevodky` + `prevodky_polozky` tabulky
+- **Pohoda příprava**: DB sloupce `pohoda_odeslano`, `pohoda_cislo_dokladu`, `pohoda_chyba` pro budoucí XML integraci
+- **Nové soubory**: `prevodka.types.ts`, `prevodky-store.ts`, `PickingView.tsx`, `PrevodkaDetail.tsx`, `GenerateDialog.tsx`, `QuantityDialog.tsx`, API routes (`generate`, `[id]`, `[id]/cancel`)
+- **Upravené soubory**: `mappers.ts`, `init.ts`, `task.types.ts`, `AutomatizaceSettings.tsx`, `RoleView.tsx`, `task-detail-modal.tsx`, `types/index.ts`
+- **Specifikace**: `prevodky.spec.yaml` (scénáře PREV-001 až PREV-005, edge cases PREV-E001 až PREV-E005)
+
 ## [2.8.0] - 2026-02-19
 
 ### Přidáno

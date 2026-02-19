@@ -1,0 +1,273 @@
+# SYSTEM.PRO - Prevodky (Transfer Orders) Module Specification
+# Interni prevodky s picking systemem a EAN skenovani
+
+module:
+  id: prevodky
+  name: Prevodky
+  description: Interni prevodni doklady se systemem vychystavani (picking) a EAN skenovani
+  component: AutomatizaceSettings (sekce Prevodky)
+  store: usePrevodkyStore
+  icon: Truck
+
+access:
+  roles:
+    - role-2  # Administrator (generovani, prehled, detail, zruseni)
+    - role-8  # Majitel (generovani, prehled, detail, zruseni)
+  employee_access:
+    - Vsichni zamestnanci prideleni jako pickeri (picking UI)
+
+  notes:
+    - Admin generuje prevodky z vypoctu rozdeleni zbozi
+    - Admin priradi pickera (zamestnance) ke kazde prodejne
+    - Picker otevre ukol a skenuje EAN kody
+    - Delegace ukolu mozna pres existujici task system
+
+data_model:
+  prevodka:
+    id: string (UUID)
+    cisloPrevodky: string  # format PV-YYYY-NNN
+    zdrojovySklad: string  # default ALL_Zdiby
+    cilovySklad: string  # nazev prodejny
+    stav: PrevodkaStav  # nova|picking|vychystano|odeslano|potvrzeno|zrusena
+    prirazenoKomu: string | null  # ID pickera
+    vytvoreno: string  # timestamptz
+    zahajeno: string | null  # kdy picker zacal
+    vychystano: string | null  # kdy dokoncil picking
+    odeslano: string | null  # kdy fyzicky odeslano
+    potvrzeno: string | null  # kdy prijato na prodejne
+    zruseno: string | null  # kdy zruseno
+    poznamka: string | null  # poznamka pickera (povinna pri partial)
+    vytvoril: string  # ID admina
+    pohodaOdeslano: boolean  # priprava pro Pohoda integraci
+    pohodaCisloDokladu: string | null
+    pohodaChyba: string | null
+    ukolId: string | null  # vazba na ukoly
+    polozky: PrevodkaPolozka[]
+
+  prevodkaPolozka:
+    id: string (UUID)
+    prevodkaId: string
+    kod: string  # EAN/kod produktu
+    nazev: string
+    pozice: string | null  # pozice ve skladu (H10/04)
+    pozadovaneMnozstvi: number
+    skutecneMnozstvi: number | null  # kolik skutecne vzal
+    vychystano: boolean
+    casVychystani: string | null
+    poradi: number  # razeni dle pozice
+
+  prevodkaStav:
+    values:
+      - nova  # vytvorena, ceka na pickera
+      - picking  # zamestnanec aktivne vychystava
+      - vychystano  # vse nasnenovano
+      - odeslano  # zbozi fyzicky odeslano
+      - potvrzeno  # prijato na prodejne (budouci faze)
+      - zrusena  # zrusena prevodka
+
+  storeState:
+    prevodky: Prevodka[]
+    _loaded: boolean
+    _loading: boolean
+    isGenerating: boolean
+    generateProgress: string | null
+    generateError: string | null
+    pickingPrevodkaId: string | null
+    selectedPrevodkaId: string | null
+    stavFilter: PrevodkaStav | aktivni | all
+
+db_tables:
+  prevodky:
+    description: Hlavni tabulka prevodnich dokladu
+    columns:
+      - id: uuid PK DEFAULT gen_random_uuid()
+      - cislo_prevodky: text NOT NULL
+      - zdrojovy_sklad: text NOT NULL DEFAULT 'ALL_Zdiby'
+      - cilovy_sklad: text NOT NULL
+      - stav: text NOT NULL DEFAULT 'nova'
+      - prirazeno_komu: text REFERENCES zamestnanci(id)
+      - vytvoreno: timestamptz NOT NULL DEFAULT now()
+      - zahajeno: timestamptz
+      - vychystano: timestamptz
+      - odeslano: timestamptz
+      - potvrzeno: timestamptz
+      - zruseno: timestamptz
+      - poznamka: text
+      - vytvoril: text REFERENCES zamestnanci(id)
+      - pohoda_odeslano: boolean DEFAULT false
+      - pohoda_cislo_dokladu: text
+      - pohoda_chyba: text
+      - ukol_id: text REFERENCES ukoly(id) ON DELETE SET NULL
+    indexes:
+      - idx_prevodky_stav ON prevodky(stav)
+      - idx_prevodky_prirazeno ON prevodky(prirazeno_komu)
+    rls: enabled
+    policies:
+      - SELECT pro authenticated
+      - INSERT pro authenticated
+      - UPDATE pro authenticated
+
+  prevodky_polozky:
+    description: Polozky prevodnich dokladu
+    columns:
+      - id: uuid PK DEFAULT gen_random_uuid()
+      - prevodka_id: uuid NOT NULL REFERENCES prevodky(id) ON DELETE CASCADE
+      - kod: text NOT NULL
+      - nazev: text NOT NULL
+      - pozice: text
+      - pozadovane_mnozstvi: integer NOT NULL
+      - skutecne_mnozstvi: integer
+      - vychystano: boolean DEFAULT false
+      - cas_vychystani: timestamptz
+      - poradi: integer NOT NULL DEFAULT 0
+    indexes:
+      - idx_prevodky_polozky_prevodka ON prevodky_polozky(prevodka_id)
+    rls: enabled
+    policies:
+      - SELECT pro authenticated
+      - INSERT pro authenticated
+      - UPDATE pro authenticated
+
+  ukoly_update:
+    description: Pridani sloupce typ_ukolu do tabulky ukoly
+    columns:
+      - typ_ukolu: text DEFAULT 'obecny'  # obecny|prevodka
+
+features:
+  - id: generate-prevodky
+    name: Generovani prevodek
+    description: Admin vybere pickery pro kazdu prodejnu a vygeneruje prevodky + ukoly
+    acceptance_criteria:
+      - Admin klikne "Generovat prevodky" v Automatizace nastaveni
+      - Dialog zobrazi vsechny delivery prodejny s dropdown pro vyber pickera
+      - Po potvrzeni se pro kazdou prodejnu s polozkamivytvori prevodka + ukol
+      - Ukol je typu 'prevodka' s vysokou prioritou
+      - Cislovani PV-YYYY-NNN s automatickym inkrementem
+
+  - id: picking-ui
+    name: Picking UI s EAN skenovani
+    description: Fullscreen view pro skladniky s EAN scanner podporou
+    acceptance_criteria:
+      - Picker otevre ukol typu prevodka -> automaticky se otevre picking UI
+      - Seznam polozek serazeny dle pozice ve skladu
+      - Velke vstupni pole pro EAN (hardware scanner posila Enter)
+      - Qty=1 se automaticky potvrdi
+      - Qty>1 zobrazi dialog s cislem (predvyplneno)
+      - Neznamy EAN -> cervena hlaska "Produkt neni v prevodce"
+      - Progress bar ukazuje postup vychystavani
+      - Dokonceni s poznamkou pokud neni vse vychystano
+
+  - id: admin-overview
+    name: Prehled prevodek
+    description: Tabulka s prehledem vsech prevodek pro admina
+    acceptance_criteria:
+      - Tabulka zobrazuje cislo, cil, picker, stav, polozky (X/Y), vytvoreno
+      - Filtrovani dle stavu (aktivni, nove, picking, vychystane, odeslane, zrusene)
+      - Klik na radek otevre detail view
+      - Tlacitko "Zrusit" u nedokoncenych
+
+  - id: prevodka-detail
+    name: Detail prevodky
+    description: Detailni zobrazeni prevodky s polozkami
+    acceptance_criteria:
+      - Hlavicka s cislem, cilem, pickerem, stavem, casy
+      - Seznam polozek s barevnym oznacenim (zelena OK, oranzova partial, cervena chybi)
+      - Poznamka pickera pokud partial
+      - Akce "Oznacit jako odeslano" u vychystanych
+      - Akce "Zrusit prevodku" u nedokoncenych
+
+  - id: task-integration
+    name: Integrace s ukoly
+    description: Propojeni prevodek s existujicim task systemem
+    acceptance_criteria:
+      - Prevodka ma vazbu 1:1 na ukol (ukol_id)
+      - Ukol typu 'prevodka' otevira picking UI misto task detailu
+      - Tlacitko "Otevrit picking" v task detail modalu
+      - Delegace pres existujici mechanismus
+
+notifications:
+  badge:
+    type: none
+    description: Prevodky nemaji vlastni badge, notifikace jdou pres ukoly
+
+scenarios:
+  - id: PREV-001
+    name: Generovani prevodek
+    preconditions: Admin je prihlasen, existuji podklady cilovych stavu
+    steps:
+      - Admin otevre Automatizace > Prevodky
+      - Klikne "Generovat prevodky"
+      - V dialogu vybere pickery pro prodejny
+      - Klikne "Generovat"
+    expected:
+      - System vytvori N prevodek (1 per prodejna s polozkam)
+      - Kazda prevodka ma prirazeny ukol typu 'prevodka'
+      - V prehledu vidim nove prevodky se stavem "nova"
+
+  - id: PREV-002
+    name: Picking s EAN skenovani
+    preconditions: Existuje prevodka prirazena pickerovi
+    steps:
+      - Picker otevre ukol typu prevodka
+      - Picking UI se otevre automaticky, stav -> picking
+      - Picker naskenuje EAN kod (qty=1) -> polozka potvrzena
+      - Picker naskenuje EAN kod (qty>1) -> zobrazi dialog
+      - Picker potvrdi mnozstvi -> polozka potvrzena
+      - Vsechny polozky hotove -> klikne "Dokoncit picking"
+    expected:
+      - Kazda naskenove polozka je oznacena jako vychystana
+      - Progress bar ukazuje postup
+      - Po dokonceni stav -> vychystano
+
+  - id: PREV-003
+    name: Partial picking s poznamkou
+    preconditions: Picker vychystava prevodku, nektere polozky chybi
+    steps:
+      - Picker neskenuje vsechny polozky
+      - Klikne "Dokoncit picking"
+      - Zobrazi se dialog s povinnou poznamkou
+      - Zada duvod a potvrdi
+    expected:
+      - Prevodka ma stav "vychystano" s poznamkou
+      - Admin vidi poznamku v detail view
+
+  - id: PREV-004
+    name: Odeslani prevodky
+    preconditions: Prevodka ve stavu vychystano
+    steps:
+      - Admin otevre detail prevodky
+      - Klikne "Oznacit jako odeslano"
+    expected:
+      - Stav -> odeslano s casovym razitkem
+
+  - id: PREV-005
+    name: Zruseni prevodky
+    preconditions: Prevodka ve stavu nova nebo picking
+    steps:
+      - Admin otevre detail prevodky
+      - Klikne "Zrusit prevodku"
+      - Potvrdi v dialogu
+    expected:
+      - Stav -> zrusena
+      - Prirazeny ukol je smazan
+
+edge_cases:
+  - id: PREV-E001
+    description: Neznamy EAN kod naskenovan
+    expected: Cervena hlaska "Produkt neni v prevodce", zadna polozka se nezmeni
+
+  - id: PREV-E002
+    description: Jiz vychystany produkt naskenovan znovu
+    expected: Hlaska "Jiz vychystano", zadna zmena
+
+  - id: PREV-E003
+    description: Prodejna bez polozek k dodani
+    expected: Prevodka se nevytvori, jen prodejny s alespon 1 polozkou
+
+  - id: PREV-E004
+    description: Pokus o zruseni odeslane prevodky
+    expected: API vrati chybu 400, prevodka zustava nezmenena
+
+  - id: PREV-E005
+    description: Generovani bez prirazeni pickeru
+    expected: API vrati chybu 400, zadna prevodka se nevytvori

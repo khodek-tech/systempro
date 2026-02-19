@@ -13,6 +13,7 @@ import { useAdminStore } from '@/admin/admin-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { usePohodaStore } from '@/features/pohoda/pohoda-store';
 import { useMotivationStore } from '@/features/motivation/motivation-store';
+import { usePrevodkyStore } from '@/features/prevodky/prevodky-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
@@ -74,6 +75,7 @@ async function initializeStores() {
     useAttendanceStore.getState().fetchTodayAttendance(),
     usePohodaStore.getState().fetchPohodaConfig(),
     useMotivationStore.getState().fetchSettings(),
+    usePrevodkyStore.getState().fetchPrevodky(),
   ]);
 
   // Phase 4: Start Realtime subscriptions + auto-sync polling as fallback
@@ -88,6 +90,7 @@ async function initializeStores() {
   useTasksStore.getState().subscribeRealtime();
   useAbsenceStore.getState().subscribeRealtime();
   useMotivationStore.getState().subscribeRealtime();
+  usePrevodkyStore.getState().subscribeRealtime();
   useAttendanceStore.getState().startAutoSync();
   useChatStore.getState().startAutoSync();
   useTasksStore.getState().startAutoSync();
@@ -108,6 +111,7 @@ export function cleanupSubscriptions() {
   useTasksStore.getState().unsubscribeRealtime();
   useAbsenceStore.getState().unsubscribeRealtime();
   useMotivationStore.getState().unsubscribeRealtime();
+  usePrevodkyStore.getState().unsubscribeRealtime();
   useAttendanceStore.getState().stopAutoSync();
   useChatStore.getState().stopAutoSync();
   useTasksStore.getState().stopAutoSync();

@@ -26,6 +26,7 @@
 17. [Produkční hardening audit](#17-produkční-hardening-audit-v180)
 18. [Centralizace synchronizace — Cron Jobs](#18-centralizace-synchronizace--cron-jobs-v200--v210)
 19. [Motivace prodejny](#19-motivace-prodejny)
+20. [Převodky (picking + EAN)](#20-převodky-picking--ean)
 
 ---
 
@@ -1171,4 +1172,88 @@
 
 ---
 
-*Poslední aktualizace: 2026-02-16*
+---
+
+## 20. Převodky (picking + EAN)
+
+**Modul:** AutomatizaceSettings (sekce Převodky)
+**Store:** usePrevodkyStore
+**Badge:** Žádný (notifikace přes úkoly)
+
+### Přístupové role
+
+| Role | ID | Práva |
+|------|-----|-------|
+| Administrátor | role-2 | Generování, přehled, detail, zrušení |
+| Majitel | role-8 | Generování, přehled, detail, zrušení |
+| Zaměstnanec (picker) | - | Picking UI přes úkol |
+
+### Testovací scénáře
+
+#### PREV-001: Generování převodek
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít Automatizace > Převodky | Sekce s tlačítkem "Generovat převodky" |
+| 2 | Kliknout "Generovat převodky" | Dialog s výběrem pickerů per prodejna |
+| 3 | Vybrat pickery pro prodejny | Dropdown s aktivními zaměstnanci |
+| 4 | Kliknout "Generovat" | Systém vytvoří N převodek + N úkolů |
+| 5 | Zkontrolovat přehled | N nových převodek se stavem "Nová" |
+
+#### PREV-002: Picking s EAN skenováním
+
+**Přístup:** Zaměstnanec (picker)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít úkol typu převodka | Picking UI se otevře fullscreen |
+| 2 | Stav se automaticky změní | nova → picking |
+| 3 | Naskenovat EAN (qty=1) | Položka automaticky potvrzena (zelená) |
+| 4 | Naskenovat EAN (qty>1) | Dialog s předvyplněným množstvím |
+| 5 | Potvrdit množství | Položka potvrzena, progress se aktualizuje |
+| 6 | Naskenovat neznámý EAN | Červená hláška "Produkt není v převodce" |
+| 7 | Dokončit (vše vychystáno) | Kliknout "Dokončit picking", stav → vychystáno |
+
+#### PREV-003: Partial picking s poznámkou
+
+**Přístup:** Zaměstnanec (picker)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Neskenovat všechny položky | Progress ukazuje X/Y |
+| 2 | Kliknout "Dokončit picking" | Dialog s povinnou poznámkou |
+| 3 | Zadat poznámku a potvrdit | Stav → vychystáno, poznámka uložena |
+| 4 | Admin otevře detail | Vidí poznámku pickera |
+
+#### PREV-004: Odeslání převodky
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít detail vychystané převodky | Detail s položkami a akcemi |
+| 2 | Kliknout "Označit jako odesláno" | Stav → odesláno, časové razítko |
+
+#### PREV-005: Zrušení převodky
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít detail nové/picking převodky | Detail s tlačítkem "Zrušit" |
+| 2 | Kliknout "Zrušit převodku" | Potvrzovací dialog |
+| 3 | Potvrdit | Stav → zrušena, přiřazený úkol smazán |
+
+### Edge cases
+- Neznámý EAN → červená hláška, žádná položka se nezmění
+- Již vychystaný produkt skenován znovu → hláška "Již vychystáno"
+- Prodejna bez položek → převodka se nevytvoří
+- Pokus o zrušení odeslané → API vrátí chybu 400
+- Generování bez přiřazení pickerů → API vrátí chybu 400
+- Odeslaná/potvrzená převodka → nelze zrušit
+
+---
+
+*Poslední aktualizace: 2026-02-19*

@@ -13,6 +13,7 @@ export type TaskStatus =
   | 'approved';
 export type TaskRepeat = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 export type TaskAssigneeType = 'employee' | 'store';
+export type TaskType = 'obecny' | 'prevodka';
 
 export interface TaskAttachment {
   id: string;
@@ -58,4 +59,5 @@ export interface Task {
   delegatedTo?: string;
   delegatedBy?: string;
   delegatedAt?: string;
+  taskType?: TaskType;
 }

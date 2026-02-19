@@ -17,6 +17,8 @@ import { useChatStore } from '@/stores/chat-store';
 import { useEmailStore } from '@/stores/email-store';
 import { useManualStore } from '@/stores/manual-store';
 import { usePresenceStore } from '@/stores/presence-store';
+import { PickingView } from '@/components/prevodky/PickingView';
+import { usePrevodkyStore } from '@/stores/prevodky-store';
 
 interface RoleViewProps {
   /**
@@ -97,6 +99,12 @@ export function RoleView({
   const { emailViewMode } = useEmailStore();
   const { manualViewMode } = useManualStore();
   const { presenceViewMode } = usePresenceStore();
+  const { pickingPrevodkaId } = usePrevodkyStore();
+
+  // Fullscreen picking view has highest priority (above all)
+  if (pickingPrevodkaId) {
+    return <PickingView />;
+  }
 
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {

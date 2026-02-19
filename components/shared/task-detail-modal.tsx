@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, User, Building2, Clock, RotateCcw, Send, Paperclip, FileText, Users } from 'lucide-react';
+import { X, User, Building2, Clock, RotateCcw, Send, Paperclip, FileText, Users, ScanBarcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUsersStore } from '@/stores/users-store';
 import { useStoresStore } from '@/stores/stores-store';
+import { usePrevodkyStore } from '@/stores/prevodky-store';
 import {
   getTaskStatusConfig,
   getTaskPriorityConfig,
@@ -317,6 +318,23 @@ export function TaskDetailModal() {
               {linkifyText(task.description, 'text-blue-600 underline break-all')}
             </p>
           </div>
+
+          {/* Prevodka picking button */}
+          {task.taskType === 'prevodka' && (
+            <button
+              onClick={() => {
+                const prevodka = usePrevodkyStore.getState().getPrevodkaByTaskId(task.id);
+                if (prevodka) {
+                  usePrevodkyStore.getState().openPicking(prevodka.id);
+                  closeTaskDetail();
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-purple-700 active:scale-[0.98] transition-all"
+            >
+              <ScanBarcode className="w-5 h-5" />
+              Otevřít picking
+            </button>
+          )}
 
           {/* Return reason */}
           {task.returnReason && (

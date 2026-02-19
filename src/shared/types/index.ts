@@ -40,6 +40,7 @@ export type {
   TaskAttachment,
   TaskComment,
   Task,
+  TaskType,
 } from './task.types';
 
 // Module types
@@ -72,6 +73,13 @@ export type {
 
 // Link preview types
 export type { LinkPreview } from './link-preview.types';
+
+// Prevodka types
+export type {
+  PrevodkaStav,
+  PrevodkaPolozka,
+  Prevodka,
+} from './prevodka.types';
 
 // Email types
 export type {

@@ -24,6 +24,7 @@ import type {
   TaskPriority,
   TaskRepeat,
   TaskAssigneeType,
+  TaskType,
   StoreOpeningHours,
   EmployeeWorkingHours,
   EmailAccount,
@@ -201,6 +202,7 @@ export function mapDbToTask(row: any, comments: TaskComment[] = []): Task {
     delegatedBy: row.delegoval ?? undefined,
     delegatedAt: row.delegovano_kdy ?? undefined,
     seenByDelegatee: row.precteno_delegovanym ?? undefined,
+    taskType: (row.typ_ukolu as TaskType) ?? 'obecny',
     comments,
   };
 }
@@ -229,6 +231,7 @@ export function mapTaskToDb(task: Partial<Task> & { id: string }): Record<string
   if (task.delegatedBy !== undefined) row.delegoval = task.delegatedBy || null;
   if (task.delegatedAt !== undefined) row.delegovano_kdy = task.delegatedAt || null;
   if (task.seenByDelegatee !== undefined) row.precteno_delegovanym = task.seenByDelegatee;
+  if (task.taskType !== undefined) row.typ_ukolu = task.taskType;
   return row;
 }
 
@@ -643,6 +646,87 @@ export function mapMotivationSettingsToDb(settings: Partial<MotivationSettings>)
   if (settings.percentage !== undefined) row.procento = settings.percentage;
   if (settings.warehouseId !== undefined) row.sklad_id = settings.warehouseId;
   row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// PREVODKY (prevodky)
+// =============================================================================
+
+import type { Prevodka, PrevodkaStav, PrevodkaPolozka } from '@/shared/types';
+
+export function mapDbToPrevodkaPolozka(row: any): PrevodkaPolozka {
+  return {
+    id: row.id,
+    prevodkaId: row.prevodka_id,
+    kod: row.kod,
+    nazev: row.nazev,
+    pozice: row.pozice ?? null,
+    pozadovaneMnozstvi: row.pozadovane_mnozstvi,
+    skutecneMnozstvi: row.skutecne_mnozstvi ?? null,
+    vychystano: row.vychystano ?? false,
+    casVychystani: row.cas_vychystani ?? null,
+    poradi: row.poradi ?? 0,
+  };
+}
+
+export function mapPrevodkaPolozkaToDb(item: Partial<PrevodkaPolozka> & { id: string }): Record<string, any> {
+  const row: Record<string, any> = { id: item.id };
+  if (item.prevodkaId !== undefined) row.prevodka_id = item.prevodkaId;
+  if (item.kod !== undefined) row.kod = item.kod;
+  if (item.nazev !== undefined) row.nazev = item.nazev;
+  if (item.pozice !== undefined) row.pozice = item.pozice;
+  if (item.pozadovaneMnozstvi !== undefined) row.pozadovane_mnozstvi = item.pozadovaneMnozstvi;
+  if (item.skutecneMnozstvi !== undefined) row.skutecne_mnozstvi = item.skutecneMnozstvi;
+  if (item.vychystano !== undefined) row.vychystano = item.vychystano;
+  if (item.casVychystani !== undefined) row.cas_vychystani = item.casVychystani;
+  if (item.poradi !== undefined) row.poradi = item.poradi;
+  return row;
+}
+
+export function mapDbToPrevodka(row: any, polozky: PrevodkaPolozka[] = []): Prevodka {
+  return {
+    id: row.id,
+    cisloPrevodky: row.cislo_prevodky,
+    zdrojovySklad: row.zdrojovy_sklad,
+    cilovySklad: row.cilovy_sklad,
+    stav: row.stav as PrevodkaStav,
+    prirazenoKomu: row.prirazeno_komu ?? null,
+    vytvoreno: row.vytvoreno,
+    zahajeno: row.zahajeno ?? null,
+    vychystano: row.vychystano ?? null,
+    odeslano: row.odeslano ?? null,
+    potvrzeno: row.potvrzeno ?? null,
+    zruseno: row.zruseno ?? null,
+    poznamka: row.poznamka ?? null,
+    vytvoril: row.vytvoril,
+    pohodaOdeslano: row.pohoda_odeslano ?? false,
+    pohodaCisloDokladu: row.pohoda_cislo_dokladu ?? null,
+    pohodaChyba: row.pohoda_chyba ?? null,
+    ukolId: row.ukol_id ?? null,
+    polozky,
+  };
+}
+
+export function mapPrevodkaToDb(p: Partial<Prevodka> & { id: string }): Record<string, any> {
+  const row: Record<string, any> = { id: p.id };
+  if (p.cisloPrevodky !== undefined) row.cislo_prevodky = p.cisloPrevodky;
+  if (p.zdrojovySklad !== undefined) row.zdrojovy_sklad = p.zdrojovySklad;
+  if (p.cilovySklad !== undefined) row.cilovy_sklad = p.cilovySklad;
+  if (p.stav !== undefined) row.stav = p.stav;
+  if (p.prirazenoKomu !== undefined) row.prirazeno_komu = p.prirazenoKomu;
+  if (p.vytvoreno !== undefined) row.vytvoreno = p.vytvoreno;
+  if (p.zahajeno !== undefined) row.zahajeno = p.zahajeno;
+  if (p.vychystano !== undefined) row.vychystano = p.vychystano;
+  if (p.odeslano !== undefined) row.odeslano = p.odeslano;
+  if (p.potvrzeno !== undefined) row.potvrzeno = p.potvrzeno;
+  if (p.zruseno !== undefined) row.zruseno = p.zruseno;
+  if (p.poznamka !== undefined) row.poznamka = p.poznamka;
+  if (p.vytvoril !== undefined) row.vytvoril = p.vytvoril;
+  if (p.pohodaOdeslano !== undefined) row.pohoda_odeslano = p.pohodaOdeslano;
+  if (p.pohodaCisloDokladu !== undefined) row.pohoda_cislo_dokladu = p.pohodaCisloDokladu;
+  if (p.pohodaChyba !== undefined) row.pohoda_chyba = p.pohodaChyba;
+  if (p.ukolId !== undefined) row.ukol_id = p.ukolId;
   return row;
 }
 
