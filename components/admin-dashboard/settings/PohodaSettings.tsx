@@ -86,6 +86,13 @@ export function PohodaSettings() {
     syncProdejkyLog,
     fetchSyncProdejkyLog,
     syncProdejky,
+    isUploadingPodklady,
+    uploadPodkladyResult,
+    uploadPodkladyError,
+    podkladyLastUpload,
+    podkladyRowCount,
+    podkladyFileName,
+    uploadPodklady,
   } = usePohodaStore();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -93,6 +100,8 @@ export function PohodaSettings() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [podkladyFileInputKey, setPodkladyFileInputKey] = useState(0);
+  const podkladyFileInputRef = useRef<HTMLInputElement>(null);
 
   // Test pripojeni k mServeru
   const testConnection = async () => {
@@ -248,6 +257,16 @@ export function PohodaSettings() {
       // Reset file input - zmena key vynuti znovu-renderovani inputu
       setFileInputKey((prev) => prev + 1);
     }
+  };
+
+  // Upload podklady cilovych stavu
+  const handlePodkladyUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await uploadPodklady(file);
+    setPodkladyFileInputKey((prev) => prev + 1);
   };
 
   // Generovat vsechny sklady
@@ -575,6 +594,96 @@ export function PohodaSettings() {
           <p className="text-sm text-slate-500">
             Pripojeni k ekonomickemu systemu Pohoda
           </p>
+        </div>
+      </div>
+
+      {/* Upload podklady cilovych stavu */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <FileSpreadsheet className="w-5 h-5 text-slate-400" />
+          Podklady cilovych stavu
+        </h3>
+
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Nahrajte Excel soubor (.xlsx) s cilovymi stavy zasob pro prodejny.
+            Kazdy upload kompletne nahradi predchozi data.
+          </p>
+
+          {/* Skryty file input */}
+          <input
+            key={podkladyFileInputKey}
+            ref={podkladyFileInputRef}
+            type="file"
+            accept=".xlsx"
+            onChange={handlePodkladyUpload}
+            className="hidden"
+          />
+
+          {/* Tlacitko pro upload */}
+          <button
+            onClick={() => podkladyFileInputRef.current?.click()}
+            disabled={isUploadingPodklady}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+              isUploadingPodklady
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                : 'bg-orange-500 text-white hover:bg-orange-600 active:scale-[0.98]'
+            )}
+          >
+            {isUploadingPodklady ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Nahravani podkladu...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" />
+                Nahrat podklady (.xlsx)
+              </>
+            )}
+          </button>
+
+          {/* Uspesny upload */}
+          {uploadPodkladyResult?.success && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-800">
+                  Podklady uspesne nahrany
+                </p>
+                <p className="text-xs text-green-600">
+                  {uploadPodkladyResult.filename} &middot;{' '}
+                  {uploadPodkladyResult.pocetRadku.toLocaleString('cs-CZ')} radku
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Chyba */}
+          {uploadPodkladyError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-sm font-medium text-red-800">{uploadPodkladyError}</p>
+            </div>
+          )}
+
+          {/* Info o poslednim uploadu z DB */}
+          {podkladyLastUpload && !uploadPodkladyResult && (
+            <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <FileSpreadsheet className="w-5 h-5 text-slate-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-slate-600">
+                  Posledni upload:{' '}
+                  {new Date(podkladyLastUpload).toLocaleString('cs-CZ')}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {podkladyFileName} &middot;{' '}
+                  {podkladyRowCount.toLocaleString('cs-CZ')} radku
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

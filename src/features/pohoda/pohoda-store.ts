@@ -74,6 +74,14 @@ interface PohodaState {
   syncProdejkyProgress: string | null;
   syncProdejkyLog: PohodaSyncLog[];
 
+  // Upload podklady
+  isUploadingPodklady: boolean;
+  uploadPodkladyResult: { success: boolean; pocetRadku: number; filename: string; timestamp: string } | null;
+  uploadPodkladyError: string | null;
+  podkladyLastUpload: string | null;
+  podkladyRowCount: number;
+  podkladyFileName: string | null;
+
   // Navigation
   pohodaView: 'settings' | 'detail';
 }
@@ -108,6 +116,7 @@ interface PohodaActions {
   syncPohyby: () => Promise<void>;
   fetchSyncProdejkyLog: () => Promise<void>;
   syncProdejky: () => Promise<void>;
+  uploadPodklady: (file: File) => Promise<void>;
 }
 
 const defaultCredentials: PohodaCredentials = {
@@ -154,6 +163,12 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
   isSyncingProdejky: false,
   syncProdejkyProgress: null,
   syncProdejkyLog: [],
+  isUploadingPodklady: false,
+  uploadPodkladyResult: null,
+  uploadPodkladyError: null,
+  podkladyLastUpload: null,
+  podkladyRowCount: 0,
+  podkladyFileName: null,
   pohodaView: 'settings',
 
   // DB fetch
@@ -167,6 +182,9 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         syncZasobyColumns: (data.sync_zasoby_sloupce as string[]) ?? [],
         syncZasobySklad: (data.sync_zasoby_sklad as string) ?? null,
         syncPohybyColumns: (data.sync_pohyby_sloupce as string[]) ?? [],
+        podkladyLastUpload: (data.posledni_upload_podkladu as string) ?? null,
+        podkladyRowCount: (data.podklady_pocet_radku as number) ?? 0,
+        podkladyFileName: (data.podklady_nazev_souboru as string) ?? null,
         _loaded: true,
         _loading: false,
       });
@@ -451,6 +469,47 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     } finally {
       set({ isSyncingProdejky: false });
       get().fetchSyncProdejkyLog();
+    }
+  },
+
+  uploadPodklady: async (file: File) => {
+    set({ isUploadingPodklady: true, uploadPodkladyResult: null, uploadPodkladyError: null });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/pohoda/upload-podklady', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const now = new Date().toISOString();
+        set({
+          uploadPodkladyResult: {
+            success: true,
+            pocetRadku: data.pocetRadku,
+            filename: data.filename,
+            timestamp: now,
+          },
+          uploadPodkladyError: null,
+          podkladyLastUpload: now,
+          podkladyRowCount: data.pocetRadku,
+          podkladyFileName: data.filename,
+        });
+        toast.success(`Podklady nahrany: ${data.pocetRadku.toLocaleString('cs-CZ')} radku`);
+      } else {
+        set({ uploadPodkladyError: data.error || 'Nahravani selhalo', uploadPodkladyResult: null });
+        toast.error(data.error || 'Nahravani selhalo');
+      }
+    } catch {
+      set({ uploadPodkladyError: 'Chyba pri nahravani souboru', uploadPodkladyResult: null });
+      toast.error('Chyba pri nahravani souboru');
+    } finally {
+      set({ isUploadingPodklady: false });
     }
   },
 }));
