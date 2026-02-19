@@ -298,8 +298,6 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
     try {
       const supabase = createClient();
       let totalZaznamu = 0;
-      let totalNovych = 0;
-      let totalAktualizovanych = 0;
       let totalMs = 0;
       let storeIndex = 0;
       const storeDetails: PohodaSyncLogDetail[] = [];
@@ -313,8 +311,6 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         if (!data.success) throw new Error(data.error || 'Synchronizace selhala');
 
         totalZaznamu += data.pocetZaznamu;
-        totalNovych += data.pocetNovych;
-        totalAktualizovanych += data.pocetAktualizovanych;
         totalMs += data.trvaniMs;
         storeDetails.push({
           sklad: data.store,
@@ -328,17 +324,7 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
         set({ syncZasobyProgress: `Sklad ${storeIndex}/${data.totalStores}: ${data.store} (${totalZaznamu} záznamů)...` });
       }
 
-      // Write one summary log entry
-      await supabase.from('pohoda_sync_log').insert({
-        typ: 'zasoby',
-        stav: 'success',
-        pocet_zaznamu: totalZaznamu,
-        pocet_novych: totalNovych,
-        pocet_aktualizovanych: totalAktualizovanych,
-        trvani_ms: totalMs,
-        zprava: `${storeDetails.length} skladů, ${totalZaznamu.toLocaleString('cs-CZ')} záznamů`,
-        detail: storeDetails,
-      });
+      // Summary log is now written by the edge function on the last warehouse
 
       set({ syncZasobyProgress: null });
       toast.success(`Synchronizace dokončena: ${storeDetails.length} skladů, ${totalZaznamu.toLocaleString('cs-CZ')} záznamů za ${(totalMs / 1000).toFixed(1)}s`);
