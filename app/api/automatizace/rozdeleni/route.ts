@@ -130,9 +130,9 @@ export async function GET() {
         const cilVal = ciloveStavy[store];
         if (cilVal === undefined || cilVal <= 0) continue;
 
-        // Target = average monthly sales for this product at this store
-        const target = salesMap.get(`${code}|${store}`) || 0;
-        if (target <= 0) continue; // No sales history → skip
+        // Target = average monthly sales, minimum 1 if configured for store
+        const avgSales = salesMap.get(`${code}|${store}`) || 0;
+        const target = avgSales > 0 ? avgSales : 1;
 
         // Current stock
         const currentStock = stockMap.get(`${code}|${store}`) || 0;
