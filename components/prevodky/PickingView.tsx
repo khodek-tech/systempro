@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ArrowLeft, Check, AlertTriangle, ScanBarcode, Package, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle, ScanBarcode, Package, MessageSquare, Printer } from 'lucide-react';
 import { usePrevodkyStore } from '@/stores/prevodky-store';
 import { QuantityDialog } from './QuantityDialog';
 import type { PrevodkaPolozka } from '@/shared/types';
@@ -110,6 +110,46 @@ export function PickingView() {
     setShowFinishDialog(false);
   }, [prevodka, finishNote, finishPicking]);
 
+  const handlePrint = useCallback(() => {
+    if (!prevodka) return;
+
+    const rows = prevodka.polozky
+      .map(
+        (item) =>
+          `<tr>
+            <td style="padding:6px 10px;border:1px solid #ccc;font-weight:bold;text-align:center;white-space:nowrap">${item.pozice ?? ''}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc">
+              <div style="font-weight:600">${item.nazev}</div>
+              <div style="font-size:11px;color:#666;font-family:monospace">${item.kod}</div>
+            </td>
+            <td style="padding:6px 10px;border:1px solid #ccc;text-align:center;font-weight:bold;font-size:16px">${item.pozadovaneMnozstvi}</td>
+            <td style="padding:6px 10px;border:1px solid #ccc;text-align:center;width:60px"></td>
+          </tr>`
+      )
+      .join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${prevodka.cisloPrevodky}</title>
+      <style>@media print { body { margin: 0; } @page { margin: 10mm; } }</style></head><body style="font-family:system-ui,sans-serif;padding:20px">
+      <h2 style="margin:0 0 4px">${prevodka.cisloPrevodky}</h2>
+      <p style="margin:0 0 16px;color:#555">${prevodka.zdrojovySklad} → ${prevodka.cilovySklad} · ${prevodka.polozky.length} položek</p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f1f5f9">
+          <th style="padding:8px 10px;border:1px solid #ccc;text-align:center;width:80px">Pozice</th>
+          <th style="padding:8px 10px;border:1px solid #ccc;text-align:left">Produkt</th>
+          <th style="padding:8px 10px;border:1px solid #ccc;text-align:center;width:60px">Požad.</th>
+          <th style="padding:8px 10px;border:1px solid #ccc;text-align:center;width:60px">Skut.</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      w.print();
+    }
+  }, [prevodka]);
+
   if (!prevodka) return null;
 
   const totalItems = prevodka.polozky.length;
@@ -134,9 +174,18 @@ export function PickingView() {
               <p className="text-sm text-slate-300">{prevodka.zdrojovySklad} → {prevodka.cilovySklad}</p>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold font-mono">{pickedItems}/{totalItems}</div>
-            <p className="text-xs text-slate-400">položek</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Printer className="w-4 h-4" />
+              Tisknout
+            </button>
+            <div className="text-right">
+              <div className="text-2xl font-bold font-mono">{pickedItems}/{totalItems}</div>
+              <p className="text-xs text-slate-400">položek</p>
+            </div>
           </div>
         </div>
 
@@ -190,7 +239,7 @@ export function PickingView() {
         {prevodka.polozky.map((item) => (
           <div
             key={item.id}
-            className={`flex items-center gap-4 px-4 py-3 border-b border-slate-100 ${
+            className={`flex items-center gap-3 px-4 py-3 border-b border-slate-100 ${
               item.vychystano ? 'bg-green-50/50' : ''
             }`}
           >
@@ -215,18 +264,20 @@ export function PickingView() {
               )}
             </div>
 
-            {/* Product info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                {item.pozice && (
-                  <span className="text-xs font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
-                    {item.pozice}
-                  </span>
-                )}
-                <span className="text-sm font-medium text-slate-800 truncate">
-                  {item.nazev}
-                </span>
-              </div>
+            {/* Position badge — spans both rows vertically */}
+            {item.pozice ? (
+              <span className="flex-shrink-0 w-16 text-center text-xs font-bold bg-slate-200 text-slate-700 px-1.5 py-2 rounded self-center">
+                {item.pozice}
+              </span>
+            ) : (
+              <span className="flex-shrink-0 w-16" />
+            )}
+
+            {/* Product info — name + EAN stacked */}
+            <div className="flex-1 min-w-0 pl-2">
+              <span className="text-sm font-medium text-slate-800 truncate block">
+                {item.nazev}
+              </span>
               <p className="text-xs font-mono text-slate-400 mt-0.5">{item.kod}</p>
             </div>
 
@@ -241,7 +292,7 @@ export function PickingView() {
                   {item.skutecneMnozstvi}/{item.pozadovaneMnozstvi}
                 </span>
               ) : (
-                <span className="text-lg font-bold text-slate-300">{item.pozadovaneMnozstvi}</span>
+                <span className="text-lg font-bold text-slate-900">{item.pozadovaneMnozstvi}</span>
               )}
               <p className="text-xs text-slate-400">ks</p>
             </div>
