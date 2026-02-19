@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse Excel
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const arrayBuffer = await file.arrayBuffer();
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(arrayBuffer);
 
     const worksheet = workbook.worksheets[0];
     if (!worksheet) {
