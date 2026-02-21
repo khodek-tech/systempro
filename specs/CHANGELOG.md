@@ -2,6 +2,17 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.10.0] - 2026-02-21
+
+### Přidáno
+
+#### Záložka "Pravidelné úkoly" + pozastavení/obnovení + aktualizace manuálu
+- **Spec**: `tasks.spec.yaml` — přidáno `repeatPaused?: boolean` do data_model, nová feature `recurring_tab`, aktualizovaná feature `task_tabs` o záložku "Pravidelné úkoly", nový scénář TASK-010
+- **Testy**: `testy.md` — přidán test TASK-010 (pozastavení a obnovení pravidelného úkolu)
+- **Manuál**: `manual-content.ts` — kompletně přepsaná sekce `tasks` s podrobným návodem pokrývajícím: základní orientaci (4 záložky), vytvoření úkolu, plnění jako příjemce, schvalování/vracení, delegaci, pravidelné úkoly s pozastavením, komentáře a přílohy. Rozšířeno z 5 na 35+ kroků, z 3 na 9 FAQ, z 2 na 5 tipů.
+
+---
+
 ## [2.9.0] - 2026-02-19
 
 ### Přidáno

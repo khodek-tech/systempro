@@ -106,6 +106,19 @@
 | 7 | Zkontrolovat stav | Stav: Vráceno |
 | 8 | Vidět důvod v komentářích | Důvod zobrazen |
 
+#### TASK-010: Pozastavení a obnovení pravidelného úkolu
+
+**Přístup:** Uživatel s opakujícím se úkolem
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít modul Úkoly | Seznam úkolů zobrazen |
+| 2 | Přepnout na záložku "Pravidelné úkoly" | Seznam opakujících se úkolů |
+| 3 | U aktivního úkolu kliknout "Pozastavit" | Tlačítko se změní na zelené "Obnovit" |
+| 4 | Schválit instanci pozastaveného úkolu | Nová instance se NEVYTVOŘÍ |
+| 5 | Kliknout "Obnovit" u pozastaveného úkolu | Tlačítko se změní na oranžové "Pozastavit" |
+| 6 | Schválit další instanci | Nová instance se vytvoří |
+
 ### Hraniční případy
 
 | ID | Situace | Očekávané chování |
@@ -1256,4 +1269,4 @@
 
 ---
 
-*Poslední aktualizace: 2026-02-19*
+*Poslední aktualizace: 2026-02-21*

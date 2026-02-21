@@ -44,6 +44,7 @@ data_model:
     deadline: ISO8601
     repeat: none | daily | weekly | monthly | yearly
     repeatSourceId?: string  # ID původního úkolu pro opakované
+    repeatPaused?: boolean  # Pozastavení automatického generování
     completedBy?: string
     completedAt?: ISO8601
     approvedAt?: ISO8601
@@ -128,8 +129,19 @@ features:
     acceptance_criteria:
       - "Moje úkoly" - přiřazené, delegované na mě, pending-review mnou delegované
       - "Vytvořené mnou" - úkoly které jsem vytvořil
+      - "Pravidelné úkoly" - opakující se úkoly vytvořené mnou (jen zdrojové, ne instance)
       - "Všechny" - viditelné podle viewMappings
       - Schválené úkoly jen v "Všechny"
+
+  - id: recurring_tab
+    name: Záložka Pravidelné úkoly
+    description: Přehled opakujících se úkolů s možností pozastavení a obnovení
+    acceptance_criteria:
+      - Zobrazuje pouze zdrojové opakující se úkoly (repeatSourceId je null)
+      - Zobrazuje pouze úkoly vytvořené aktuálním uživatelem
+      - Každý úkol má tlačítko "Pozastavit" (oranžové) nebo "Obnovit" (zelené)
+      - Pozastavený úkol (repeatPaused=true) se přeskočí při automatickém generování
+      - Obnovený úkol (repeatPaused=false) se opět generuje po schválení
 
   - id: task_realtime
     name: Realtime synchronizace
@@ -267,6 +279,28 @@ scenarios:
     expected:
       - URL v popisu i komentáři je modrý podtržený odkaz
       - Klik otevře URL v novém tabu prohlížeče
+
+  - id: TASK-010
+    name: Pozastavení a obnovení pravidelného úkolu
+    preconditions:
+      - Existuje opakující se úkol (repeat != none) vytvořený aktuálním uživatelem
+      - Úkol není instance (repeatSourceId je null)
+    steps:
+      - Otevřu modul Úkoly
+      - Přepnu na záložku "Pravidelné úkoly"
+      - Vidím seznam svých opakujících se úkolů
+      - U aktivního úkolu kliknu oranžové tlačítko "Pozastavit"
+      - Stav se změní na pozastavený (repeatPaused=true)
+      - Tlačítko se změní na zelené "Obnovit"
+      - Schválím instanci tohoto úkolu
+      - Systém NEVYTVOŘÍ novou instanci (úkol je pozastaven)
+      - Kliknu zelené tlačítko "Obnovit"
+      - Stav se změní na aktivní (repeatPaused=false)
+      - Při dalším schválení instance se nová instance vytvoří
+    expected:
+      - Pozastavení zastaví automatické generování nových instancí
+      - Obnovení opět aktivuje generování
+      - UI zobrazuje správný stav tlačítka (Pozastavit/Obnovit)
 
 edge_cases:
   - id: TASK-E001
