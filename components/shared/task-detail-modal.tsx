@@ -284,148 +284,29 @@ export function TaskDetailModal() {
       <div className="absolute inset-0 bg-black/50" onClick={closeTaskDetail} />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-white rounded-2xl max-w-[1200px] w-[90%] h-[92vh] max-h-[92vh] overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-800">{task.title}</h2>
-            <span className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold', statusConfig.bgColor, statusConfig.textColor)}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <h2 className="text-xl font-bold text-slate-800 truncate">{task.title}</h2>
+            <span className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0', statusConfig.bgColor, statusConfig.textColor)}>
               {statusConfig.label}
             </span>
-            <span className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold', priorityConfig.bgColor, priorityConfig.textColor)}>
+            <span className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0', priorityConfig.bgColor, priorityConfig.textColor)}>
               {priorityConfig.label}
             </span>
             {repeatLabel && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700">
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 shrink-0">
                 <RotateCcw className="w-3 h-3" />
                 {repeatLabel}
               </span>
             )}
           </div>
-          <button
-            onClick={closeTaskDetail}
-            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] space-y-6">
-          {/* Description */}
-          <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-sm text-slate-600 whitespace-pre-wrap">
-              {linkifyText(task.description, 'text-blue-600 underline break-all')}
-            </p>
-          </div>
-
-          {/* Prevodka picking button */}
-          {task.taskType === 'prevodka' && (
-            <button
-              onClick={() => {
-                const prevodka = usePrevodkyStore.getState().getPrevodkaByTaskId(task.id);
-                if (prevodka) {
-                  usePrevodkyStore.getState().openPicking(prevodka.id);
-                  closeTaskDetail();
-                }
-              }}
-              className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-purple-700 active:scale-[0.98] transition-all"
-            >
-              <ScanBarcode className="w-5 h-5" />
-              Otevřít picking
-            </button>
-          )}
-
-          {/* Return reason */}
-          {task.returnReason && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-              <p className="text-sm font-semibold text-orange-700 mb-1">Důvod vrácení:</p>
-              <p className="text-sm text-orange-600 whitespace-pre-wrap">{linkifyText(task.returnReason, 'text-orange-700 underline break-all')}</p>
-            </div>
-          )}
-
-          {/* Meta info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <User className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-xs text-slate-400 font-medium">Vytvořil</p>
-                <p className="text-sm font-semibold text-slate-700">{creatorName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              {task.assigneeType === 'employee' ? (
-                <User className="w-5 h-5 text-slate-400" />
-              ) : (
-                <Building2 className="w-5 h-5 text-slate-400" />
-              )}
-              <div>
-                <p className="text-xs text-slate-400 font-medium">Přiřazeno</p>
-                <p className="text-sm font-semibold text-slate-700">{assigneeName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <Clock className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-xs text-slate-400 font-medium">Vytvořeno</p>
-                <p className="text-sm font-semibold text-slate-700">{formatDate(task.createdAt)}</p>
-              </div>
-            </div>
-            <div
-              className={cn(
-                'flex items-center gap-3 p-3 rounded-xl',
-                isOverdue ? 'bg-red-50' : isApproaching ? 'bg-orange-50' : 'bg-slate-50'
-              )}
-            >
-              <Clock className={cn('w-5 h-5', isOverdue ? 'text-red-400' : isApproaching ? 'text-orange-400' : 'text-slate-400')} />
-              <div>
-                <p className={cn('text-xs font-medium', isOverdue ? 'text-red-400' : isApproaching ? 'text-orange-400' : 'text-slate-400')}>
-                  Termín
-                </p>
-                <p
-                  className={cn(
-                    'text-sm font-semibold',
-                    isOverdue ? 'text-red-700' : isApproaching ? 'text-orange-700' : 'text-slate-700'
-                  )}
-                >
-                  {formatDate(deadline)}
-                  {isOverdue && ' (po termínu)'}
-                  {isApproaching && !isOverdue && ' (blíží se)'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Delegation info */}
-          {task.delegatedTo && (
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-purple-500" />
-                <div>
-                  <p className="text-sm font-semibold text-purple-700">
-                    Delegováno na: {delegateeName}
-                  </p>
-                  <p className="text-xs text-purple-600">
-                    Delegoval: {delegatorName} • {task.delegatedAt && formatDate(task.delegatedAt)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
             {canDelegate && (
               <Button
                 onClick={() => setShowDelegateModal(true)}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700"
+                className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-purple-700"
               >
                 Delegovat
               </Button>
@@ -433,7 +314,7 @@ export function TaskDetailModal() {
             {canSubmit && (
               <Button
                 onClick={handleSubmit}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700"
+                className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700"
               >
                 Odeslat ke schválení
               </Button>
@@ -441,7 +322,7 @@ export function TaskDetailModal() {
             {canReturnToDelegatorAction && (
               <Button
                 onClick={handleReturnToDelegator}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700"
+                className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700"
               >
                 Vrátit delegujícímu
               </Button>
@@ -449,7 +330,7 @@ export function TaskDetailModal() {
             {canApproveDelegationAction && !showReturnToDelegateeInput && (
               <Button
                 onClick={handleApproveDelegation}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700"
+                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-green-700"
               >
                 Schválit a odeslat výš
               </Button>
@@ -457,7 +338,7 @@ export function TaskDetailModal() {
             {canReturnToDelegateeAction && !showReturnToDelegateeInput && (
               <Button
                 onClick={handleReturnToDelegatee}
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600"
+                className="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600"
               >
                 Vrátit delegovanému
               </Button>
@@ -465,7 +346,7 @@ export function TaskDetailModal() {
             {canApprove && (
               <Button
                 onClick={handleApprove}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700"
+                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-green-700"
               >
                 Schválit
               </Button>
@@ -473,165 +354,287 @@ export function TaskDetailModal() {
             {canReturn && !showReturnInput && (
               <Button
                 onClick={handleReturn}
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600"
+                className="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600"
               >
                 Vrátit
               </Button>
             )}
+            <button
+              onClick={closeTaskDetail}
+              className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors ml-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content - Two column layout */}
+        <div className="grid grid-cols-2 gap-6 p-6 flex-1 min-h-0">
+          {/* Left column - Task details */}
+          <div className="overflow-y-auto space-y-5 pr-2">
+            {/* Description */}
+            <div className="bg-slate-50 rounded-xl p-4">
+              <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                {linkifyText(task.description, 'text-blue-600 underline break-all')}
+              </p>
+            </div>
+
+            {/* Return reason */}
+            {task.returnReason && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-orange-700 mb-1">Důvod vrácení:</p>
+                <p className="text-sm text-orange-600 whitespace-pre-wrap">{linkifyText(task.returnReason, 'text-orange-700 underline break-all')}</p>
+              </div>
+            )}
+
+            {/* Meta info */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <User className="w-5 h-5 text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-400 font-medium">Vytvořil</p>
+                  <p className="text-sm font-semibold text-slate-700">{creatorName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                {task.assigneeType === 'employee' ? (
+                  <User className="w-5 h-5 text-slate-400" />
+                ) : (
+                  <Building2 className="w-5 h-5 text-slate-400" />
+                )}
+                <div>
+                  <p className="text-xs text-slate-400 font-medium">Přiřazeno</p>
+                  <p className="text-sm font-semibold text-slate-700">{assigneeName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Clock className="w-5 h-5 text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-400 font-medium">Vytvořeno</p>
+                  <p className="text-sm font-semibold text-slate-700">{formatDate(task.createdAt)}</p>
+                </div>
+              </div>
+              <div
+                className={cn(
+                  'flex items-center gap-3 p-3 rounded-xl',
+                  isOverdue ? 'bg-red-50' : isApproaching ? 'bg-orange-50' : 'bg-slate-50'
+                )}
+              >
+                <Clock className={cn('w-5 h-5', isOverdue ? 'text-red-400' : isApproaching ? 'text-orange-400' : 'text-slate-400')} />
+                <div>
+                  <p className={cn('text-xs font-medium', isOverdue ? 'text-red-400' : isApproaching ? 'text-orange-400' : 'text-slate-400')}>
+                    Termín
+                  </p>
+                  <p
+                    className={cn(
+                      'text-sm font-semibold',
+                      isOverdue ? 'text-red-700' : isApproaching ? 'text-orange-700' : 'text-slate-700'
+                    )}
+                  >
+                    {formatDate(deadline)}
+                    {isOverdue && ' (po termínu)'}
+                    {isApproaching && !isOverdue && ' (blíží se)'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Prevodka picking button */}
+            {task.taskType === 'prevodka' && (
+              <button
+                onClick={() => {
+                  const prevodka = usePrevodkyStore.getState().getPrevodkaByTaskId(task.id);
+                  if (prevodka) {
+                    usePrevodkyStore.getState().openPicking(prevodka.id);
+                    closeTaskDetail();
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-purple-700 active:scale-[0.98] transition-all"
+              >
+                <ScanBarcode className="w-5 h-5" />
+                Otevřít picking
+              </button>
+            )}
+
+            {/* Delegation info */}
+            {task.delegatedTo && (
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-purple-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-purple-700">
+                      Delegováno na: {delegateeName}
+                    </p>
+                    <p className="text-xs text-purple-600">
+                      Delegoval: {delegatorName} • {task.delegatedAt && formatDate(task.delegatedAt)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {/* Return reason input */}
+            {showReturnInput && (
+              <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-orange-700">
+                  Klikněte na &quot;Potvrdit vrácení&quot; pro dokončení akce
+                </p>
+                <textarea
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Důvod vrácení (volitelné)..."
+                  className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-medium outline-none resize-none focus:border-orange-300 h-24"
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleReturn}
+                    className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 animate-pulse"
+                  >
+                    Potvrdit vrácení
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowReturnInput(false);
+                      setReturnReason('');
+                    }}
+                    variant="outline"
+                    className="px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    Zrušit
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Return to delegatee reason input */}
+            {showReturnToDelegateeInput && (
+              <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-orange-700">
+                  Klikněte na &quot;Potvrdit vrácení&quot; pro dokončení akce
+                </p>
+                <textarea
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Důvod vrácení delegovanému (volitelné)..."
+                  className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-medium outline-none resize-none focus:border-orange-300 h-24"
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleReturnToDelegatee}
+                    className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 animate-pulse"
+                  >
+                    Potvrdit vrácení
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowReturnToDelegateeInput(false);
+                      setReturnReason('');
+                    }}
+                    variant="outline"
+                    className="px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    Zrušit
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Delegate modal */}
+            {showDelegateModal && (
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-4">
+                <h4 className="text-sm font-semibold text-purple-800">Delegovat úkol</h4>
+                <select
+                  value={selectedDelegatee}
+                  onChange={(e) => setSelectedDelegatee(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-purple-300"
+                >
+                  <option value="">Vyberte osobu...</option>
+                  {availableForDelegation.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleDelegate}
+                    disabled={!selectedDelegatee}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    Delegovat
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowDelegateModal(false);
+                      setSelectedDelegatee('');
+                    }}
+                    variant="outline"
+                    className="px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    Zrušit
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Return reason input */}
-          {showReturnInput && (
-            <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
-              <p className="text-sm font-semibold text-orange-700">
-                Klikněte na &quot;Potvrdit vrácení&quot; pro dokončení akce
-              </p>
-              <textarea
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder="Důvod vrácení (volitelné)..."
-                className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-medium outline-none resize-none focus:border-orange-300 h-24"
-              />
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleReturn}
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 animate-pulse"
-                >
-                  Potvrdit vrácení
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowReturnInput(false);
-                    setReturnReason('');
-                  }}
-                  variant="outline"
-                  className="px-4 py-2 rounded-lg text-sm font-medium"
-                >
-                  Zrušit
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Right column - Comments */}
+          <div className="flex flex-col min-h-0">
+            <h3 className="text-base font-semibold text-slate-800 mb-4 shrink-0">Komentáře</h3>
 
-          {/* Return to delegatee reason input */}
-          {showReturnToDelegateeInput && (
-            <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
-              <p className="text-sm font-semibold text-orange-700">
-                Klikněte na &quot;Potvrdit vrácení&quot; pro dokončení akce
-              </p>
-              <textarea
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder="Důvod vrácení delegovanému (volitelné)..."
-                className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm font-medium outline-none resize-none focus:border-orange-300 h-24"
-              />
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleReturnToDelegatee}
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 animate-pulse"
-                >
-                  Potvrdit vrácení
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowReturnToDelegateeInput(false);
-                    setReturnReason('');
-                  }}
-                  variant="outline"
-                  className="px-4 py-2 rounded-lg text-sm font-medium"
-                >
-                  Zrušit
-                </Button>
-              </div>
-            </div>
-          )}
+            {/* Comments list - scrollable */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+              {task.comments.length > 0 ? (
+                <div className="space-y-3">
+                  {task.comments.map((comment) => {
+                    const commentUser = users.find((u) => u.id === comment.userId);
+                    const isOwnComment = comment.userId === currentUser.id;
 
-          {/* Delegate modal */}
-          {showDelegateModal && (
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-4">
-              <h4 className="text-sm font-semibold text-purple-800">Delegovat úkol</h4>
-              <select
-                value={selectedDelegatee}
-                onChange={(e) => setSelectedDelegatee(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl p-4 text-base font-semibold outline-none cursor-pointer focus:border-purple-300"
-              >
-                <option value="">Vyberte osobu...</option>
-                {availableForDelegation.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleDelegate}
-                  disabled={!selectedDelegatee}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50"
-                >
-                  Delegovat
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowDelegateModal(false);
-                    setSelectedDelegatee('');
-                  }}
-                  variant="outline"
-                  className="px-4 py-2 rounded-lg text-sm font-medium"
-                >
-                  Zrušit
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Comments section */}
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold text-slate-800">Komentáře</h3>
-
-            {/* Comments list */}
-            {task.comments.length > 0 ? (
-              <div className="space-y-3">
-                {task.comments.map((comment) => {
-                  const commentUser = users.find((u) => u.id === comment.userId);
-                  const isOwnComment = comment.userId === currentUser.id;
-
-                  return (
-                    <div
-                      key={comment.id}
-                      className={cn(
-                        'p-4 rounded-xl',
-                        isOwnComment ? 'bg-violet-50 ml-8' : 'bg-slate-50 mr-8'
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-slate-700">
-                          {commentUser?.fullName || 'Neznámý uživatel'}
-                        </span>
-                        <span className="text-xs text-slate-400">{formatDate(comment.createdAt)}</span>
-                      </div>
-                      {comment.text && (
-                        <p className="text-sm text-slate-600">
-                          {linkifyText(comment.text, 'text-blue-600 underline break-all')}
-                        </p>
-                      )}
-                      {comment.attachments.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {comment.attachments.map((att) => (
-                            <TaskAttachmentLink key={att.id} att={att} />
-                          ))}
+                    return (
+                      <div
+                        key={comment.id}
+                        className={cn(
+                          'p-4 rounded-xl',
+                          isOwnComment ? 'bg-violet-50 ml-8' : 'bg-slate-50 mr-8'
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-slate-700">
+                            {commentUser?.fullName || 'Neznámý uživatel'}
+                          </span>
+                          <span className="text-xs text-slate-400">{formatDate(comment.createdAt)}</span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">Zatím žádné komentáře</p>
-            )}
+                        {comment.text && (
+                          <p className="text-sm text-slate-600">
+                            {linkifyText(comment.text, 'text-blue-600 underline break-all')}
+                          </p>
+                        )}
+                        {comment.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {comment.attachments.map((att) => (
+                              <TaskAttachmentLink key={att.id} att={att} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Zatím žádné komentáře</p>
+              )}
+            </div>
 
             {/* Add comment */}
             {task.status !== 'approved' && (
-              <div className="space-y-3">
+              <div className="shrink-0 space-y-3 pt-4 border-t border-slate-200 mt-4">
                 <div className="flex items-end gap-3">
                   <div className="flex-1 space-y-2">
                     <textarea
