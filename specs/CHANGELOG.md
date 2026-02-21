@@ -2,6 +2,18 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.10.1] - 2026-02-21
+
+### Změněno
+
+#### Posun cron časů Pohoda synchronizace
+- **Důvod**: ePodnik restartuje server v noci — sync okno je až od 4:15 CET (3:15 UTC). Předchozí časy začínaly od 3:05 UTC (4:05 CET), což bylo mimo okno a způsobovalo HTTP 500.
+- **DB změna**: `cron.alter_job` — posun `sync-zasoby-daily` z `5 3 * * *` na `15 3 * * *`, `sync-pohyby-daily` z `20 3 * * *` na `25 3 * * *`
+- `sync-prodejky-daily` beze změny (`35 3 * * *` — již bylo v okně)
+- Vše končí do 04:36 CET, s velkou rezervou před 05:15 CET
+
+---
+
 ## [2.10.0] - 2026-02-21
 
 ### Přidáno
