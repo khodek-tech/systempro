@@ -29,4 +29,5 @@ export interface AbsenceRequest {
   approvedBy?: string;
   approvedAt?: string;
   seenByUser?: boolean;
+  approverNote?: string;
 }

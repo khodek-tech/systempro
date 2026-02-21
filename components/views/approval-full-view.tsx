@@ -1,12 +1,13 @@
 'use client';
 
-import { ArrowLeft, ClipboardCheck, Clock, CheckCircle, XCircle, Calendar, FileText, User, Check, X } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Clock, CheckCircle, XCircle, Calendar, FileText, User, Check, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUsersStore } from '@/stores/users-store';
 import { AbsenceRequest, AbsenceRequestStatus, RoleType } from '@/types';
 import { months, years } from '@/lib/mock-data';
+import { ApprovalDetailModal } from '@/components/shared/approval-detail-modal';
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -59,9 +60,10 @@ interface ApprovalRequestCardProps {
   request: AbsenceRequest;
   onApprove: (requestId: string) => void;
   onReject: (requestId: string) => void;
+  onClick: (requestId: string) => void;
 }
 
-function ApprovalRequestCard({ request, onApprove, onReject }: ApprovalRequestCardProps) {
+function ApprovalRequestCard({ request, onApprove, onReject, onClick }: ApprovalRequestCardProps) {
   const isDoctor = request.type === 'Lékař';
   const dateRange =
     request.dateFrom === request.dateTo
@@ -70,7 +72,10 @@ function ApprovalRequestCard({ request, onApprove, onReject }: ApprovalRequestCa
   const isPending = request.status === 'pending';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+    <div
+      className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 cursor-pointer hover:border-slate-300 hover:shadow-sm transition-all"
+      onClick={() => onClick(request.id)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
@@ -105,20 +110,27 @@ function ApprovalRequestCard({ request, onApprove, onReject }: ApprovalRequestCa
         </div>
       )}
 
+      {request.approverNote && request.status !== 'pending' && (
+        <div className="flex items-start gap-2 text-sm text-blue-600 bg-blue-50 rounded-lg p-2.5">
+          <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-blue-400 flex-shrink-0" />
+          <span>{request.approverNote}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="text-xs text-slate-400">Vytvořeno: {formatCreatedAt(request.createdAt)}</div>
 
         {isPending && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onReject(request.id)}
+              onClick={(e) => { e.stopPropagation(); onReject(request.id); }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
               Zamítnout
             </button>
             <button
-              onClick={() => onApprove(request.id)}
+              onClick={(e) => { e.stopPropagation(); onApprove(request.id); }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors"
             >
               <Check className="w-3.5 h-3.5" />
@@ -144,6 +156,8 @@ export function ApprovalFullView() {
     getFilteredRequestsForApproval,
     approveAbsence,
     rejectAbsence,
+    selectedApprovalRequestId,
+    openApprovalDetail,
   } = useAbsenceStore();
 
   const roleType = getActiveRoleType();
@@ -157,12 +171,12 @@ export function ApprovalFullView() {
     roleType as RoleType
   );
 
-  const handleApprove = (requestId: string) => {
-    approveAbsence(requestId, currentUser.id);
+  const handleApprove = async (requestId: string) => {
+    await approveAbsence(requestId, currentUser.id);
   };
 
-  const handleReject = (requestId: string) => {
-    rejectAbsence(requestId, currentUser.id);
+  const handleReject = async (requestId: string) => {
+    await rejectAbsence(requestId, currentUser.id);
   };
 
   return (
@@ -231,11 +245,14 @@ export function ApprovalFullView() {
                 request={request}
                 onApprove={handleApprove}
                 onReject={handleReject}
+                onClick={openApprovalDetail}
               />
             ))
           )}
         </div>
       </div>
+
+      {selectedApprovalRequestId && <ApprovalDetailModal />}
     </main>
   );
 }

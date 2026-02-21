@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, CheckCircle, XCircle, Calendar, FileText, Inbox, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Calendar, FileText, Inbox, Trash2, MessageSquare } from 'lucide-react';
 import { AbsenceRequest, AbsenceRequestStatus } from '@/types';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -108,6 +108,16 @@ function RequestCard({ request }: { request: AbsenceRequest }) {
         <div className="flex items-start gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg p-2.5">
           <FileText className="w-3.5 h-3.5 mt-0.5 text-slate-400 flex-shrink-0" />
           <span>{request.note}</span>
+        </div>
+      )}
+
+      {request.approverNote && request.status !== 'pending' && (
+        <div className="flex items-start gap-2 text-sm text-blue-600 bg-blue-50 rounded-lg p-2.5">
+          <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-blue-400 flex-shrink-0" />
+          <div>
+            <span className="text-xs font-medium text-blue-400">Vyjádření: </span>
+            <span>{request.approverNote}</span>
+          </div>
         </div>
       )}
 

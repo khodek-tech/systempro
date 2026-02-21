@@ -27,6 +27,8 @@ interface AbsenceState {
   approvalFilter: AbsenceRequestStatus | 'all';
   approvalMonthFilter: string;
   approvalYearFilter: string;
+  // Approval detail modal
+  selectedApprovalRequestId: string | null;
 }
 
 interface AbsenceActions {
@@ -51,8 +53,8 @@ interface AbsenceActions {
   // Absence request actions
   submitAbsenceRequest: (userId: string) => Promise<{ success: boolean; error?: string }>;
   deleteAbsenceRequest: (requestId: string, userId: string) => Promise<{ success: boolean; error?: string }>;
-  approveAbsence: (requestId: string, approverId: string) => Promise<{ success: boolean; error?: string }>;
-  rejectAbsence: (requestId: string, approverId: string) => Promise<{ success: boolean; error?: string }>;
+  approveAbsence: (requestId: string, approverId: string, approverNote?: string) => Promise<{ success: boolean; error?: string }>;
+  rejectAbsence: (requestId: string, approverId: string, approverNote?: string) => Promise<{ success: boolean; error?: string }>;
 
   // Getters
   getMyRequests: (userId: string) => AbsenceRequest[];
@@ -67,6 +69,10 @@ interface AbsenceActions {
   closeAbsenceView: () => void;
   openApprovalView: () => void;
   closeApprovalView: () => void;
+
+  // Approval detail modal
+  openApprovalDetail: (requestId: string) => void;
+  closeApprovalDetail: () => void;
 
   // Notification methods
   getUnseenProcessedRequestsCount: (userId: string) => number;
@@ -109,6 +115,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
   approvalFilter: 'all',
   approvalMonthFilter: 'all',
   approvalYearFilter: 'all',
+  selectedApprovalRequestId: null,
 
   // Fetch
   fetchAbsenceRequests: async () => {
@@ -288,7 +295,7 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
     return { success: true };
   },
 
-  approveAbsence: async (requestId: string, approverId: string) => {
+  approveAbsence: async (requestId: string, approverId: string, approverNote?: string) => {
     const { absenceRequests } = get();
     const request = absenceRequests.find((r) => r.id === requestId);
 
@@ -313,9 +320,11 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       schvalil: approverId,
       zpracovano: approvedAt,
       precteno_zamestnancem: false,
+      poznamka_schvalovatele: approverNote || null,
     }).eq('id', requestId);
 
     if (error) {
+      toast.error('Nepodařilo se schválit žádost');
       return { success: false, error: error.message };
     }
 
@@ -328,15 +337,17 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
               approvedBy: approverId,
               approvedAt,
               seenByUser: false,
+              approverNote: approverNote || undefined,
             }
           : r
       ),
     }));
 
+    toast.success('Žádost byla schválena');
     return { success: true };
   },
 
-  rejectAbsence: async (requestId: string, approverId: string) => {
+  rejectAbsence: async (requestId: string, approverId: string, approverNote?: string) => {
     const { absenceRequests } = get();
     const request = absenceRequests.find((r) => r.id === requestId);
 
@@ -361,9 +372,11 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
       schvalil: approverId,
       zpracovano: processedAt,
       precteno_zamestnancem: false,
+      poznamka_schvalovatele: approverNote || null,
     }).eq('id', requestId);
 
     if (error) {
+      toast.error('Nepodařilo se zamítnout žádost');
       return { success: false, error: error.message };
     }
 
@@ -376,11 +389,13 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
               approvedBy: approverId,
               approvedAt: processedAt,
               seenByUser: false,
+              approverNote: approverNote || undefined,
             }
           : r
       ),
     }));
 
+    toast.success('Žádost byla zamítnuta');
     return { success: true };
   },
 
@@ -481,6 +496,10 @@ export const useAbsenceStore = create<AbsenceState & AbsenceActions>()((set, get
   closeAbsenceView: () => set({ absenceViewMode: 'card' }),
   openApprovalView: () => set({ approvalViewMode: 'view' }),
   closeApprovalView: () => set({ approvalViewMode: 'card' }),
+
+  // Approval detail modal
+  openApprovalDetail: (requestId: string) => set({ selectedApprovalRequestId: requestId }),
+  closeApprovalDetail: () => set({ selectedApprovalRequestId: null }),
 
   // Notification methods
   getUnseenProcessedRequestsCount: (userId: string) => {

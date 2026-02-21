@@ -153,6 +153,7 @@ export function mapDbToAbsenceRequest(row: any): AbsenceRequest {
     approvedBy: row.schvalil ?? undefined,
     approvedAt: row.zpracovano ?? undefined,
     seenByUser: row.precteno_zamestnancem ?? undefined,
+    approverNote: row.poznamka_schvalovatele ?? undefined,
   };
 }
 
@@ -170,6 +171,7 @@ export function mapAbsenceRequestToDb(req: Partial<AbsenceRequest> & { id: strin
   if (req.approvedBy !== undefined) row.schvalil = req.approvedBy || null;
   if (req.approvedAt !== undefined) row.zpracovano = req.approvedAt || null;
   if (req.seenByUser !== undefined) row.precteno_zamestnancem = req.seenByUser;
+  if (req.approverNote !== undefined) row.poznamka_schvalovatele = req.approverNote || null;
   return row;
 }
 

@@ -1,6 +1,5 @@
 'use client';
 
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAbsenceStore } from '@/stores/absence-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -15,12 +14,7 @@ export function AbsenceRequests() {
 
   const handleApprove = async (requestId: string) => {
     if (!currentUser) return;
-    const result = await approveAbsence(requestId, currentUser.id);
-    if (result.success) {
-      toast.success('Žádost schválena');
-    } else {
-      toast.error(result.error || 'Nepodařilo se schválit žádost');
-    }
+    await approveAbsence(requestId, currentUser.id);
   };
 
   return (
