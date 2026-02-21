@@ -46,6 +46,7 @@ export interface Task {
   deadline: string;
   repeat: TaskRepeat;
   repeatSourceId?: string;
+  repeatPaused?: boolean;
   completedBy?: string;
   completedAt?: string;
   approvedAt?: string;

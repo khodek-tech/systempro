@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     .from('ukoly')
     .select('*')
     .eq('stav', 'approved')
-    .neq('opakovani', 'none');
+    .neq('opakovani', 'none')
+    .or('opakovani_pozastaveno.is.null,opakovani_pozastaveno.eq.false');
 
   if (tasksError || !approvedTasks) {
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });

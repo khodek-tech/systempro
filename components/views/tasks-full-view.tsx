@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TaskCard } from '@/components/shared/task-card';
 import { TaskDetailModal } from '@/components/shared/task-detail-modal';
@@ -29,6 +29,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority | 'all'; label: string }[] = [
 const TABS = [
   { id: 'my-tasks' as const, label: 'Moje úkoly' },
   { id: 'created-by-me' as const, label: 'Vytvořené mnou' },
+  { id: 'recurring' as const, label: 'Pravidelné úkoly' },
   { id: 'all' as const, label: 'Všechny' },
 ];
 
@@ -45,6 +46,7 @@ export function TasksFullView() {
     setPriorityFilter,
     getFilteredTasks,
     openFormModal,
+    toggleRepeatPause,
   } = useTasksStore();
   const { currentUser } = useAuthStore();
 
@@ -124,7 +126,37 @@ export function TasksFullView() {
               <p className="text-slate-500 font-medium">Žádné úkoly k zobrazení</p>
             </div>
           ) : (
-            tasks.map((task) => <TaskCard key={task.id} task={task} />)
+            tasks.map((task) => (
+              <div key={task.id} className="relative">
+                <TaskCard task={task} />
+                {activeTab === 'recurring' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleRepeatPause(task.id);
+                    }}
+                    className={cn(
+                      'absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                      task.repeatPaused
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                    )}
+                  >
+                    {task.repeatPaused ? (
+                      <>
+                        <Play className="w-3.5 h-3.5" />
+                        Obnovit
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3.5 h-3.5" />
+                        Pozastavit
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            ))
           )}
         </div>
       </div>

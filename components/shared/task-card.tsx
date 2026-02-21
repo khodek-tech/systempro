@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, MessageSquare, User, Building2, RotateCcw, UserPlus, Users } from 'lucide-react';
+import { Clock, MessageSquare, User, Building2, RotateCcw, UserPlus, Users, PauseCircle } from 'lucide-react';
 import { Task } from '@/types';
 import { useTasksStore } from '@/stores/tasks-store';
 import { useUsersStore } from '@/stores/users-store';
@@ -105,6 +105,12 @@ export function TaskCard({ task }: TaskCardProps) {
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-100 text-blue-700">
                 <RotateCcw className="w-3 h-3" />
                 {repeatLabel}
+              </span>
+            )}
+            {task.repeatPaused && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-orange-100 text-orange-700">
+                <PauseCircle className="w-3 h-3" />
+                Pozastaveno
               </span>
             )}
           </div>

@@ -14,7 +14,7 @@ import {
 
 let _tasksVisibilityHandler: (() => void) | null = null;
 
-type TaskTab = 'my-tasks' | 'created-by-me' | 'all';
+type TaskTab = 'my-tasks' | 'created-by-me' | 'recurring' | 'all';
 
 interface TasksState {
   tasks: Task[];
@@ -95,6 +95,8 @@ interface TasksActions {
 
   // Repeating tasks
   checkAndCreateRepeatingTasks: () => Promise<void>;
+  toggleRepeatPause: (taskId: string) => Promise<{ success: boolean; error?: string }>;
+  getRecurringTasks: (userId: string) => Task[];
 }
 
 async function updateTaskInDb(taskId: string, updates: Partial<Task>): Promise<boolean> {
@@ -188,7 +190,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       tasks: [...state.tasks, newTask],
       isFormModalOpen: false,
       editingTaskId: null,
-      activeTab: 'created-by-me',
+      activeTab: taskData.repeat && taskData.repeat !== 'none' ? 'recurring' : 'created-by-me',
     }));
     return { success: true, taskId: newId };
   },
@@ -578,6 +580,8 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       .filter((t) => {
         if (t.createdBy !== userId) return false;
         if (t.status === 'approved') return false;
+        // Exclude source recurring tasks (shown in "Pravidelné úkoly" tab)
+        if (t.repeat !== 'none' && !t.repeatSourceId) return false;
 
         if (statusFilter !== 'all' && t.status !== statusFilter) return false;
         if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
@@ -629,6 +633,8 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         return get().getMyTasks(userId);
       case 'created-by-me':
         return get().getTasksICreated(userId);
+      case 'recurring':
+        return get().getRecurringTasks(userId);
       case 'all':
         return get().getVisibleTasks(userId);
       default:
@@ -866,6 +872,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
 
     tasks.forEach((task) => {
       if (task.status !== 'approved' || task.repeat === 'none') return;
+      if (task.repeatPaused) return;
 
       const approvedAt = task.approvedAt ? new Date(task.approvedAt) : null;
       if (!approvedAt) return;
@@ -949,6 +956,35 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
         tasks: [...state.tasks, ...newTasks],
       }));
     }
+  },
+
+  toggleRepeatPause: async (taskId) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Úkol nenalezen' };
+
+    const newPaused = !task.repeatPaused;
+    const ok = await updateTaskInDb(taskId, { repeatPaused: newPaused });
+    if (!ok) return { success: false, error: 'Chyba při ukládání' };
+
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === taskId ? { ...t, repeatPaused: newPaused } : t
+      ),
+    }));
+    return { success: true };
+  },
+
+  getRecurringTasks: (userId) => {
+    const { tasks } = get();
+
+    return tasks
+      .filter((t) => {
+        if (t.createdBy !== userId) return false;
+        if (t.repeat === 'none') return false;
+        if (t.repeatSourceId) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 }));
 

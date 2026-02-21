@@ -193,6 +193,7 @@ export function mapDbToTask(row: any, comments: TaskComment[] = []): Task {
     deadline: row.termin,
     repeat: (row.opakovani ?? 'none') as TaskRepeat,
     repeatSourceId: row.zdroj_opakovani ?? undefined,
+    repeatPaused: row.opakovani_pozastaveno ?? false,
     completedBy: row.dokoncil ?? undefined,
     completedAt: row.dokonceno ?? undefined,
     approvedAt: row.schvaleno ?? undefined,
@@ -222,6 +223,7 @@ export function mapTaskToDb(task: Partial<Task> & { id: string }): Record<string
   if (task.deadline !== undefined) row.termin = task.deadline;
   if (task.repeat !== undefined) row.opakovani = task.repeat;
   if (task.repeatSourceId !== undefined) row.zdroj_opakovani = task.repeatSourceId || null;
+  if (task.repeatPaused !== undefined) row.opakovani_pozastaveno = task.repeatPaused;
   if (task.completedBy !== undefined) row.dokoncil = task.completedBy || null;
   if (task.completedAt !== undefined) row.dokonceno = task.completedAt || null;
   if (task.approvedAt !== undefined) row.schvaleno = task.approvedAt || null;
