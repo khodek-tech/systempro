@@ -11,6 +11,10 @@
 - **Zero tolerance pro ESLint chyby a varování** - `npm run lint` musí projít bez jakýchkoliv chyb nebo varování
 - Před commitem vždy spustit `npm run lint`
 - Nepoužívat `// eslint-disable` komentáře bez schválení
+- **Před každým `git commit` a `git push`** musí proběhnout:
+  1. `npm run lint` — zero warnings, zero errors
+  2. `npm run build` — úspěšný build bez chyb
+  - Pokud build nebo lint selže, opravit a teprve pak commitovat/pushovat
 
 ## State Management
 - Všechna data musí být uložena v Zustand store
