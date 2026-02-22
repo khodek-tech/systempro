@@ -264,6 +264,21 @@
 | 4 | Kliknout mimo picker | Picker se zavře |
 | 5 | Odeslat zprávu s emoji | Zpráva zobrazena s emoji |
 
+#### CHAT-011: Stav doručení v DM (fajfky)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Přihlásit se jako Uživatel A | Přihlášen |
+| 2 | Otevřít DM s Uživatelem B | Konverzace zobrazena |
+| 3 | Odeslat zprávu "Test doručení" | Zpráva zobrazena |
+| 4 | Zkontrolovat ikonu vedle času | Jedna šedá fajfka (✓) |
+| 5 | Přihlásit se jako Uživatel B | Přihlášen |
+| 6 | Otevřít DM s Uživatelem A | Konverzace zobrazena, zprávy přečteny |
+| 7 | Přihlásit se zpět jako Uživatel A | Přihlášen |
+| 8 | Zkontrolovat ikonu vedle času | Dvě modré fajfky (✓✓) |
+| 9 | Otevřít skupinový chat | Konverzace zobrazena |
+| 10 | Zkontrolovat vlastní zprávy ve skupině | Žádné fajfky se nezobrazují |
+
 ### Hraniční případy
 
 | ID | Situace | Očekávané chování |

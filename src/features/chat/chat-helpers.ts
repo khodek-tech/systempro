@@ -2,7 +2,7 @@
  * Chat helper functions
  */
 
-import { ChatMessage, ChatReactionType, ChatGroup } from '@/shared/types';
+import { ChatMessage, ChatReactionType, ChatGroup, ChatReadStatus } from '@/shared/types';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { useUsersStore } from '@/core/stores/users-store';
 import { getAdminRoleId } from '@/core/stores/store-helpers';
@@ -165,6 +165,37 @@ export function sortDirectGroupsAlphabetically(groups: ChatGroup[], currentUserI
     const nameB = getDirectGroupDisplayName(b, currentUserId);
     return nameA.localeCompare(nameB, 'cs');
   });
+}
+
+/**
+ * Get delivery status of a message for WhatsApp-style checkmarks (DM only).
+ * Returns 'sent' (✓ gray), 'read' (✓✓ blue), or null (no indicator).
+ */
+export function getMessageDeliveryStatus(
+  message: ChatMessage,
+  group: ChatGroup,
+  readStatuses: ChatReadStatus[],
+  currentUserId: string
+): 'sent' | 'read' | null {
+  // Only show for own messages in DMs
+  if (message.userId !== currentUserId || group.type !== 'direct') return null;
+
+  // Find the other user in the DM
+  const otherUserId = group.memberIds.find((id) => id !== currentUserId);
+  if (!otherUserId) return 'sent';
+
+  // Find the other user's read status for this group
+  const otherReadStatus = readStatuses.find(
+    (s) => s.groupId === group.id && s.userId === otherUserId
+  );
+
+  if (!otherReadStatus) return 'sent';
+
+  // Compare timestamps: if other user read after this message was created → read
+  const messageTime = new Date(message.createdAt).getTime();
+  const readTime = new Date(otherReadStatus.lastReadAt).getTime();
+
+  return readTime >= messageTime ? 'read' : 'sent';
 }
 
 /**

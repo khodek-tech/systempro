@@ -149,6 +149,17 @@ features:
       - Výběr emoji vloží na pozici kurzoru v textarea
       - Click-outside zavře picker
 
+  - id: delivery_status
+    name: Stav doručení zpráv (DM)
+    description: WhatsApp-style fajfky u vlastních zpráv v přímých zprávách
+    acceptance_criteria:
+      - Zobrazuje se pouze u vlastních zpráv v DM (1:1)
+      - Jedna šedá fajfka (✓) = zpráva doručena (uložena v DB)
+      - Dvě modré fajfky (✓✓) = zpráva přečtena příjemcem
+      - Fajfky se zobrazují vedle času zprávy
+      - Stav se aktualizuje v reálném čase přes Supabase Realtime
+      - Ve skupinových chatech se fajfky nezobrazují
+
   - id: realtime
     name: Supabase Realtime
     description: Real-time propagace zpráv, skupin a stavů přečtení přes Supabase Realtime
@@ -330,6 +341,25 @@ scenarios:
       - Emoji se vloží na pozici kurzoru
       - Po výběru emoji je fokus zpět na textarea
       - Click-outside zavře picker
+
+  - id: CHAT-011
+    name: Stav doručení v DM (fajfky)
+    preconditions:
+      - Existuje DM konverzace mezi dvěma uživateli
+    steps:
+      - Přihlásím se jako Uživatel A
+      - Otevřu DM s Uživatelem B
+      - Odešlu zprávu "Test doručení"
+      - Vedle času zprávy vidím jednu šedou fajfku (✓)
+      - Přihlásím se jako Uživatel B
+      - Otevřu DM s Uživatelem A
+      - Přihlásím se zpět jako Uživatel A
+      - Vedle času zprávy vidím dvě modré fajfky (✓✓)
+    expected:
+      - Šedá ✓ se zobrazí ihned po odeslání
+      - Modrá ✓✓ se zobrazí po přečtení příjemcem
+      - Ve skupinových chatech se fajfky nezobrazují
+      - U cizích zpráv se fajfky nezobrazují
 
 edge_cases:
   - id: CHAT-E001

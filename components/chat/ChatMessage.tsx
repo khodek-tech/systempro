@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2, Reply } from 'lucide-react';
+import { Trash2, Reply, Check, CheckCheck } from 'lucide-react';
 import { ChatMessage as ChatMessageType, ChatReactionType } from '@/types';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -16,9 +16,10 @@ import { useLinkPreview } from '@/lib/hooks/use-link-preview';
 interface ChatMessageProps {
   message: ChatMessageType;
   onReply?: (messageId: string) => void;
+  deliveryStatus?: 'sent' | 'read' | null;
 }
 
-export function ChatMessage({ message, onReply }: ChatMessageProps) {
+export function ChatMessage({ message, onReply, deliveryStatus }: ChatMessageProps) {
   const { addReaction, removeReaction, deleteMessage, messages } = useChatStore();
   const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
@@ -142,9 +143,11 @@ export function ChatMessage({ message, onReply }: ChatMessageProps) {
           </div>
         )}
 
-        {/* Time */}
-        <span className="text-[10px] mt-1 block text-slate-400">
+        {/* Time + delivery status */}
+        <span className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400">
           {formatMessageTime(message.createdAt)}
+          {deliveryStatus === 'sent' && <Check className="w-3.5 h-3.5 text-slate-400" />}
+          {deliveryStatus === 'read' && <CheckCheck className="w-3.5 h-3.5 text-blue-500" />}
         </span>
       </div>
 

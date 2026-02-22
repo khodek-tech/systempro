@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { groupMessagesByDate, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
+import { groupMessagesByDate, getDirectGroupDisplayName, getDirectGroupBothNames, getMessageDeliveryStatus } from '@/features/chat';
 import { useUsersStore } from '@/stores/users-store';
 import { ChatMessage } from './ChatMessage';
 import { ChatMessageInput } from './ChatMessageInput';
@@ -24,6 +24,7 @@ export function ChatConversation() {
     replyingToMessageId,
     setReplyingTo,
     messages: allMessages,
+    readStatuses,
   } = useChatStore();
   const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
@@ -168,7 +169,16 @@ export function ChatConversation() {
               {/* Messages for this date */}
               <div className="space-y-3">
                 {dateMessages.map((message) => (
-                  <ChatMessage key={message.id} message={message} onReply={setReplyingTo} />
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    onReply={setReplyingTo}
+                    deliveryStatus={
+                      currentUser && group
+                        ? getMessageDeliveryStatus(message, group, readStatuses, currentUser.id)
+                        : null
+                    }
+                  />
                 ))}
               </div>
             </div>

@@ -2,6 +2,22 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.11.0] - 2026-02-23
+
+### Přidáno
+
+#### Chat: WhatsApp-style fajfky u DM zpráv
+- **Účel**: Vizuální indikátor stavu doručení/přečtení u vlastních zpráv v přímých zprávách (1:1)
+- **Chování**: ✓ šedá = zpráva doručena (uložena v DB), ✓✓ modrá = přečtena příjemcem
+- **Implementace**: Využívá stávající `chat_stav_precteni.lastReadAt` bez změny DB
+- **Omezení**: Pouze u DM, ne ve skupinových chatech
+- **Nové**: `getMessageDeliveryStatus()` helper v `chat-helpers.ts`
+- **Upravené**: `ChatMessage.tsx` (nový prop `deliveryStatus` + ikony `Check`/`CheckCheck`), `ChatConversation.tsx` (výpočet a předání statusu)
+- **Specifikace**: `chat.spec.yaml` — feature `delivery_status`, scénář CHAT-011
+- **Testy**: `testy.md` — nový test CHAT-011
+
+---
+
 ## [2.10.1] - 2026-02-21
 
 ### Změněno
