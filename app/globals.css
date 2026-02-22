@@ -182,7 +182,8 @@ input::-webkit-inner-spin-button {
 
 /* EXCEL TABLE STYLES */
 .excel-outer-wrapper {
-  @apply shadow-elevation-sm border border-slate-200/60 bg-white rounded-xl overflow-hidden;
+  @apply border border-slate-200/60 bg-white rounded-xl overflow-hidden;
+  box-shadow: var(--shadow-elevation-sm);
 }
 
 .excel-scroll-container {
