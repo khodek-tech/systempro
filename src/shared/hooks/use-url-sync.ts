@@ -36,6 +36,10 @@ function deriveUrlFromState(): string {
 
   if (subView === 'reports') return '/reports';
   if (subView === 'settings') {
+    const { selectedModuleId } = useAdminStore.getState();
+    if (settingsTab === 'modules' && selectedModuleId) {
+      return `/settings/modules/${selectedModuleId}`;
+    }
     return settingsTab && settingsTab !== 'stores'
       ? `/settings/${settingsTab}`
       : '/settings';
@@ -94,6 +98,9 @@ function applySlugToStores(slug: string[]) {
       admin.goToSettings();
       if (second) {
         admin.setSettingsTab(second as Parameters<typeof admin.setSettingsTab>[0]);
+        if (second === 'modules' && slug[2]) {
+          admin.selectModule(slug[2]);
+        }
       }
       break;
     // default: already reset to main above
