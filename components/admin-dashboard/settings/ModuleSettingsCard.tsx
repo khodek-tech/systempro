@@ -16,6 +16,8 @@ import {
   Truck,
   ChartNoAxesCombined,
   MessagesSquare,
+  Mail,
+  TrendingUp,
 } from 'lucide-react';
 
 interface ModuleSettingsCardProps {
@@ -38,6 +40,8 @@ const iconMap: Record<string, React.ElementType> = {
   Truck,
   ChartNoAxesCombined,
   MessagesSquare,
+  Mail,
+  TrendingUp,
 };
 
 const colorSchemes: Record<string, { bg: string; text: string; activeDot: string }> = {
@@ -53,6 +57,8 @@ const colorSchemes: Record<string, { bg: string; text: string; activeDot: string
   'shifts': { bg: 'bg-blue-50', text: 'text-blue-500', activeDot: 'bg-blue-500' },
   'presence': { bg: 'bg-sky-50', text: 'text-sky-500', activeDot: 'bg-sky-500' },
   'chat': { bg: 'bg-rose-50', text: 'text-rose-500', activeDot: 'bg-rose-500' },
+  'email': { bg: 'bg-sky-50', text: 'text-sky-500', activeDot: 'bg-sky-500' },
+  'motivation': { bg: 'bg-amber-50', text: 'text-amber-500', activeDot: 'bg-amber-500' },
 };
 
 export function ModuleSettingsCard({ module, config, onClick }: ModuleSettingsCardProps) {

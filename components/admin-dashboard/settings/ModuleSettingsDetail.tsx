@@ -22,6 +22,7 @@ import {
   ChartNoAxesCombined,
   MessagesSquare,
   TrendingUp,
+  Mail,
 } from 'lucide-react';
 
 interface ModuleSettingsDetailProps {
@@ -44,6 +45,7 @@ const iconMap: Record<string, React.ElementType> = {
   ChartNoAxesCombined,
   MessagesSquare,
   TrendingUp,
+  Mail,
 };
 
 const colorSchemes: Record<string, { bg: string; text: string }> = {
@@ -60,6 +62,7 @@ const colorSchemes: Record<string, { bg: string; text: string }> = {
   'presence': { bg: 'bg-sky-50', text: 'text-sky-500' },
   'chat': { bg: 'bg-rose-50', text: 'text-rose-500' },
   'motivation': { bg: 'bg-amber-50', text: 'text-amber-500' },
+  'email': { bg: 'bg-sky-50', text: 'text-sky-500' },
 };
 
 export function ModuleSettingsDetail({ moduleId, onBack }: ModuleSettingsDetailProps) {

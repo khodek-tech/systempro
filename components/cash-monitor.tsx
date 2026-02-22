@@ -16,7 +16,7 @@ export function CashMonitor({ cashToCollect }: CashMonitorProps) {
   const cashBase = store?.cashBase ?? 2000;
 
   return (
-    <div className="w-full max-w-5xl bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 py-4 lg:py-3">
+    <div className="w-full max-w-5xl bg-white border border-slate-200/60 rounded-2xl shadow-elevation-sm overflow-hidden flex flex-col md:flex-row items-center justify-between px-8 py-4 lg:py-3">
       <div className="flex items-center space-x-5 mb-4 md:mb-0">
         <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
           <Landmark className="w-7 h-7 text-blue-500" />

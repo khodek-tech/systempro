@@ -91,7 +91,7 @@ export function Header() {
   };
 
   return (
-    <header className="h-20 bg-white/95 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 z-50">
+    <header className="h-20 bg-white/90 backdrop-blur-xl border-b border-slate-200/40 flex items-center justify-between px-8 z-50">
       <div className="flex items-center space-x-4">
         <button
           onClick={handleLogoClick}
@@ -102,7 +102,7 @@ export function Header() {
           <span className="text-[#8BC34A]">style</span>
           <span className="text-[#8BC34A] text-base font-semibold">.cz</span>
         </button>
-        <div className="h-8 w-px bg-slate-200" />
+        <div className="h-8 w-px bg-slate-200/50" />
 
         {/* User Selector Dropdown (admin only) or static name */}
         {isFullyHydrated ? (
@@ -141,7 +141,7 @@ export function Header() {
         {/* Role Selector (only for users with multiple roles) */}
         {_hydrated && showRoleSelector && (
           <>
-            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <div className="h-6 w-px bg-slate-200/50" aria-hidden="true" />
             <div className="relative group">
               <label htmlFor="role-selector" className="sr-only">Vybrat roli</label>
               <select
@@ -169,7 +169,7 @@ export function Header() {
         {/* Store Selector (only for Prodavač with multiple stores) */}
         {_hydrated && showStoreSelector && (
           <>
-            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <div className="h-6 w-px bg-slate-200/50" aria-hidden="true" />
             <div className="relative group">
               <label htmlFor="store-selector" className="sr-only">Vybrat prodejnu</label>
               <select
@@ -197,7 +197,7 @@ export function Header() {
         {/* Settings Icon (only for Administrator) */}
         {_hydrated && isAdmin && (
           <>
-            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <div className="h-6 w-px bg-slate-200/50" aria-hidden="true" />
             <button
               onClick={goToSettings}
               className="p-2.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
@@ -211,7 +211,7 @@ export function Header() {
         {/* Help Icon (available for all roles) */}
         {_hydrated && (
           <>
-            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <div className="h-6 w-px bg-slate-200/50" aria-hidden="true" />
             <button
               onClick={useManualStore.getState().openManualView}
               className="p-2.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
@@ -241,7 +241,7 @@ export function Header() {
         {/* Logout Button */}
         {_hydrated && (
           <>
-            <div className="h-6 w-px bg-slate-200" aria-hidden="true" />
+            <div className="h-6 w-px bg-slate-200/50" aria-hidden="true" />
             <button
               type="button"
               onClick={async () => {
