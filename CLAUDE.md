@@ -1,5 +1,8 @@
 # Pravidla pro vývoj
 
+## Jazyk komunikace
+- **Vždy komunikuj s uživatelem v češtině.** Veškeré odpovědi, dotazy a vysvětlení piš česky.
+
 ## Testovaci pristup (Administrator)
 
 - **Uživatel:** `khodek`
