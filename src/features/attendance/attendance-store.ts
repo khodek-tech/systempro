@@ -66,7 +66,7 @@ export const useAttendanceStore = create<AttendanceState & AttendanceActions>((s
       .eq('datum', today);
 
     if (error) {
-      logger.error('[attendance] Failed to fetch today attendance');
+      logger.error('[attendance] Failed to fetch today attendance', error.message);
       return;
     }
 

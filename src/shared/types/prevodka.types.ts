@@ -35,6 +35,7 @@ export interface Prevodka {
   pohodaOdeslano: boolean;
   pohodaCisloDokladu: string | null;
   pohodaChyba: string | null;
+  pohodaOdeslanoAt: string | null;
   ukolId: string | null;
   polozky: PrevodkaPolozka[];
 }

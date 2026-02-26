@@ -2,6 +2,47 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.14.0] - 2026-02-26
+
+### Přidáno
+
+#### Nový modul: Produkty v motivaci
+- **Účel**: Read-only přehled produktů zařazených do motivačního programu pro prodejce
+- **Přístup**: Konfigurovatelný přes Nastavení → Moduly (výchozí: Prodavač role-1)
+- **UI**: Fullscreen dialog (95vw × 95vh) s tabulkou — sloupce Kód, Název, EAN, Cena
+- **Funkce**: Textový filtr (kód/název/EAN), řazení (kód/název/cena), počet produktů v headeru
+- **Realtime**: Změny motivace se propisují okamžitě (sdílí subscribeRealtime() z motivation-store)
+- **Žádné editace**: Čistě zobrazovací modul bez checkboxů, bez footeru s tlačítky
+- **Nové soubory**: `MotivationProductsModule.tsx`, `motivation-products-modal.tsx`, `motivation-products.spec.yaml`
+- **Upravené soubory**: `ui-store.ts`, `registry.ts`, `index.ts`, `default-modules.ts`
+
+## [2.13.0] - 2026-02-25
+
+### Přidáno
+
+#### Převodky: Odeslání do Pohody
+- **Účel**: Administrátor může manuálně odeslat vychystanou převodku do účetního systému Pohoda
+- **Edge Function**: `send-prevodka` — sestaví XML převodku, odešle na mServer, zpracuje odpověď
+- **XML formát**: Číselná řada `SPr`, skutečné vychystané množství, sklady přes textové `<ids>`
+- **UI**: Tlačítko "Odeslat do Pohody" v detailu převodky + Pohoda status sekce (úspěch/chyba)
+- **Chování**: Po úspěchu se stav změní na `odeslano`, při chybě zobrazí detail + "Odeslat znovu"
+- **DB**: Nový sloupec `pohoda_odeslano_at` v tabulce `prevodky`
+- **Nové**: Edge Function `send-prevodka`, store metoda `sendToPohoda()`
+- **Upravené**: `PrevodkaDetail.tsx` (Pohoda tlačítko + status), `prevodka.types.ts`, `mappers.ts`
+
+## [2.12.0] - 2026-02-25
+
+### Přidáno
+
+#### Převodky: Ruční přidání produktu při pickingu
+- **Účel**: Obsluha může při pickování ručně přidat produkt do převodky (mimo původní seznam)
+- **UI**: Tlačítko "Přidat produkt" v headeru picking UI → fullscreen dialog s vyhledáváním
+- **Vyhledávání**: Podle názvu, kódu nebo EAN v `pohoda_zasoby` (filtrováno na zdrojový sklad)
+- **Chování**: Přidaný produkt je rovnou označen jako vychystaný (picker ho má fyzicky v ruce)
+- **Duplicity**: Upozornění pokud produkt již v převodce (badge "v převodce"), ale možnost přesto přidat
+- **Nové**: `AddProductDialog` komponenta, `addItemToPrevodka()` v prevodky-store
+- **Upravené**: `PickingView.tsx` (nové tlačítko + integrace dialogu)
+
 ## [2.11.0] - 2026-02-23
 
 ### Přidáno

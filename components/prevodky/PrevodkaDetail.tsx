@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Check, AlertTriangle, Minus, Send, Ban } from 'lucide-react';
+import { X, Check, AlertTriangle, Minus, Send, Ban, Loader2, RefreshCw, CheckCircle, XCircle, Plus } from 'lucide-react';
 import { usePrevodkyStore } from '@/stores/prevodky-store';
 import { useUsersStore } from '@/core/stores/users-store';
 import type { PrevodkaStav } from '@/shared/types';
@@ -40,7 +40,9 @@ export function PrevodkaDetail() {
     closeDetail,
     getPrevodkaById,
     markAsSent,
+    sendToPohoda,
     cancelPrevodka,
+    isSendingToPohoda,
   } = usePrevodkyStore();
 
   const getUserById = useUsersStore((s) => s.getUserById);
@@ -57,10 +59,16 @@ export function PrevodkaDetail() {
   const pickedItems = prevodka.polozky.filter((p) => p.vychystano).length;
 
   const canSend = prevodka.stav === 'vychystano';
+  const canSendToPohoda = prevodka.stav === 'vychystano' && !prevodka.pohodaOdeslano;
+  const hasPohodaError = prevodka.pohodaChyba && !prevodka.pohodaOdeslano;
   const canCancel = !['odeslano', 'potvrzeno', 'zrusena'].includes(prevodka.stav);
 
   const handleSend = async () => {
     await markAsSent(prevodka.id);
+  };
+
+  const handleSendToPohoda = async () => {
+    await sendToPohoda(prevodka.id);
   };
 
   const handleCancel = async () => {
@@ -125,6 +133,80 @@ export function PrevodkaDetail() {
           </div>
         )}
 
+        {/* Pohoda status */}
+        {(prevodka.pohodaOdeslano || hasPohodaError) && (
+          <div className={`px-6 py-3 border-b flex items-center gap-2 text-sm ${
+            prevodka.pohodaOdeslano
+              ? 'bg-green-50 text-green-700 border-green-100'
+              : 'bg-red-50 text-red-700 border-red-100'
+          }`}>
+            {prevodka.pohodaOdeslano ? (
+              <>
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span className="font-semibold">Pohoda:</span>
+                <span>{prevodka.pohodaCisloDokladu ?? 'Odesláno'}</span>
+                {prevodka.pohodaOdeslanoAt && (
+                  <span className="text-green-600">({formatDate(prevodka.pohodaOdeslanoAt)})</span>
+                )}
+              </>
+            ) : (
+              <>
+                <XCircle className="w-4 h-4 shrink-0" />
+                <span className="font-semibold">Pohoda chyba:</span>
+                <span className="flex-1">{prevodka.pohodaChyba}</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Picking summary — show differences after picking is done */}
+        {prevodka.stav !== 'nova' && prevodka.stav !== 'picking' && (() => {
+          const extraItems = prevodka.polozky.filter(
+            (p) => p.vychystano && p.skutecneMnozstvi !== null && p.skutecneMnozstvi > p.pozadovaneMnozstvi
+          );
+          const partialItems = prevodka.polozky.filter(
+            (p) => p.vychystano && p.skutecneMnozstvi !== null && p.skutecneMnozstvi < p.pozadovaneMnozstvi
+          );
+          const missingItems = prevodka.polozky.filter(
+            (p) => !p.vychystano
+          );
+          const newItems = prevodka.polozky.filter(
+            (p) => p.vychystano && p.pozadovaneMnozstvi === 0
+          );
+          const hasDifferences = extraItems.length > 0 || partialItems.length > 0 || missingItems.length > 0;
+
+          if (!hasDifferences) return null;
+
+          return (
+            <div className="px-6 py-3 border-b border-slate-100 flex flex-wrap gap-4 text-xs font-semibold">
+              {newItems.length > 0 && (
+                <span className="flex items-center gap-1 text-blue-600">
+                  <Plus className="w-3.5 h-3.5" />
+                  {newItems.length} přidáno navíc
+                </span>
+              )}
+              {extraItems.length > 0 && extraItems.length !== newItems.length && (
+                <span className="flex items-center gap-1 text-blue-600">
+                  <Plus className="w-3.5 h-3.5" />
+                  {extraItems.length - newItems.length} navýšeno
+                </span>
+              )}
+              {partialItems.length > 0 && (
+                <span className="flex items-center gap-1 text-orange-600">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {partialItems.length} méně než požadováno
+                </span>
+              )}
+              {missingItems.length > 0 && (
+                <span className="flex items-center gap-1 text-red-600">
+                  <Minus className="w-3.5 h-3.5" />
+                  {missingItems.length} nevychystáno
+                </span>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Items table */}
         <div className="flex-1 overflow-y-auto">
           <table className="w-full">
@@ -135,29 +217,53 @@ export function PrevodkaDetail() {
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Pozice</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Požadováno</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Skutečně</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Rozdíl</th>
                 <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
               </tr>
             </thead>
             <tbody>
               {prevodka.polozky.map((item) => {
                 const isPartial = item.vychystano && item.skutecneMnozstvi !== null && item.skutecneMnozstvi < item.pozadovaneMnozstvi;
+                const isExtra = item.vychystano && item.skutecneMnozstvi !== null && item.skutecneMnozstvi > item.pozadovaneMnozstvi;
+                const isNew = item.vychystano && item.pozadovaneMnozstvi === 0;
                 const isMissing = !item.vychystano && prevodka.stav === 'vychystano';
+                const diff = item.skutecneMnozstvi !== null ? item.skutecneMnozstvi - item.pozadovaneMnozstvi : null;
 
                 return (
-                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr key={item.id} className={`border-b border-slate-100 hover:bg-slate-50 ${
+                    isNew ? 'bg-blue-50/30' : isExtra ? 'bg-blue-50/20' : isPartial ? 'bg-orange-50/30' : isMissing ? 'bg-red-50/30' : ''
+                  }`}>
                     <td className="px-6 py-3 text-sm font-mono text-slate-600">{item.kod}</td>
-                    <td className="px-6 py-3 text-sm font-medium text-slate-700">{item.nazev}</td>
+                    <td className="px-6 py-3 text-sm font-medium text-slate-700">
+                      {item.nazev}
+                      {isNew && <span className="ml-2 text-xs font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">NOVÝ</span>}
+                    </td>
                     <td className="px-6 py-3 text-sm text-slate-500">{item.pozice ?? '-'}</td>
                     <td className="px-6 py-3 text-sm font-medium text-slate-700 text-right">{item.pozadovaneMnozstvi}</td>
                     <td className="px-6 py-3 text-sm font-medium text-right">
-                      <span className={isPartial ? 'text-orange-600' : isMissing ? 'text-red-600' : 'text-slate-700'}>
+                      <span className={
+                        isExtra ? 'text-blue-600' : isPartial ? 'text-orange-600' : isMissing ? 'text-red-600' : 'text-slate-700'
+                      }>
                         {item.skutecneMnozstvi ?? '-'}
                       </span>
+                    </td>
+                    <td className="px-6 py-3 text-sm font-bold text-right">
+                      {diff !== null && diff !== 0 ? (
+                        <span className={diff > 0 ? 'text-blue-600' : 'text-orange-600'}>
+                          {diff > 0 ? '+' : ''}{diff}
+                        </span>
+                      ) : isMissing ? (
+                        <span className="text-red-600">-{item.pozadovaneMnozstvi}</span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-3 text-center">
                       {item.vychystano ? (
                         isPartial ? (
                           <AlertTriangle className="w-4 h-4 text-orange-500 mx-auto" />
+                        ) : isExtra ? (
+                          <Plus className="w-4 h-4 text-blue-500 mx-auto" />
                         ) : (
                           <Check className="w-4 h-4 text-green-500 mx-auto" />
                         )
@@ -185,7 +291,23 @@ export function PrevodkaDetail() {
               Zrušit převodku
             </button>
           )}
-          {canSend && (
+          {(canSendToPohoda || hasPohodaError) && (
+            <button
+              onClick={handleSendToPohoda}
+              disabled={isSendingToPohoda}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSendingToPohoda ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : hasPohodaError ? (
+                <RefreshCw className="w-4 h-4" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {isSendingToPohoda ? 'Odesílám...' : hasPohodaError ? 'Odeslat znovu do Pohody' : 'Odeslat do Pohody'}
+            </button>
+          )}
+          {canSend && prevodka.pohodaOdeslano && (
             <button
               onClick={handleSend}
               className="flex items-center gap-2 px-5 py-2 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all"

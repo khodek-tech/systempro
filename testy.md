@@ -27,6 +27,7 @@
 18. [Centralizace synchronizace — Cron Jobs](#18-centralizace-synchronizace--cron-jobs-v200--v210)
 19. [Motivace prodejny](#19-motivace-prodejny)
 20. [Převodky (picking + EAN)](#20-převodky-picking--ean)
+21. [Produkty v motivaci](#21-produkty-v-motivaci)
 
 ---
 
@@ -34,7 +35,7 @@
 
 | Role | ID | Přístup k modulům |
 |------|-----|-------------------|
-| Prodavač | role-1 | cash-info, sales, collect, absence-report, tasks, attendance, shifts, chat, email |
+| Prodavač | role-1 | cash-info, sales, collect, absence-report, tasks, attendance, shifts, chat, email, motivation-products |
 | Administrátor | role-2 | absence-approval, tasks, kpi-dashboard, reports, presence, chat, email, motivation |
 | Skladník | role-3 | absence-report, tasks, attendance, shifts, chat, email |
 | Vedoucí skladu | role-4 | absence-report, absence-approval, tasks, attendance, presence, chat, email |
@@ -1274,6 +1275,41 @@
 | 2 | Kliknout "Zrušit převodku" | Potvrzovací dialog |
 | 3 | Potvrdit | Stav → zrušena, přiřazený úkol smazán |
 
+#### PREV-006: Ruční přidání produktu při pickingu
+
+**Přístup:** Zaměstnanec (picker)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Kliknout "Přidat produkt" v headeru pickingu | Otevře se fullscreen dialog s vyhledáváním |
+| 2 | Zadat název nebo kód produktu (min 2 znaky) | Tabulka výsledků z centrálního skladu |
+| 3 | Kliknout na produkt | Zobrazí se pole pro zadání počtu kusů |
+| 4 | Zadat počet a kliknout "Přidat" | Produkt přidán jako vychystaný, zelená hláška |
+| 5 | Zavřít dialog | Nový produkt viditelný v seznamu pickingu (zelený) |
+
+#### PREV-008: Odeslání převodky do Pohody
+
+**Přístup:** Administrátor (role-2)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít detail vychystané převodky | Detail s položkami, tlačítko "Odeslat do Pohody" viditelné |
+| 2 | Kliknout "Odeslat do Pohody" | Loading spinner, tlačítko disabled |
+| 3 | Počkat na odpověď z Pohody | Toast s výsledkem |
+| 4 | Úspěch | Zelený badge s číslem dokladu (např. 26SPr00253), stav → odesláno |
+| 5 | Chyba | Červený badge s chybovou zprávou, tlačítko "Odeslat znovu" |
+| 6 | Kliknout "Odeslat znovu" | Nový pokus o odeslání |
+
+#### PREV-007: Přidání duplicitního produktu
+
+**Přístup:** Zaměstnanec (picker)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | V "Přidat produkt" vyhledat produkt již v převodce | U produktu badge "v převodce" |
+| 2 | Kliknout na duplicitní produkt | Oranžové upozornění, ale možnost přidat |
+| 3 | Zadat počet a přidat | Nová položka v převodce (s vlastním množstvím) |
+
 ### Edge cases
 - Neznámý EAN → červená hláška, žádná položka se nezmění
 - Již vychystaný produkt skenován znovu → hláška "Již vychystáno"
@@ -1281,7 +1317,81 @@
 - Pokus o zrušení odeslané → API vrátí chybu 400
 - Generování bez přiřazení pickerů → API vrátí chybu 400
 - Odeslaná/potvrzená převodka → nelze zrušit
+- Vyhledávání produktu s méně než 2 znaky → hint "Zadejte alespoň 2 znaky"
+- Vyhledávání bez výsledků → hláška "Žádné výsledky"
+- Odeslání do Pohody selhalo → stav zůstane vychystáno, chyba zobrazena, tlačítko "Odeslat znovu"
+- Pokus o odeslání již odeslané převodky → chyba "Převodka už byla odeslána"
+- Převodka bez vychystaných položek → chyba "Žádné položky k odeslání"
 
 ---
 
-*Poslední aktualizace: 2026-02-21*
+## 21. Produkty v motivaci
+
+**Modul:** MotivationProductsModule
+**Store:** useMotivationStore (sdílený s modulem Motivace)
+**Badge:** Žádný
+
+### Přístupové role
+
+| Role | ID |
+|------|-----|
+| Prodavač | role-1 (výchozí) |
+| Další role | Konfigurovatelné v Nastavení → Moduly |
+
+### Testovací scénáře
+
+#### MOTPROD-001: Otevření modulu a zobrazení motivačních produktů
+
+**Přístup:** Prodavač (role-1)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Přihlásit se jako Prodavač | Dashboard s modulem "Produkty v motivaci" |
+| 2 | Kliknout na modul | Otevře se fullscreen dialog |
+| 3 | Počkat na načtení | Zobrazí se POUZE produkty označené v motivaci |
+| 4 | Zkontrolovat sloupce | Kód, Název, EAN, Cena (žádný checkbox Motivace) |
+| 5 | Zkontrolovat footer | Žádný footer s tlačítky |
+
+#### MOTPROD-002: Filtrování motivačních produktů
+
+**Přístup:** Prodavač (role-1)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Zadat do filtru část kódu nebo názvu | Zobrazí se odpovídající produkty |
+| 2 | Zkontrolovat počet v headeru | Aktualizovaný počet produktů |
+| 3 | Vymazat filtr | Všechny motivační produkty zpět |
+
+#### MOTPROD-003: Řazení podle sloupců
+
+**Přístup:** Prodavač (role-1)
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Kliknout na hlavičku "Kód" | Seřadí ASC, šipka nahoru |
+| 2 | Kliknout znovu | Seřadí DESC, šipka dolů |
+| 3 | Kliknout na "Cena" | Seřadí podle ceny |
+
+#### MOTPROD-004: Realtime aktualizace při změně motivace
+
+**Přístup:** Prodavač (role-1) + Administrátor (role-2) ve dvou oknech
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Prodavač otevře modul Produkty v motivaci | Tabulka s motivačními produkty |
+| 2 | Admin v modulu Motivace označí nový produkt a uloží | Změna uložena do DB |
+| 3 | Prodejce zkontroluje svůj modal | Nový produkt se objeví bez refreshe |
+| 4 | Admin odznačí produkt z motivace a uloží | Změna uložena |
+| 5 | Prodejce zkontroluje modal | Produkt zmizí bez refreshe |
+
+### Edge cases
+
+| ID | Situace | Očekávané chování |
+|----|---------|-------------------|
+| MOTPROD-E001 | Žádné produkty v motivaci | Text "Žádné produkty nejsou zařazeny do motivace." |
+| MOTPROD-E002 | Žádný sklad nevybrán | Produkty se nenačtou, prázdný stav |
+| MOTPROD-E003 | Velký počet motivačních produktů | Plynulý scroll, funkční filtrování a řazení |
+
+---
+
+*Poslední aktualizace: 2026-02-26*

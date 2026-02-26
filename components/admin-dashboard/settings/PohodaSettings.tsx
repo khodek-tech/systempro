@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePohodaStore } from '@/features/pohoda';
+import { usePrevodkyStore } from '@/features/prevodky/prevodky-store';
 import { cn } from '@/lib/utils';
 
 export function PohodaSettings() {
@@ -959,6 +960,9 @@ export function PohodaSettings() {
         syncProdejky={syncProdejky}
       />
 
+      {/* Synchronizace prevodek */}
+      <SyncPrevodkyBlock />
+
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
         <h4 className="font-semibold text-blue-900 mb-2">
@@ -1828,6 +1832,224 @@ function SyncProdejkyBlock({
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// SyncPrevodkyBlock component
+// =============================================================================
+
+function SyncPrevodkyBlock() {
+  const {
+    prevodky,
+    _loaded,
+    isSendingToPohoda,
+    sendToPohoda,
+  } = usePrevodkyStore();
+
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  // Převodky ready to send (vychystano, not yet sent to Pohoda)
+  const readyToSend = prevodky.filter(
+    (p) => p.stav === 'vychystano' && !p.pohodaOdeslano
+  );
+
+  // All relevant převodky (ready, sent, or with error)
+  const allRelevant = prevodky
+    .filter(
+      (p) =>
+        p.stav === 'vychystano' ||
+        p.stav === 'odeslano' ||
+        p.pohodaOdeslano ||
+        p.pohodaChyba
+    )
+    .sort((a, b) => new Date(b.vytvoreno).getTime() - new Date(a.vytvoreno).getTime());
+
+  const handleSend = async (prevodkaId: string) => {
+    setSendingId(prevodkaId);
+    await sendToPohoda(prevodkaId);
+    setSendingId(null);
+  };
+
+  const handleSendAll = async () => {
+    for (const p of readyToSend) {
+      setSendingId(p.id);
+      const result = await sendToPohoda(p.id);
+      if (!result.success) break;
+    }
+    setSendingId(null);
+  };
+
+  if (!_loaded) return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-in fade-in duration-300">
+      <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <ArrowDownUp className="w-5 h-5 text-slate-400" />
+        Synchronizace prevodek
+      </h3>
+
+      <div className="space-y-5">
+        <p className="text-xs text-slate-500">
+          Odesila vychystane prevodky do Pohody jako prevodky mezi sklady.
+        </p>
+
+        {/* Send all button */}
+        {readyToSend.length > 0 && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSendAll}
+              disabled={isSendingToPohoda}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200',
+                isSendingToPohoda
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+              )}
+            >
+              {isSendingToPohoda ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Odesilam...
+                </>
+              ) : (
+                <>
+                  <ArrowDownUp className="w-4 h-4" />
+                  Odeslat vse ({readyToSend.length})
+                </>
+              )}
+            </button>
+            <span className="text-sm text-slate-500">
+              {readyToSend.length} {readyToSend.length === 1 ? 'prevodka ceka' : 'prevodek ceka'} na odeslani
+            </span>
+          </div>
+        )}
+
+        {allRelevant.length === 0 && (
+          <div className="text-sm text-slate-400 italic">
+            Zadne prevodky k odeslani.
+          </div>
+        )}
+
+        {/* Table of převodky */}
+        {allRelevant.length > 0 && (
+          <div className="shadow-sm border border-slate-200 bg-white rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Cislo
+                  </th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Trasa
+                  </th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Stav
+                  </th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Pohoda
+                  </th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Akce
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {allRelevant.map((p) => (
+                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
+                      {p.cisloPrevodky}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-slate-600">
+                      {p.zdrojovySklad} → {p.cilovySklad}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {p.stav === 'vychystano' && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full">
+                          Vychystano
+                        </span>
+                      )}
+                      {p.stav === 'odeslano' && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                          Odeslano
+                        </span>
+                      )}
+                      {p.stav === 'potvrzeno' && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                          Potvrzeno
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {p.pohodaOdeslano ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
+                          <CheckCircle2 className="w-4 h-4" />
+                          {p.pohodaCisloDokladu || 'OK'}
+                        </span>
+                      ) : p.pohodaChyba ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-red-700" title={p.pohodaChyba}>
+                          <XCircle className="w-4 h-4" />
+                          Chyba
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {p.stav === 'vychystano' && !p.pohodaOdeslano && (
+                        <button
+                          onClick={() => handleSend(p.id)}
+                          disabled={isSendingToPohoda}
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all',
+                            sendingId === p.id
+                              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
+                          )}
+                        >
+                          {sendingId === p.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Odesilam
+                            </>
+                          ) : (
+                            'Odeslat'
+                          )}
+                        </button>
+                      )}
+                      {p.pohodaChyba && !p.pohodaOdeslano && p.stav !== 'vychystano' && (
+                        <button
+                          onClick={() => handleSend(p.id)}
+                          disabled={isSendingToPohoda}
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all',
+                            sendingId === p.id
+                              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                              : 'bg-orange-500 text-white hover:bg-orange-600 active:scale-[0.98]'
+                          )}
+                        >
+                          {sendingId === p.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Zkousim
+                            </>
+                          ) : (
+                            <>
+                              <RotateCw className="w-3.5 h-3.5" />
+                              Zkusit znovu
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

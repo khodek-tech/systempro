@@ -30,6 +30,9 @@ interface PrevodkyState {
   // Admin detail
   selectedPrevodkaId: string | null;
 
+  // Pohoda
+  isSendingToPohoda: boolean;
+
   // Filter
   stavFilter: PrevodkaStav | 'aktivni' | 'all';
 
@@ -47,8 +50,10 @@ interface PrevodkyActions {
   // State transitions
   startPicking: (prevodkaId: string) => Promise<{ success: boolean; error?: string }>;
   confirmItem: (prevodkaId: string, polozkaId: string, skutecneMnozstvi: number) => Promise<{ success: boolean; error?: string }>;
+  addItemToPrevodka: (prevodkaId: string, item: { kod: string; nazev: string; pozice: string | null; mnozstvi: number }) => Promise<{ success: boolean; error?: string }>;
   finishPicking: (prevodkaId: string, poznamka?: string) => Promise<{ success: boolean; error?: string }>;
   markAsSent: (prevodkaId: string) => Promise<{ success: boolean; error?: string }>;
+  sendToPohoda: (prevodkaId: string) => Promise<{ success: boolean; error?: string; cisloDokladu?: string }>;
   cancelPrevodka: (prevodkaId: string) => Promise<{ success: boolean; error?: string }>;
 
   // UI
@@ -77,6 +82,7 @@ export const usePrevodkyStore = create<PrevodkyState & PrevodkyActions>()((set, 
   generateError: null,
   pickingPrevodkaId: null,
   selectedPrevodkaId: null,
+  isSendingToPohoda: false,
   stavFilter: 'aktivni',
   _realtimeChannel: null,
 
@@ -211,6 +217,95 @@ export const usePrevodkyStore = create<PrevodkyState & PrevodkyActions>()((set, 
     return { success: true };
   },
 
+  addItemToPrevodka: async (prevodkaId, item) => {
+    const supabase = createClient();
+    const now = new Date().toISOString();
+
+    const prevodka = get().prevodky.find((p) => p.id === prevodkaId);
+    if (!prevodka) {
+      return { success: false, error: 'Převodka nenalezena' };
+    }
+
+    // Check if the product already exists in this převodka
+    const existingItem = prevodka.polozky.find((p) => p.kod === item.kod);
+
+    if (existingItem) {
+      // Merge: increase only skutecne_mnozstvi, keep pozadovane_mnozstvi unchanged
+      const newSkutecne = (existingItem.skutecneMnozstvi ?? 0) + item.mnozstvi;
+
+      const { error } = await supabase
+        .from('prevodky_polozky')
+        .update({
+          skutecne_mnozstvi: newSkutecne,
+          vychystano: true,
+          cas_vychystani: now,
+        })
+        .eq('id', existingItem.id);
+
+      if (error) {
+        logger.error('[prevodky] addItemToPrevodka merge failed:', error);
+        toast.error('Nepodařilo se navýšit množství');
+        return { success: false, error: error.message };
+      }
+
+      set({
+        prevodky: get().prevodky.map((p) => {
+          if (p.id !== prevodkaId) return p;
+          return {
+            ...p,
+            polozky: p.polozky.map((pol) =>
+              pol.id === existingItem.id
+                ? { ...pol, skutecneMnozstvi: newSkutecne, vychystano: true, casVychystani: now }
+                : pol
+            ),
+          };
+        }),
+      });
+
+      toast.success(`${item.nazev} — navýšeno o ${item.mnozstvi} ks (skutečně ${newSkutecne}/${existingItem.pozadovaneMnozstvi})`);
+      return { success: true };
+    }
+
+    // New product: insert a new row
+    const maxPoradi = Math.max(0, ...prevodka.polozky.map((p) => p.poradi));
+
+    const { data, error } = await supabase
+      .from('prevodky_polozky')
+      .insert({
+        prevodka_id: prevodkaId,
+        kod: item.kod,
+        nazev: item.nazev,
+        pozice: item.pozice,
+        pozadovane_mnozstvi: 0,
+        skutecne_mnozstvi: item.mnozstvi,
+        vychystano: true,
+        cas_vychystani: now,
+        poradi: maxPoradi + 1,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('[prevodky] addItemToPrevodka failed:', error);
+      toast.error('Nepodařilo se přidat položku');
+      return { success: false, error: error.message };
+    }
+
+    const newItem = mapDbToPrevodkaPolozka(data);
+    set({
+      prevodky: get().prevodky.map((p) => {
+        if (p.id !== prevodkaId) return p;
+        return {
+          ...p,
+          polozky: [...p.polozky, newItem].sort((a, b) => a.poradi - b.poradi),
+        };
+      }),
+    });
+
+    toast.success(`${item.nazev} přidán do převodky`);
+    return { success: true };
+  },
+
   finishPicking: async (prevodkaId, poznamka?) => {
     const supabase = createClient();
     const now = new Date().toISOString();
@@ -270,6 +365,59 @@ export const usePrevodkyStore = create<PrevodkyState & PrevodkyActions>()((set, 
 
     toast.success('Převodka označena jako odeslaná');
     return { success: true };
+  },
+
+  sendToPohoda: async (prevodkaId) => {
+    set({ isSendingToPohoda: true });
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.functions.invoke('send-prevodka', {
+        body: { prevodkaId },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Volání edge funkce selhalo');
+      }
+
+      if (!data.success) {
+        // Pohoda returned an error — update local state with error message
+        set({
+          prevodky: get().prevodky.map((p) =>
+            p.id === prevodkaId ? { ...p, pohodaChyba: data.error } : p
+          ),
+        });
+        toast.error(`Pohoda: ${data.error}`);
+        return { success: false, error: data.error };
+      }
+
+      // Success — edge function already updated DB (stav=odeslano, pohoda fields)
+      const now = data.odeslanoAt || new Date().toISOString();
+      set({
+        prevodky: get().prevodky.map((p) =>
+          p.id === prevodkaId
+            ? {
+                ...p,
+                stav: 'odeslano' as PrevodkaStav,
+                odeslano: now,
+                pohodaOdeslano: true,
+                pohodaCisloDokladu: data.cisloDokladu ?? null,
+                pohodaChyba: null,
+                pohodaOdeslanoAt: now,
+              }
+            : p
+        ),
+      });
+
+      toast.success(`Převodka odeslána do Pohody${data.cisloDokladu ? ` (${data.cisloDokladu})` : ''}`);
+      return { success: true, cisloDokladu: data.cisloDokladu };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Neznámá chyba';
+      toast.error(`Odeslání do Pohody selhalo: ${msg}`);
+      return { success: false, error: msg };
+    } finally {
+      set({ isSendingToPohoda: false });
+    }
   },
 
   cancelPrevodka: async (prevodkaId) => {

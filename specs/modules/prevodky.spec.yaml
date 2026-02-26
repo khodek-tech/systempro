@@ -38,9 +38,10 @@ data_model:
     zruseno: string | null  # kdy zruseno
     poznamka: string | null  # poznamka pickera (povinna pri partial)
     vytvoril: string  # ID admina
-    pohodaOdeslano: boolean  # priprava pro Pohoda integraci
-    pohodaCisloDokladu: string | null
-    pohodaChyba: string | null
+    pohodaOdeslano: boolean  # true po uspesnem odeslani do Pohody
+    pohodaCisloDokladu: string | null  # cislo dokladu z Pohody (napr. 26SPr00253)
+    pohodaChyba: string | null  # chybova zprava z Pohody
+    pohodaOdeslanoAt: string | null  # cas odeslani do Pohody
     ukolId: string | null  # vazba na ukoly
     polozky: PrevodkaPolozka[]
 
@@ -72,6 +73,7 @@ data_model:
     isGenerating: boolean
     generateProgress: string | null
     generateError: string | null
+    isSendingToPohoda: boolean
     pickingPrevodkaId: string | null
     selectedPrevodkaId: string | null
     stavFilter: PrevodkaStav | aktivni | all
@@ -97,6 +99,7 @@ db_tables:
       - pohoda_odeslano: boolean DEFAULT false
       - pohoda_cislo_dokladu: text
       - pohoda_chyba: text
+      - pohoda_odeslano_at: timestamptz
       - ukol_id: text REFERENCES ukoly(id) ON DELETE SET NULL
     indexes:
       - idx_prevodky_stav ON prevodky(stav)
@@ -173,8 +176,35 @@ features:
       - Hlavicka s cislem, cilem, pickerem, stavem, casy
       - Seznam polozek s barevnym oznacenim (zelena OK, oranzova partial, cervena chybi)
       - Poznamka pickera pokud partial
-      - Akce "Oznacit jako odeslano" u vychystanych
+      - Akce "Odeslat do Pohody" u vychystanych (pred odeslanim)
+      - Akce "Oznacit jako odeslano" u vychystanych (po odeslani do Pohody)
       - Akce "Zrusit prevodku" u nedokoncenych
+      - Pohoda status sekce (zelena uspech s cislem dokladu, cervena chyba s tlacitkem retry)
+
+  - id: pohoda-integration
+    name: Odeslani prevodky do Pohody
+    description: Manualni odeslani prevodky do ucetniho systemu Pohoda pres mServer XML API
+    acceptance_criteria:
+      - Admin klikne "Odeslat do Pohody" v detailu vychystane prevodky
+      - Edge Function send-prevodka sestavi XML s ciselnou radou SPr
+      - XML obsahuje skutecne vychystane mnozstvi (ne pozadovane)
+      - Po uspesnem odeslani se zobrazi cislo dokladu z Pohody
+      - Stav se automaticky zmeni na odeslano
+      - Pri chybe se zobrazi chybova zprava a tlacitko "Odeslat znovu"
+      - Prevodka jiz odeslana do Pohody nelze odeslat znovu
+
+  - id: add-product-picking
+    name: Rucni pridani produktu pri pickingu
+    description: Picker muze rucne pridat produkt do prevodky pomoci vyhledavani podle nazvu/kodu/EAN
+    acceptance_criteria:
+      - Tlacitko "Pridat produkt" v headeru picking UI
+      - Fullscreen dialog s vyhledavanim v pohoda_zasoby (zdrojovy sklad)
+      - Hledani podle kodu, nazvu a EAN (case-insensitive, debounce 300ms)
+      - Vysledky zobrazuji pozici, nazev, kod a EAN
+      - Klik na produkt zobrazi pocet kusu s +/- tlacitky
+      - Po pridani se produkt ulozi jako rovnou vychystany
+      - Upozorneni pokud produkt jiz v prevodce existuje (moznost presto pridat)
+      - Dialog zustava otevreny pro pridani dalsich produktu
 
   - id: task-integration
     name: Integrace s ukoly
@@ -251,6 +281,46 @@ scenarios:
       - Stav -> zrusena
       - Prirazeny ukol je smazan
 
+  - id: PREV-006
+    name: Rucni pridani produktu pri pickingu
+    preconditions: Picker ma otevreny picking UI
+    steps:
+      - Picker klikne "Pridat produkt" v headeru
+      - Otevre se fullscreen dialog s vyhledavanim
+      - Zada nazev nebo kod produktu (min 2 znaky)
+      - V tabulce vybere produkt
+      - Zada pocet kusu a klikne "Pridat"
+    expected:
+      - Produkt se prida do seznamu jako vychystany (zeleny)
+      - Zelena hlaska "Produkt pridan"
+      - Dialog zustava otevreny pro dalsi pridani
+      - Po zavreni dialogu se novy produkt zobrazi v seznamu
+
+  - id: PREV-008
+    name: Odeslani prevodky do Pohody
+    preconditions: Admin je prihlasen, prevodka ve stavu vychystano
+    steps:
+      - Admin otevre detail prevodky ve stavu vychystano
+      - Klikne "Odeslat do Pohody"
+      - System odesle XML na mServer s ciselnou radou SPr
+      - Pohoda zpracuje prevodku a vrati cislo dokladu
+    expected:
+      - Zeleny badge s cislem dokladu z Pohody (napr. 26SPr00253)
+      - Stav prevodky se zmeni na odeslano
+      - Tlacitko "Odeslat do Pohody" zmizi
+      - Pri chybe: cerveny badge s chybou + tlacitko "Odeslat znovu"
+
+  - id: PREV-007
+    name: Pridani duplicitniho produktu
+    preconditions: Picker ma otevreny picking UI, produkt jiz v prevodce
+    steps:
+      - Picker klikne "Pridat produkt"
+      - Vyhleda a vybere produkt ktery jiz je v prevodce
+    expected:
+      - U produktu se zobrazi badge "v prevodce"
+      - Oranzove upozorneni "Produkt jiz je v prevodce"
+      - Picker muze presto pridat (nova polozka s vlastnim mnozstvim)
+
 edge_cases:
   - id: PREV-E001
     description: Neznamy EAN kod naskenovan
@@ -271,3 +341,23 @@ edge_cases:
   - id: PREV-E005
     description: Generovani bez prirazeni pickeru
     expected: API vrati chybu 400, zadna prevodka se nevytvori
+
+  - id: PREV-E006
+    description: Vyhledavani produktu s mene nez 2 znaky
+    expected: Zadne vysledky, hint "Zadejte alespon 2 znaky"
+
+  - id: PREV-E007
+    description: Vyhledavani produktu bez vysledku
+    expected: Hlaska "Zadne vysledky"
+
+  - id: PREV-E008
+    description: Odeslani do Pohody selhalo (sitova chyba nebo mServer nedostupny)
+    expected: Stav zustane vychystano, pohoda_chyba obsahuje popis chyby, tlacitko Odeslat znovu
+
+  - id: PREV-E009
+    description: Pokus o odeslani jiz odeslane prevodky
+    expected: Edge function vrati chybu "Prevodka uz byla odeslana do Pohody"
+
+  - id: PREV-E010
+    description: Prevodka bez vychystanych polozek
+    expected: Edge function vrati chybu "Zadne polozky k odeslani"

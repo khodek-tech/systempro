@@ -276,6 +276,7 @@ export const usePohodaStore = create<PohodaState & PohodaActions>()((set, get) =
       .from('pohoda_sync_log')
       .select('*')
       .eq('typ', typ)
+      .is('sklad', null)
       .order('vytvoreno', { ascending: false })
       .limit(5);
     if (data) {

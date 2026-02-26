@@ -1,0 +1,159 @@
+# SYSTEM.PRO - Motivation Products Module Specification
+# Modul pro zobrazeni produktu zarazenych do motivacniho programu
+
+module:
+  id: motivation-products
+  name: Produkty v motivaci
+  description: Read-only prehled produktu zarazenych do motivacniho programu pro prodejce
+  component: MotivationProductsModule
+  store: useMotivationStore  # sdili store s modulem Motivace
+  icon: ShoppingBag
+
+access:
+  roles:
+    - role-1  # Prodavac (vychozi)
+  notes:
+    - Modul je urcen pro prodejce k prehlednemu zobrazeni produktu
+    - Administrator prirazuje viditelnost roli v Nastaveni > Moduly
+    - Zadne editacni akce — pouze zobrazeni
+    - Data se aktualizuji v realnem case (Supabase Realtime)
+
+data_model:
+  note: >
+    Modul nema vlastni datovy model. Vyuziva existujici
+    useMotivationStore (products, settings) a filtruje
+    pouze produkty kde motivation === true.
+
+db_tables:
+  note: >
+    Zadne nove tabulky. Cte z pohoda_zasoby + motivace_produkty
+    pres existujici motivation-store.
+
+features:
+  - id: product_table
+    name: Tabulka motivacnich produktu
+    description: Read-only tabulka zobrazujici pouze produkty oznacene v motivaci
+    acceptance_criteria:
+      - Zobrazuje pouze produkty kde motivation === true
+      - Sloupce: kod, nazev, EAN, cena (zadny checkbox)
+      - Fullscreen dialog (95vw x 95vh) — stejny layout jako Motivace
+      - Sticky hlavicka tabulky
+      - Zadne klikani na radky, zadne editacni akce
+
+  - id: filter
+    name: Filtrovani
+    description: Textove vyhledavani pres kod, nazev a EAN
+    acceptance_criteria:
+      - Case-insensitive fulltextovy filtr
+      - Filtrovani v realnem case
+      - Zobrazuje pocet vyfiltrovanych produktu v headeru
+
+  - id: sort
+    name: Razeni
+    description: Razeni podle kodu, nazvu a ceny
+    acceptance_criteria:
+      - Klik na hlavicku prepina ASC/DESC
+      - Vizualni indikator smeru razeni (sipka)
+      - Razeni podle kodu, nazvu a ceny (3 sloupce)
+
+  - id: realtime
+    name: Realtime aktualizace
+    description: Zmeny v motivaci se propisuji okamzite
+    acceptance_criteria:
+      - Kdyz admin prida/odebere produkt z motivace, prodejce vidi zmenu bez refreshe
+      - Vyuziva existujici subscribeRealtime() z motivation-store
+      - Neni potreba zadna nova subscription
+
+notifications:
+  badge:
+    type: none
+    description: Modul nema badge notifikace
+
+scenarios:
+  - id: MOTPROD-001
+    name: Otevreni modulu a zobrazeni motivacnich produktu
+    preconditions:
+      - Uzivatel je prihlasen s roli ktera ma pristup k modulu
+      - V motivaci jsou oznacene nejake produkty
+    steps:
+      - Kliknu na modul "Produkty v motivaci"
+      - Otevre se fullscreen dialog
+      - Nacitaji se produkty (pokud jeste nejsou)
+      - Vidim tabulku POUZE s oznacenymi produkty
+    expected:
+      - Zobrazuji se jen produkty s motivation === true
+      - Sloupce: Kod, Nazev, EAN, Cena
+      - Zadny sloupec Motivace (checkbox)
+      - Zadny footer s tlacitky
+
+  - id: MOTPROD-002
+    name: Filtrovani motivacnich produktu
+    preconditions:
+      - Modal je otevreny s nactenyni produkty
+    steps:
+      - Zadam do filtru cast kodu nebo nazvu
+      - Zobrazí se pouze odpovidajici produkty
+      - Vymazim filtr
+      - Zobrazí se vsechny motivacni produkty
+    expected:
+      - Filtr funguje pres kod, nazev i EAN
+      - Case-insensitive
+      - Pocet produktu se aktualizuje v headeru
+
+  - id: MOTPROD-003
+    name: Razeni podle sloupcu
+    preconditions:
+      - Modal je otevreny
+    steps:
+      - Kliknu na hlavicku "Kod" - seradi ASC
+      - Kliknu znovu na "Kod" - seradi DESC
+      - Kliknu na "Cena" - seradi podle ceny
+    expected:
+      - Razeni funguje na 3 sloupcich (Kod, Nazev, Cena)
+      - Sipka indikuje smer
+      - Razeni se kombinuje s filtrem
+
+  - id: MOTPROD-004
+    name: Realtime aktualizace pri zmene motivace
+    preconditions:
+      - Prodejce ma otevreny modal Produkty v motivaci
+      - Admin ma otevreny modul Motivace
+    steps:
+      - Admin oznaci novy produkt v motivaci a ulozi
+      - Prodejce zkontroluje svuj modal
+    expected:
+      - Novy produkt se objevi v tabulce prodejce bez refreshe
+      - Pocet produktu se aktualizuje
+
+  - id: MOTPROD-005
+    name: Realtime aktualizace pri odebrani z motivace
+    preconditions:
+      - Prodejce ma otevreny modal Produkty v motivaci
+      - Admin ma otevreny modul Motivace
+    steps:
+      - Admin odznaci produkt z motivace a ulozi
+      - Prodejce zkontroluje svuj modal
+    expected:
+      - Produkt zmizi z tabulky prodejce bez refreshe
+      - Pocet produktu se snizi
+
+edge_cases:
+  - id: MOTPROD-E001
+    name: Zadne produkty v motivaci
+    description: Admin jeste neoznacil zadne produkty
+    expected: >
+      Modal zobrazi prazdny stav s textem
+      "Zadne produkty nejsou zarazeny do motivace."
+
+  - id: MOTPROD-E002
+    name: Zadny sklad nevybran
+    description: V nastaveni motivace neni vybran sklad
+    expected: >
+      Produkty se nenactou, modal zobrazi prazdny stav.
+
+  - id: MOTPROD-E003
+    name: Velky pocet motivacnich produktu
+    description: Admin oznacil stovky produktu
+    expected: >
+      Scroll zustava plynuly.
+      Filtrovani a razeni funguji bez zpomaleni.

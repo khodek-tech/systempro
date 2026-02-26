@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ArrowLeft, Check, AlertTriangle, ScanBarcode, Package, MessageSquare, Printer } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle, ScanBarcode, Package, MessageSquare, Printer, Plus, FileText } from 'lucide-react';
 import { usePrevodkyStore } from '@/stores/prevodky-store';
 import { QuantityDialog } from './QuantityDialog';
+import { AddProductDialog } from './AddProductDialog';
 import type { PrevodkaPolozka } from '@/shared/types';
 
 export function PickingView() {
@@ -21,6 +22,9 @@ export function PickingView() {
   const [quantityItem, setQuantityItem] = useState<PrevodkaPolozka | null>(null);
   const [finishNote, setFinishNote] = useState('');
   const [showFinishDialog, setShowFinishDialog] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const initialNote = pickingPrevodkaId ? getPrevodkaById(pickingPrevodkaId)?.poznamka ?? '' : '';
+  const [prevodkaNote, setPrevodkaNote] = useState(initialNote);
   const inputRef = useRef<HTMLInputElement>(null);
   const startingRef = useRef(false);
 
@@ -36,12 +40,13 @@ export function PickingView() {
     }
   }, [prevodkaId, prevodkaStav, startPicking]);
 
+
   // Auto-focus scan input
   useEffect(() => {
-    if (!quantityItem && !showFinishDialog) {
+    if (!quantityItem && !showFinishDialog && !showAddProduct) {
       inputRef.current?.focus();
     }
-  }, [quantityItem, showFinishDialog, prevodka?.polozky]);
+  }, [quantityItem, showFinishDialog, showAddProduct, prevodka?.polozky]);
 
   // Clear scan feedback after 3 seconds
   useEffect(() => {
@@ -106,9 +111,11 @@ export function PickingView() {
       return;
     }
 
-    await finishPicking(prevodka.id, finishNote.trim() || undefined);
+    // Combine finish note (partial picking reason) with prevodka note
+    const combinedNote = [prevodkaNote.trim(), finishNote.trim()].filter(Boolean).join(' | ') || undefined;
+    await finishPicking(prevodka.id, combinedNote);
     setShowFinishDialog(false);
-  }, [prevodka, finishNote, finishPicking]);
+  }, [prevodka, finishNote, prevodkaNote, finishPicking]);
 
   const handlePrint = useCallback(() => {
     if (!prevodka) return;
@@ -176,6 +183,13 @@ export function PickingView() {
           </div>
           <div className="flex items-center gap-4">
             <button
+              onClick={() => setShowAddProduct(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-semibold transition-colors active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" />
+              Přidat produkt
+            </button>
+            <button
               onClick={handlePrint}
               className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors"
             >
@@ -234,13 +248,33 @@ export function PickingView() {
         )}
       </div>
 
+      {/* Note field */}
+      <div className="flex-shrink-0 px-4 py-2 bg-white border-b border-slate-200">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <input
+            type="text"
+            value={prevodkaNote}
+            onChange={(e) => setPrevodkaNote(e.target.value.slice(0, 20))}
+            placeholder="Poznámka k převodce..."
+            maxLength={20}
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-orange-300 transition-colors"
+          />
+          <span className="text-xs text-slate-400 flex-shrink-0 font-mono">{prevodkaNote.length}/20</span>
+        </div>
+      </div>
+
       {/* Items list */}
       <div className="flex-1 overflow-y-auto">
         {prevodka.polozky.map((item) => (
           <div
             key={item.id}
             className={`flex items-center gap-3 px-4 py-3 border-b border-slate-100 ${
-              item.vychystano ? 'bg-green-50/50' : ''
+              item.vychystano
+                ? item.skutecneMnozstvi !== null && item.skutecneMnozstvi !== item.pozadovaneMnozstvi
+                  ? item.skutecneMnozstvi < item.pozadovaneMnozstvi ? 'bg-orange-50/50' : 'bg-blue-50/50'
+                  : 'bg-green-50/50'
+                : ''
             }`}
           >
             {/* Status indicator */}
@@ -249,13 +283,17 @@ export function PickingView() {
                 item.vychystano
                   ? item.skutecneMnozstvi !== null && item.skutecneMnozstvi < item.pozadovaneMnozstvi
                     ? 'bg-orange-100'
-                    : 'bg-green-100'
+                    : item.skutecneMnozstvi !== null && item.skutecneMnozstvi > item.pozadovaneMnozstvi
+                      ? 'bg-blue-100'
+                      : 'bg-green-100'
                   : 'bg-slate-100'
               }`}
             >
               {item.vychystano ? (
                 item.skutecneMnozstvi !== null && item.skutecneMnozstvi < item.pozadovaneMnozstvi ? (
                   <AlertTriangle className="w-4 h-4 text-orange-600" />
+                ) : item.skutecneMnozstvi !== null && item.skutecneMnozstvi > item.pozadovaneMnozstvi ? (
+                  <Plus className="w-4 h-4 text-blue-600" />
                 ) : (
                   <Check className="w-4 h-4 text-green-600" />
                 )
@@ -287,7 +325,9 @@ export function PickingView() {
                 <span className={`text-lg font-bold ${
                   item.skutecneMnozstvi !== null && item.skutecneMnozstvi < item.pozadovaneMnozstvi
                     ? 'text-orange-600'
-                    : 'text-green-600'
+                    : item.skutecneMnozstvi !== null && item.skutecneMnozstvi > item.pozadovaneMnozstvi
+                      ? 'text-blue-600'
+                      : 'text-green-600'
                 }`}>
                   {item.skutecneMnozstvi}/{item.pozadovaneMnozstvi}
                 </span>
@@ -305,7 +345,7 @@ export function PickingView() {
         <button
           onClick={() => {
             if (allPicked) {
-              finishPicking(prevodka.id);
+              finishPicking(prevodka.id, prevodkaNote.trim() || undefined);
             } else {
               setShowFinishDialog(true);
             }
@@ -332,6 +372,16 @@ export function PickingView() {
           requiredQty={quantityItem.pozadovaneMnozstvi}
           onConfirm={handleQuantityConfirm}
           onCancel={() => setQuantityItem(null)}
+        />
+      )}
+
+      {/* Add product dialog */}
+      {showAddProduct && (
+        <AddProductDialog
+          prevodkaId={prevodka.id}
+          zdrojovySklad={prevodka.zdrojovySklad}
+          existingCodes={prevodka.polozky.map((p) => p.kod)}
+          onClose={() => setShowAddProduct(false)}
         />
       )}
 

@@ -146,7 +146,7 @@ export const useTasksStore = create<TasksState & TasksActions>()((set, get) => (
       });
       set({ tasks, _loaded: true, _loading: false });
     } else {
-      logger.error('Failed to fetch tasks');
+      logger.error('Failed to fetch tasks', tasksResult.error?.message);
       set({ _loading: false });
     }
   },

@@ -100,6 +100,13 @@ export const DEFAULT_MODULE_DEFINITIONS: ModuleDefinition[] = [
     component: 'MotivationModule',
     icon: 'TrendingUp',
   },
+  {
+    id: 'motivation-products',
+    name: 'Produkty v motivaci',
+    description: 'Přehled produktů zařazených do motivačního programu',
+    component: 'MotivationProductsModule',
+    icon: 'ShoppingBag',
+  },
 ];
 
 // Default module configuration
@@ -229,6 +236,13 @@ export const DEFAULT_MODULE_CONFIGS: ModuleConfig[] = [
     moduleId: 'motivation',
     roleIds: ['role-2', 'role-8'],
     order: 9,
+    column: 'left',
+    enabled: true,
+  },
+  {
+    moduleId: 'motivation-products',
+    roleIds: ['role-1'],
+    order: 10,
     column: 'left',
     enabled: true,
   },

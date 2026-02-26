@@ -707,6 +707,7 @@ export function mapDbToPrevodka(row: any, polozky: PrevodkaPolozka[] = []): Prev
     pohodaOdeslano: row.pohoda_odeslano ?? false,
     pohodaCisloDokladu: row.pohoda_cislo_dokladu ?? null,
     pohodaChyba: row.pohoda_chyba ?? null,
+    pohodaOdeslanoAt: row.pohoda_odeslano_at ?? null,
     ukolId: row.ukol_id ?? null,
     polozky,
   };
@@ -730,6 +731,7 @@ export function mapPrevodkaToDb(p: Partial<Prevodka> & { id: string }): Record<s
   if (p.pohodaOdeslano !== undefined) row.pohoda_odeslano = p.pohodaOdeslano;
   if (p.pohodaCisloDokladu !== undefined) row.pohoda_cislo_dokladu = p.pohodaCisloDokladu;
   if (p.pohodaChyba !== undefined) row.pohoda_chyba = p.pohodaChyba;
+  if (p.pohodaOdeslanoAt !== undefined) row.pohoda_odeslano_at = p.pohodaOdeslanoAt;
   if (p.ukolId !== undefined) row.ukol_id = p.ukolId;
   return row;
 }

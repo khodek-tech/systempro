@@ -15,6 +15,7 @@ import { usePohodaStore } from '@/features/pohoda/pohoda-store';
 import { useMotivationStore } from '@/features/motivation/motivation-store';
 import { usePrevodkyStore } from '@/features/prevodky/prevodky-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 
@@ -53,6 +54,12 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, baseDelay = 1
  * After init: start Realtime subscriptions (polling handled by Vercel Cron Jobs).
  */
 async function initializeStores() {
+  // Phase 0: Ensure auth session is restored from cookies before any DB queries.
+  // Without this, createBrowserClient may not have the session ready yet,
+  // causing queries to run as 'anon' role and fail RLS checks.
+  const supabase = createClient();
+  await supabase.auth.getUser();
+
   // Phase 1: Core entities (no dependencies) — critical, retry
   await withRetry(() =>
     Promise.all([

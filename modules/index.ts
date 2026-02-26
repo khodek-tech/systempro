@@ -10,4 +10,5 @@ export { PresenceModule } from './PresenceModule';
 export { ChatModule } from './ChatModule';
 export { EmailModule } from './EmailModule';
 export { MotivationModule } from './MotivationModule';
+export { MotivationProductsModule } from './MotivationProductsModule';
 export { MODULE_REGISTRY, getModuleComponent } from './registry';
