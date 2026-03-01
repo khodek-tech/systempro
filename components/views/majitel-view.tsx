@@ -3,5 +3,5 @@
 import { RoleView } from './RoleView';
 
 export function MajitelView() {
-  return <RoleView showApprovalFullView showTasksFullView showChatFullView showEmailFullView showPresenceFullView />;
+  return <RoleView showAbsenceFullView showApprovalFullView showTasksFullView showChatFullView showEmailFullView showPresenceFullView />;
 }

@@ -10,6 +10,7 @@ import { AttendanceEditModal } from '@/components/admin-dashboard/AttendanceEdit
 import { AbsenceRequests } from '@/components/admin-dashboard/absence-requests';
 import { AdminSettingsView } from '@/components/admin-dashboard/settings/AdminSettingsView';
 import { ModuleRenderer } from '@/components/ModuleRenderer';
+import { AbsenceFullView } from '@/components/views/absence-full-view';
 import { ApprovalFullView } from '@/components/views/approval-full-view';
 import { TasksFullView } from '@/components/views/tasks-full-view';
 import { ChatFullView } from '@/components/views/chat-full-view';
@@ -57,7 +58,7 @@ export function AdminView() {
   } = useAdminStore();
   const { stores } = useStoresStore();
   const { users } = useUsersStore();
-  const { approvalViewMode } = useAbsenceStore();
+  const { approvalViewMode, absenceViewMode } = useAbsenceStore();
   const { tasksViewMode } = useTasksStore();
   const { chatViewMode } = useChatStore();
   const { emailViewMode } = useEmailStore();
@@ -108,6 +109,11 @@ export function AdminView() {
   // Fullscreen approval view nahrazuje celý obsah
   if (approvalViewMode === 'view') {
     return <ApprovalFullView />;
+  }
+
+  // Fullscreen absence view (žádost o absenci)
+  if (absenceViewMode === 'view') {
+    return <AbsenceFullView />;
   }
 
   // Fullscreen presence view

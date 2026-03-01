@@ -7,6 +7,14 @@ import { useStoresStore } from './stores-store';
 import { STORAGE_KEYS } from '@/lib/constants';
 import { getAdminRoleId } from './store-helpers';
 
+// Role types that require physical store presence and need store selector
+const STORE_BOUND_ROLE_TYPES: string[] = [
+  'prodavac',
+  'skladnik',
+  'vedouci-sklad',
+  'vedouci-velkoobchod',
+];
+
 // Helpers to get data from other stores
 const getUsers = () => useUsersStore.getState().users;
 const getRoles = () => useRolesStore.getState().roles;
@@ -148,15 +156,21 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const newRole = getActiveRole();
 
     if (newRole) {
-      const { currentUser: newCurrentUser } = get();
-      if (newCurrentUser && newCurrentUser.storeIds.length > 0) {
-        const stores = getAvailableStores();
-        if (stores.length > 0) {
-          setWorkplace('store', stores[0].id, stores[0].name, true);
+      // Only set store-based workplace for store-bound roles
+      if (STORE_BOUND_ROLE_TYPES.includes(newRole.type)) {
+        const { currentUser: newCurrentUser } = get();
+        if (newCurrentUser && newCurrentUser.storeIds.length > 0) {
+          const stores = getAvailableStores();
+          if (stores.length > 0) {
+            setWorkplace('store', stores[0].id, stores[0].name, true);
+          } else {
+            setWorkplace('store', '', 'Bez prodejny', false);
+          }
         } else {
-          setWorkplace('store', '', 'Bez prodejny', false);
+          setWorkplace('role', newRole.id, newRole.name, false);
         }
       } else {
+        // Standalone role — workplace is the role itself
         setWorkplace('role', newRole.id, newRole.name, false);
       }
     }
@@ -180,16 +194,22 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const roles = get().getAvailableRoles();
     const role = roles.find((r) => r.id === roleId);
     if (role) {
-      const { currentUser: cu } = get();
-      if (cu && cu.storeIds.length > 0) {
-        const stores = get().getAvailableStores();
-        if (stores.length > 0) {
-          const store = stores[0];
-          setWorkplace('store', store.id, store.name, true);
+      // Only set store-based workplace for store-bound roles
+      if (STORE_BOUND_ROLE_TYPES.includes(role.type)) {
+        const { currentUser: cu } = get();
+        if (cu && cu.storeIds.length > 0) {
+          const stores = get().getAvailableStores();
+          if (stores.length > 0) {
+            const store = stores[0];
+            setWorkplace('store', store.id, store.name, true);
+          } else {
+            setWorkplace('store', '', 'Bez prodejny', false);
+          }
         } else {
-          setWorkplace('store', '', 'Bez prodejny', false);
+          setWorkplace('role', role.id, role.name, false);
         }
       } else {
+        // Standalone role — workplace is the role itself
         setWorkplace('role', role.id, role.name, false);
       }
     }
@@ -203,7 +223,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const role = get().getActiveRole();
     if (!role) return;
 
-    if (currentUser && currentUser.storeIds.length > 0) {
+    // Only set store-based workplace for store-bound roles
+    if (STORE_BOUND_ROLE_TYPES.includes(role.type) && currentUser && currentUser.storeIds.length > 0) {
       const stores = get().getAvailableStores();
       if (stores.length > 0) {
         const store = stores.find((s) => s.id === activeStoreId) || stores[0];
@@ -254,7 +275,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     const { currentUser, activeRoleId } = get();
     if (!currentUser || !activeRoleId) return false;
 
-    // Users with multiple stores need store selection
+    // Only store-bound roles need store selection
+    const activeRole = get().getActiveRole();
+    if (!activeRole || !STORE_BOUND_ROLE_TYPES.includes(activeRole.type)) return false;
+
+    // Users with multiple stores and store-bound role need store selection
     return currentUser.storeIds.length > 1;
   },
 
