@@ -5,7 +5,21 @@ import { useAuthStore } from '@/core/stores/auth-store';
 import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
-import { formatCzechDate } from '@/shared/utils';
+import { formatCzechDate, parseCzechDate } from '@/shared/utils';
+
+/**
+ * Returns the end date (inclusive) for the current collection period.
+ * - Day 1-15: end date = last day of previous month
+ * - Day 16-31: end date = 15th of current month
+ */
+function getCollectionEndDate(): Date {
+  const now = new Date();
+  if (now.getDate() >= 16) {
+    return new Date(now.getFullYear(), now.getMonth(), 15);
+  }
+  // Day 0 of current month = last day of previous month
+  return new Date(now.getFullYear(), now.getMonth(), 0);
+}
 
 const createEmptyRow = (): ExtraRow => ({
   id: crypto.randomUUID(),
@@ -61,20 +75,24 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
   _loaded: false,
   _loading: false,
 
-  // Fetch uncollected cash from dochazka table
+  // Fetch uncollected cash from dochazka table (filtered by collection period)
   fetchCashToCollect: async (storeId: string) => {
     set({ _loading: true });
     const supabase = createClient();
     const { data, error } = await supabase
       .from('dochazka')
-      .select('hotovost, pohyby, vybrano')
+      .select('datum, hotovost, pohyby, vybrano')
       .eq('id_pracoviste', storeId)
       .or('vybrano.eq.false,vybrano.is.null');
 
     if (!error && data) {
+      const endDate = getCollectionEndDate();
       let total = 0;
       data.forEach((row) => {
-        total += (row.hotovost ?? 0) + (parseInt(row.pohyby) || 0);
+        const rowDate = parseCzechDate(row.datum);
+        if (rowDate && rowDate <= endDate) {
+          total += (row.hotovost ?? 0) + (parseInt(row.pohyby) || 0);
+        }
       });
       set({ cashToCollect: total, _loaded: true, _loading: false });
     } else {
@@ -314,11 +332,40 @@ export const useSalesStore = create<SalesState & SalesActions>((set, get) => ({
     const vybranoValue = `${driverName.trim()} - ${datum}`;
 
     const supabase = createClient();
+
+    // Step 1: Fetch uncollected record IDs within the collection period
+    const { data: rows, error: fetchError } = await supabase
+      .from('dochazka')
+      .select('id, datum')
+      .eq('id_pracoviste', storeId)
+      .or('vybrano.eq.false,vybrano.is.null');
+
+    if (fetchError) {
+      logger.error('Failed to fetch records for collection');
+      toast.error('Nepodařilo se zaznamenat odvod.');
+      return { success: false, error: 'Chyba při načítání záznamů.' };
+    }
+
+    // Step 2: Filter by date in JavaScript
+    const endDate = getCollectionEndDate();
+    const idsToUpdate = (rows ?? [])
+      .filter((row) => {
+        const rowDate = parseCzechDate(row.datum);
+        return rowDate && rowDate <= endDate;
+      })
+      .map((row) => row.id);
+
+    if (idsToUpdate.length === 0) {
+      set({ cashToCollect: 0 });
+      toast.success('Hotovost odevzdána.');
+      return { success: true };
+    }
+
+    // Step 3: Update only the filtered records by their IDs
     const { error } = await supabase
       .from('dochazka')
       .update({ vybrano: vybranoValue })
-      .eq('id_pracoviste', storeId)
-      .or('vybrano.eq.false,vybrano.is.null');
+      .in('id', idsToUpdate);
 
     if (error) {
       logger.error('Failed to update collection in DB');

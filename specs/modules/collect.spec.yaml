@@ -47,10 +47,22 @@ features:
     description: Zaznamenání odvodu hotovosti do DB
     acceptance_criteria:
       - Povinné jméno řidiče
-      - UPDATE dochazka SET vybrano = '{řidič} - {datum}' WHERE nevybráno
+      - Načtení ID záznamů z dochazka WHERE nevybráno
+      - Filtrování záznamů v JS podle parseCzechDate(datum) <= collectionEndDate
+      - UPDATE dochazka SET vybrano = '{řidič} - {datum}' WHERE id IN (filtrované IDs)
       - Reset cashToCollect na 0
       - Reset driverName
       - Toast potvrzení / error
+
+  - id: date_filtering
+    name: Datové filtrování podle období
+    description: Odvody a stav pokladny respektují aktuální období
+    acceptance_criteria:
+      - Den 1-15 → sbírá záznamy do konce předchozího měsíce
+      - Den 16-31 → sbírá záznamy do 15. aktuálního měsíce
+      - Záznamy z budoucího období se nezapočítávají
+      - parseCzechDate() bezpečně parsuje formát "D. M. YYYY"
+      - Neplatné datumy se přeskakují (nezapočítávají)
 
 notifications:
   badge:
@@ -139,6 +151,23 @@ scenarios:
     expected:
       - Období odpovídá první polovině aktuálního měsíce
 
+  - id: COLL-007
+    name: Odvod respektuje období - nezapočítá budoucí záznamy
+    preconditions:
+      - Dnes je 1. března 2026 (období = "16. - Konec min. měsíce")
+      - V DB existují nevybrané záznamy z 16.-28. února
+      - V DB existuje nevybraný záznam z 1. března
+    steps:
+      - Otevřu modul Odvody
+      - Vidím částku POUZE za záznamy z 16.-28. února
+      - Záznam z 1. března NENÍ započítán
+      - Provedu odvod
+      - V DB se aktualizují POUZE záznamy z 16.-28. února
+      - Záznam z 1. března zůstává vybrano=null
+    expected:
+      - Částka k odvodu zahrnuje pouze záznamy spadající do období
+      - Budoucí záznamy nejsou ovlivněny odvodem
+
 edge_cases:
   - id: COLL-E001
     name: Více odvodů za den
@@ -170,3 +199,10 @@ edge_cases:
       Částečně vyplněný formulář se neukládá.
       driverName se resetuje při dalším otevření.
       cashToCollect zůstává nezměněný.
+
+  - id: COLL-E005
+    name: Záznam s neplatným datem
+    description: V dochazka existuje záznam s poškozeným/prázdným datem
+    expected: >
+      Záznam s neplatným datem se přeskočí (nezapočítá se do odvodu,
+      neaktualizuje se při odvodu). parseCzechDate() vrátí null.
