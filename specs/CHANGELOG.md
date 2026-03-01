@@ -2,6 +2,143 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.22.1] - 2026-03-01
+
+### Opraveno
+
+#### Odvody - datové filtrování (bugfix)
+- **parseCzechDate()**: Nová utility funkce pro parsování českého datového formátu "D. M. YYYY"
+- **fetchCashToCollect()**: Filtruje záznamy podle období (pouze záznamy do konce aktuálního collection period)
+- **submitCollection()**: Aktualizuje pouze záznamy spadající do aktuálního období (fetch IDs → filter → update by IDs)
+- **Bug**: Na 1. března se do částky k odvodu za období "16. - Konec února" započítaly i tržby z 1. března
+
+## [2.22.0] - 2026-03-01
+
+### Přidáno
+
+#### UX vylepšení e-shopu (Fáze 11.5)
+- **Profil zákazníka**: Editace jména, příjmení a telefonu na stránce `/ucet` s inline formulářem
+- **Změna hesla**: Formulář pro změnu hesla na stránce `/ucet` (současné heslo + nové + potvrzení)
+- **Zapomenuté heslo**: Nová stránka `/ucet/zapomenute-heslo` — odešle reset email přes Resend
+- **Reset hesla**: Nová stránka `/ucet/reset-hesla?token=...` — nastavení nového hesla z emailového odkazu
+- **Checkout validace**: Email regex, PSČ formát (5 číslic), vizuální chybové zprávy per pole
+- **Dynamická doprava zdarma**: Header načítá `zdarma_od` threshold z DB místo hardcoded hodnoty
+- **Edge Function `customer-auth` v2**: Nové akce `update-profile`, `change-password`, `request-reset`, `reset-password`
+
+## [2.21.0] - 2026-03-01
+
+### Přidáno
+
+#### Pohoda export objednávek (Fáze 11.4)
+- **API route `/api/pohoda/export-invoice`**: Export e-shop objednávek jako vydané faktury do Pohoda mServer
+- **Pohoda XML formát**: `inv:invoice` s `invoiceHeader` + `invoiceDetail` + doprava/platba jako řádky
+- **UI tlačítko v OrderDetail**: Export jednotlivé objednávky do Pohody
+- **Bulk export v OrderList**: Hromadný export vybraných objednávek
+- **Pohoda badge**: Zelený badge "Pohoda" u exportovaných objednávek
+
+## [2.20.0] - 2026-03-01
+
+### Přidáno
+
+#### Admin E-shop Dashboard + Email notifikace + Wishlist (Fáze 11.1-11.3)
+- **Wishlist DB sync**: Tabulka `wishlist`, Edge Function `wishlist-sync`, merge localStorage↔DB při přihlášení
+- **Email notifikace**: Edge Function `send-order-email` s Resend API, šablony pro potvrzení/změnu stavu/odeslání
+- **Tabulka `email_log_eshop`**: Log odeslaných emailů s typem a statusem
+- **Admin Dashboard modul**: KPI karty, tržby graf, koláč stavů, top produkty, nízký sklad
+- **PostgreSQL RPC funkce**: `eshop_dashboard_stats`, `eshop_revenue_chart`, `eshop_top_products`, `eshop_low_stock`
+- **Dashboard filtrování**: Per e-shop, datumové období (dnes/týden/měsíc/rok)
+- **Konfigurace odesílatele**: Sloupce `odesilatel_email` a `odesilatel_jmeno` v tabulce `eshopy`
+
+## [2.19.0] - 2026-03-01
+
+### Změněno
+
+#### Produkční příprava a optimalizace (Fáze 9)
+- **AI model upgrade**: Edge function `generate-ai-text` přepnuta z `claude-haiku-4-5-20251001` na `claude-sonnet-4-5-20250514` pro vyšší kvalitu textů
+- **SEO vylepšení**:
+  - robots.txt: přidán `Disallow: /pokladna/` a `Disallow: /ucet/` (neindexovat checkout a účet)
+  - Layout: přidány default Open Graph tagy (`siteName`, `locale: cs_CZ`, fallback logo)
+  - Kategorie: přidány OG tagy a BreadcrumbList JSON-LD
+  - Produkt: přidán BreadcrumbList JSON-LD strukturovaná data
+- **Performance**:
+  - HeroBanner: nahrazen CSS `background-image` za `next/image` s `priority` (LCP optimalizace)
+  - ProductCarousel: opraven N+1 query problém (batch fetch obrázků jedním dotazem)
+  - Header: kontaktní údaje skryté na mobilu (prevence overflow)
+- **Error handling**:
+  - Nový `app/error.tsx` - globální error boundary s tlačítkem "Zkusit znovu"
+  - Nový `app/loading.tsx` - globální skeleton loading state
+  - Loading states pro produkt detail, kategorii a blog post
+- **RLS audit**: Všech 25+ tabulek má RLS zapnuté, žádné `rls_disabled` nebo `UNRESTRICTED` varování
+
+## [2.18.0] - 2026-03-01
+
+### Přidáno
+
+#### E-shop Page Builder Frontend + SEO vylepšení (Fáze 7)
+- **Frontend bloky**: 5 nových komponent na eshop-frontend:
+  - `TextBlock.tsx` — HTML obsah s prose styly a zarovnáním
+  - `Banner.tsx` — oznamovací banner s vlastními barvami a odkazem
+  - `FAQ.tsx` — accordion FAQ sekce (client component)
+  - `Reviews.tsx` — zákaznické recenze s hvězdičkami (1-5)
+  - `ProductCarousel.tsx` + `ProductCarouselClient.tsx` — horizontální karusel produktů s autoplay
+- **BlockRenderer.tsx**: Všech 10 typů bloků nyní plně renderováno (předtím jen 5)
+- **@tailwindcss/typography**: Nainstalován a aktivován pro prose třídy (bug fix)
+- **SEO vylepšení**:
+  - Canonical URL na všech stránkách (metadataBase + alternates.canonical)
+  - Twitter card meta tagy (summary_large_image) na layout, produkt, blog
+  - Shop-specific sitemap (filtr přes eshop_produkty, eshop_kategorie, blog_clanky per shop)
+  - AggregateOffer JSON-LD pro produkty s variantami (cenový rozsah lowPrice/highPrice)
+  - FAQPage JSON-LD schema pro FAQ bloky na homepage
+- **Specifikace**: `specs/modules/eshop-page-builder.spec.yaml`
+
+## [2.17.0] - 2026-03-01
+
+### Přidáno
+
+#### E-shop AI Přetextování (Fáze 9)
+- **Edge Function `generate-ai-text`**: Volá Claude API (claude-sonnet-4-5-20250514) pro generování textů
+  - Produkty: krátký popis, dlouhý popis (HTML), SEO title, SEO description
+  - Blog články: krátký popis, obsah (HTML), SEO title, SEO description
+  - Per-shop nastavení: tón hlasu, cílová skupina, AI instrukce
+  - Retry s exponential backoff při rate limiting (429)
+  - JSON parsing fallback (code block extraction, regex)
+- **DB tabulky**: `ai_konfigurace` (API klíč), `ai_log` (audit trail generování)
+- **AiPreviewModal**: Side-by-side porovnání původní/vygenerované texty
+  - Checkboxy pro výběr polí k aplikaci
+  - Editovatelné vygenerované texty před schválením
+  - Zobrazení usage (tokeny, čas)
+- **Produkty**: Tlačítko "AI Přetextovat" v product detail modalu
+  - Hromadné AI generování s checkboxy + progress bar
+  - Filtr podle AI statusu v toolbaru
+- **Blog**: Tlačítko "AI Přetextovat" v blog editoru (sidebar)
+  - AI status badge v seznamu článků
+- **Admin UI**: AI záložka v E-shop modulu pro správu Anthropic API klíče
+  - Maskovaný vstup, indikátor stavu (nakonfigurováno/chybí)
+- **AI status**: ceka → generuje → vygenerovano → schvaleno (workflow)
+
+## [2.16.0] - 2026-03-01
+
+### Přidáno
+
+#### E-shop Blog: Kompletní blog modul (Fáze 8)
+- **Admin modul**: Nový modul `EshopBlogModule` pro správu blogových článků per e-shop
+  - Zustand store `eshop-blog-store.ts` s CRUD, realtime, image upload
+  - TipTap WYSIWYG editor s toolbarem (bold/italic/headings/lists/images/links)
+  - Dvousloupcový formulář: obsah + sidebar (SEO, tagy, obrázek, stav)
+  - Tag management s autocomplete z existujících tagů
+  - Drag & drop upload obrázků do Supabase Storage
+  - Náhled článku s DOMPurify sanitizací
+  - Filtry: search + stav (vše/koncepty/plánované/publikované)
+- **Plánované publikování**: Stav 'planovany' + pg_cron job (každé 2 min) auto-publikuje
+- **Frontend vylepšení** (eshop-frontend):
+  - `/blog/tag/[tag]` stránka s paginací
+  - JSON-LD ArticleSchema (BlogPosting) na detailu článku
+  - RSS feed na `/blog/feed.xml`
+  - Sekce "Související články" na detailu
+  - Tagy jako klikatelné odkazy
+- **Nové soubory**: EshopBlogModule, eshop-blog-full-view, BlogPostList, BlogPostFormModal, BlogPostPreviewModal, BlogRichTextEditor, BlogTagInput, BlogImageUpload, eshop-blog-store
+- **DB**: pg_cron job `publish-scheduled-blog-posts`, funkce `publish_scheduled_blog_posts()`
+
 ## [2.15.0] - 2026-03-01
 
 ### Změněno

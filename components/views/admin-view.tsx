@@ -31,6 +31,18 @@ import { useManualStore } from '@/stores/manual-store';
 import { usePresenceStore } from '@/stores/presence-store';
 import { usePrevodkyStore } from '@/stores/prevodky-store';
 import { PickingView } from '@/components/prevodky/PickingView';
+import { EshopProduktyFullView } from '@/components/views/eshop-produkty-full-view';
+import { EshopEshopyFullView } from '@/components/views/eshop-eshopy-full-view';
+import { EshopObjednavkyFullView } from '@/components/views/eshop-objednavky-full-view';
+import { useEshopProduktyStore } from '@/stores/eshop-produkty-store';
+import { useEshopEshopyStore } from '@/stores/eshop-eshopy-store';
+import { useEshopObjednavkyStore } from '@/stores/eshop-objednavky-store';
+import { EshopPageBuilderFullView } from '@/components/views/eshop-page-builder-full-view';
+import { EshopBlogFullView } from '@/components/views/eshop-blog-full-view';
+import { EshopDashboardFullView } from '@/components/views/eshop-dashboard-full-view';
+import { useEshopPageBuilderStore } from '@/stores/eshop-page-builder-store';
+import { useEshopBlogStore } from '@/stores/eshop-blog-store';
+import { useEshopDashboardStore } from '@/stores/eshop-dashboard-store';
 import { formatBytes } from '@/lib/supabase/storage';
 
 export function AdminView() {
@@ -65,6 +77,12 @@ export function AdminView() {
   const { manualViewMode } = useManualStore();
   const { presenceViewMode } = usePresenceStore();
   const { pickingPrevodkaId } = usePrevodkyStore();
+  const { produktyViewMode } = useEshopProduktyStore();
+  const { eshopyViewMode } = useEshopEshopyStore();
+  const { objednavkyViewMode } = useEshopObjednavkyStore();
+  const { pageBuilderViewMode } = useEshopPageBuilderStore();
+  const { blogViewMode } = useEshopBlogStore();
+  const { dashboardViewMode } = useEshopDashboardStore();
 
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
 
@@ -89,6 +107,36 @@ export function AdminView() {
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
     return <ManualFullView />;
+  }
+
+  // Fullscreen eshop dashboard view
+  if (dashboardViewMode === 'view') {
+    return <EshopDashboardFullView />;
+  }
+
+  // Fullscreen blog view
+  if (blogViewMode === 'view') {
+    return <EshopBlogFullView />;
+  }
+
+  // Fullscreen page builder view
+  if (pageBuilderViewMode === 'view') {
+    return <EshopPageBuilderFullView />;
+  }
+
+  // Fullscreen eshop objednavky view
+  if (objednavkyViewMode === 'view') {
+    return <EshopObjednavkyFullView />;
+  }
+
+  // Fullscreen eshop eshopy view
+  if (eshopyViewMode === 'view') {
+    return <EshopEshopyFullView />;
+  }
+
+  // Fullscreen eshop produkty view
+  if (produktyViewMode === 'view') {
+    return <EshopProduktyFullView />;
   }
 
   // Fullscreen email view nahrazuje celý obsah

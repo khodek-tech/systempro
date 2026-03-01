@@ -49,6 +49,12 @@ import { ChatModule } from './ChatModule';
 import { EmailModule } from './EmailModule';
 import { MotivationModule } from './MotivationModule';
 import { MotivationProductsModule } from './MotivationProductsModule';
+import { EshopProduktyModule } from './EshopProduktyModule';
+import { EshopEshopyModule } from './EshopEshopyModule';
+import { EshopObjednavkyModule } from './EshopObjednavkyModule';
+import { EshopPageBuilderModule } from './EshopPageBuilderModule';
+import { EshopBlogModule } from './EshopBlogModule';
+import { EshopDashboardModule } from './EshopDashboardModule';
 
 // Registry mapping component names to actual React components
 export const MODULE_REGISTRY: Record<string, ComponentType> = {
@@ -66,6 +72,12 @@ export const MODULE_REGISTRY: Record<string, ComponentType> = {
   EmailModule,
   MotivationModule,
   MotivationProductsModule,
+  EshopProduktyModule,
+  EshopEshopyModule,
+  EshopObjednavkyModule,
+  EshopPageBuilderModule,
+  EshopBlogModule,
+  EshopDashboardModule,
 };
 
 // Helper to get component by name

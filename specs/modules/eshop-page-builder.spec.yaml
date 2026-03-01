@@ -1,0 +1,160 @@
+# SYSTEM.PRO - E-shop Page Builder Module Specification
+# Modul pro spravu blokovych stranek e-shopu s drag & drop razenim
+
+module:
+  id: eshop-page-builder
+  name: E-shop Page Builder
+  description: Sprava blokovych stranek pro e-shopy s 10 typy bloku, drag & drop razenim a JSONB konfiguraci
+  component: EshopPageBuilderModule
+  store: useEshopPageBuilderStore
+  icon: LayoutGrid
+
+access:
+  roles:
+    - role-2  # Administrator
+    - role-5  # Obsluha e-shopu
+    - role-8  # Majitel
+
+  notes:
+    - Modul je dostupny pro vsechny role spravujici e-shop
+    - Kazdy e-shop ma vlastni sadu bloku pro kazdou stranku
+    - Bloky jsou serazeny dle poradi a filtrovany dle aktivni flagu
+
+data_model:
+  blockType:
+    id: integer
+    name: string  # nazev
+    slug: string  # unikatni identifikator (hero_banner, produkt_grid, ...)
+    description: string | null  # popis
+    defaultConfig: Record  # vychozi_konfigurace - JSONB
+    configSchema: Record  # schema_konfigurace - JSONB
+
+  pageBlock:
+    id: integer
+    shopId: integer  # eshop_id - FK na eshopy
+    page: string  # stranka (homepage, kategorie, ...)
+    pageId: integer | null  # stranka_id - pro non-homepage stranky
+    blockTypeId: integer  # blok_typ_id - FK na bloky_typy
+    config: Record  # konfigurace - JSONB block-specific config
+    order: integer  # poradi
+    active: boolean  # aktivni
+    createdAt: string  # vytvoreno
+    updatedAt: string  # aktualizovano
+
+features:
+  - id: block-list
+    name: Seznam bloku
+    description: Serazeny seznam bloku s drag & drop razenim
+    details:
+      - Per-shop a per-page filtrovani
+      - Vizualni karty s typem bloku, ikonou a stavem
+      - Drag & drop pro zmenu poradi (dnd-kit)
+      - Toggle aktivni/neaktivni
+      - Duplikace bloku jednim klikem
+      - Prazdny stav s moznosti pridat prvni blok
+
+  - id: block-editor
+    name: Editor bloku
+    description: Modalni editor s per-type formularovymi poli
+    details:
+      - Kazdy z 10 typu bloku ma vlastni formular v block-forms/
+      - JSONB konfigurace s ceskymi klici
+      - Fallback JSON editor pro neznamy typ
+
+  - id: block-types
+    name: 10 typu bloku
+    description: Dostupne typy page builder bloku
+    details:
+      - hero_banner - nadpis, podnadpis, obrazek, tlacitko, vyska (400/500/600)
+      - produkt_grid - nadpis, popis, pocet produktu (1-24)
+      - produkt_carousel - nadpis, pocet, autoplay, rychlost
+      - text_blok - obsah (HTML), zarovnani (left/center/right)
+      - kategorie_sekce - nadpis, kategorie IDs, pocet sloupcu
+      - newsletter - nadpis, popis, tlacitko text
+      - vyhody - polozky s ikonou (Lucide), nadpisem, popisem
+      - banner - text, odkaz, barva pozadi/textu (hex)
+      - faq - nadpis, polozky (otazka/odpoved)
+      - recenze - nadpis, polozky (jmeno/text/hodnoceni 1-5)
+
+  - id: frontend-rendering
+    name: Frontend renderovani
+    description: SSR renderovani bloku na eshop-frontend
+    details:
+      - BlockRenderer.tsx switch na blockType.slug pro vsech 10 typu
+      - Server components pro bloky s DB dotazy (produkt_grid, produkt_carousel, kategorie_sekce)
+      - Client components pro interaktivni bloky (faq accordion, newsletter form, carousel scroll)
+      - Pouze aktivni bloky se renderuji (filtrovano v DB dotazu)
+      - Serazeno dle poradi
+      - FAQ blok generuje FAQPage JSON-LD schema
+
+  - id: realtime-sync
+    name: Realtime synchronizace
+    description: Supabase Realtime pro stranky_bloky a bloky_typy
+    details:
+      - Zmeny na jednom klientu se propisi vsem
+      - Re-fetch pri kazde INSERT/UPDATE/DELETE zmene
+
+scenarios:
+  - id: create-block
+    name: Vytvoreni noveho bloku
+    steps:
+      - Uzivatel otevre modul Page Builder
+      - Vybere e-shop a stranku (homepage)
+      - Klikne Pridat blok
+      - Vybere typ bloku z pickeru (napr. Hero Banner)
+      - Vyplni konfiguraci ve formulari
+      - Klikne Ulozit
+    expected:
+      - Blok se vytvori v DB s poradi = max + 1
+      - Toast "Blok vytvoren"
+      - Blok se objevi na konci seznamu
+      - Na frontendu se renderuje po refreshi
+
+  - id: reorder-blocks
+    name: Zmena poradi bloku
+    steps:
+      - Uzivatel pretahne blok na novou pozici (drag & drop)
+    expected:
+      - Poradi vsech bloku se aktualizuje v DB
+      - UI se okamzite preusprada
+      - Frontend renderuje bloky v novem poradi
+
+  - id: toggle-active
+    name: Deaktivace/aktivace bloku
+    steps:
+      - Uzivatel klikne toggle u bloku
+    expected:
+      - Blok se prepne aktivni/neaktivni v DB
+      - Neaktivni blok se nerenderuje na frontendu
+      - V adminu je vizualne sedivy
+
+  - id: duplicate-block
+    name: Duplikace bloku
+    steps:
+      - Uzivatel klikne Duplikovat u existujiciho bloku
+    expected:
+      - Vytvori se kopie se stejnou konfiguraci
+      - Nova kopie ma poradi = max + 1
+      - Toast "Blok duplikovan"
+
+  - id: faq-schema
+    name: FAQ JSON-LD schema
+    steps:
+      - Admin prida FAQ blok s otazkami na homepage
+      - Uzivatel otevre homepage na frontendu
+    expected:
+      - HTML obsahuje script type=application/ld+json s FAQPage schema
+      - Google Rich Results test projde
+
+edge_cases:
+  - id: no-shop-selected
+    description: Zadny e-shop neni vybran
+    expected: Placeholder "Vyberte e-shop pro spravu bloku"
+
+  - id: empty-page
+    description: Stranka nema zadne bloky
+    expected: Prazdny stav s moznosti pridat prvni blok
+
+  - id: unknown-block-type
+    description: Blok odkazuje na neexistujici typ
+    expected: Frontend vraci null (nezobrazi nic), admin zobrazuje JSON fallback editor

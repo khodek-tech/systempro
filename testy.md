@@ -28,6 +28,12 @@
 19. [Motivace prodejny](#19-motivace-prodejny)
 20. [Převodky (picking + EAN)](#20-převodky-picking--ean)
 21. [Produkty v motivaci](#21-produkty-v-motivaci)
+22. [E-shop Blog](#22-e-shop-blog)
+23. [AI Přetextování (E-shop)](#23-ai-přetextování-e-shop)
+24. [E-shop Page Builder](#24-e-shop-page-builder)
+25. [E-shop Dashboard](#25-e-shop-dashboard)
+26. [E-shop Pohoda Export](#26-e-shop-pohoda-export)
+27. [E-shop UX — Profil a heslo](#27-e-shop-ux--profil-a-heslo)
 
 ---
 
@@ -501,6 +507,17 @@
 | 1 | Nechat jméno prázdné | Jméno prázdné |
 | 2 | Kliknout "Předat hotovost" | Chyba: "Vyplňte jméno řidiče!" |
 
+#### COLL-007: Odvod respektuje období - nezapočítá budoucí záznamy
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Dnes je 1. březen (období "16. - Konec min. měsíce") | Období zobrazeno |
+| 2 | V DB existují záznamy z 16.-28. února + 1. března | Data existují |
+| 3 | Otevřít modul Odvody | Částka = pouze únorové záznamy |
+| 4 | Záznam z 1. března NENÍ v částce | Budoucí období vyloučeno |
+| 5 | Provést odvod | Pouze únorové záznamy aktualizovány |
+| 6 | Záznam z 1. března zůstává vybrano=null | Záznam nedotčen |
+
 ---
 
 ## 7. Stav pokladny
@@ -527,6 +544,7 @@
 | 2 | Refresh stránky (F5) | cashToCollect = 5000 (nenuluje se) |
 | 3 | Zapsat další tržbu (3000 Kč) | cashToCollect = 8000 (kumuluje) |
 | 4 | Přepnout prodejnu a zpět | Data se načtou znovu z DB |
+| 5 | Ověřit, že záznamy z budoucího období se nezapočítávají | Pouze záznamy do konce aktuálního období |
 
 ---
 
@@ -1428,4 +1446,286 @@
 
 ---
 
-*Poslední aktualizace: 2026-02-26*
+## 22. E-shop Blog
+
+> Modul: `eshop-blog` | Store: `eshop-blog-store.ts` | Spec: `eshop-blog.spec.yaml`
+> Role: Administrátor, Obsluha e-shopu, Majitel
+
+### Scénář BLOG-001: Vytvoření nového článku
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Přihlásit se jako Admin | Dashboard s modulem "E-shop Blog" |
+| 2 | Kliknout na modul "E-shop Blog" | Otevře se fullscreen view s e-shop selektorem |
+| 3 | Vybrat e-shop | Zobrazí se seznam článků (prázdný pro nový e-shop) |
+| 4 | Kliknout "Nový článek" | Otevře se formulář s WYSIWYG editorem |
+| 5 | Vyplnit název | Slug se automaticky vygeneruje |
+| 6 | Napsat obsah v editoru (tučné, nadpisy, seznam) | HTML formátování funguje |
+| 7 | Nahrát náhledový obrázek | Obrázek se nahraje do Supabase Storage |
+| 8 | Přidat tagy | Tagy se zobrazí jako badges |
+| 9 | Vyplnit SEO title a description | Pole se uloží |
+| 10 | Kliknout "Uložit" | Toast "Článek vytvořen", modal se zavře, článek v seznamu |
+
+### Scénář BLOG-002: Publikování článku
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | U konceptu kliknout na ikonu publikování | Stav se změní na "Publikováno" |
+| 2 | Toast "Článek publikován" | Datum publikování se nastaví |
+| 3 | Na frontendu navštívit /blog | Článek je viditelný |
+
+### Scénář BLOG-003: Plánované publikování
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Otevřít formulář článku | Formulář se otevře |
+| 2 | Vybrat stav "Naplánovat" | Zobrazí se datetime-local input |
+| 3 | Nastavit datum v budoucnosti | Datum se validuje (min = teď) |
+| 4 | Uložit | Toast "Článek naplánován", stav = "Plánováno" |
+| 5 | Počkat na datum (pg_cron každé 2 min) | Stav se automaticky změní na "Publikováno" |
+
+### Scénář BLOG-004: Náhled článku
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Kliknout na ikonu oka u článku | Otevře se náhled s prose styly |
+| 2 | Zobrazí se obrázek, datum, tagy, obsah | HTML je sanitizováno přes DOMPurify |
+
+### Scénář BLOG-005: Vrácení do konceptu
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | U publikovaného článku kliknout "Vrátit do konceptu" | Stav se změní na "Koncept" |
+| 2 | Na frontendu /blog | Článek zmizí |
+
+### Edge cases
+
+| ID | Situace | Očekávané chování |
+|----|---------|-------------------|
+| BLOG-E001 | Duplicitní slug v rámci e-shopu | Toast "Článek s tímto slugem již existuje" |
+| BLOG-E002 | Žádný e-shop nevybrán | Placeholder "Vyberte e-shop" |
+| BLOG-E003 | Prázdný blog | Placeholder "Žádné články" s možností vytvořit |
+| BLOG-E004 | Inline obrázek v editoru | Upload do Storage, vložení jako `<img>` |
+| BLOG-E005 | Realtime aktualizace | Změna jiným uživatelem se projeví automaticky |
+
+---
+
+## 23. AI Přetextování (E-shop)
+
+> Modul: `eshop-eshopy` + `eshop-blog` | Edge Function: `generate-ai-text` | Spec: `eshop-ai.spec.yaml`
+> Role: Administrátor, Obsluha e-shopu, Majitel
+
+### Scénář AI-001: Konfigurace API klíče
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Přihlásit se jako Admin | Dashboard s modulem E-shop |
+| 2 | Otevřít modul E-shop → záložka "AI Nastavení" | Panel s nastavením API klíče |
+| 3 | Zkontrolovat stav | Oranžový badge "Klíč chybí" |
+| 4 | Zadat Anthropic API klíč | Klíč v maskovaném inputu |
+| 5 | Kliknout "Uložit klíč" | Toast "API klíč uložen", zelený badge "Nakonfigurováno" |
+| 6 | Reload stránky | Klíč se načte z DB, badge zůstane zelený |
+
+### Scénář AI-002: AI přetextování produktu
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Otevřít detail produktu v e-shopu | Detail modal |
+| 2 | Kliknout fialové tlačítko "AI Přetextovat" | Spinner na tlačítku, AI status → "Generuje" |
+| 3 | Počkat na dokončení (~5–15s) | AiPreviewModal se otevře |
+| 4 | Vidět side-by-side porovnání | Originální (vlevo) vs. vygenerované (vpravo) |
+| 5 | Pole: Krátký popis, Dlouhý popis, SEO Title, SEO Description | Všechna pole mají checkboxy |
+| 6 | Odškrtnout pole, které nechceme | Checkbox se odškrtne |
+| 7 | Upravit vygenerovaný text | Text je editovatelný |
+| 8 | Kliknout "Přijmout vybrané" | Vybraná pole se uloží, AI status → "Schváleno" |
+
+### Scénář AI-003: Odmítnutí AI textů
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Po vygenerování kliknout "Odmítnout" | Modal se zavře |
+| 2 | Zkontrolovat AI status produktu | Zůstane "Vygenerováno" (texty se neztratí) |
+| 3 | Originální texty produktu | Nezměněny |
+
+### Scénář AI-004: Hromadné AI přetextování
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | V tabulce produktů zaškrtnout 3+ produkty | Checkboxy vybrány, toolbar se zobrazí |
+| 2 | Kliknout "AI Přetextovat" v toolbar | Progress modal se otevře |
+| 3 | Sledovat progress bar | "Zpracovávám 1/3...", "2/3...", "3/3..." |
+| 4 | Dokončení | Modal zobrazí souhrn (úspěšné / chyby) |
+| 5 | Kliknout "Zavřít" | AI status produktů → "Vygenerováno" |
+| 6 | Otevřít detail produktu | Lze otevřít AiPreviewModal a přijmout/odmítnout |
+
+### Scénář AI-005: Filtrování podle AI statusu
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | V toolbaru produktů otevřít dropdown "Stav AI" | Možnosti: Vše, Čeká, Generuje, Hotovo, Schváleno |
+| 2 | Vybrat "Hotovo" | Zobrazí se pouze produkty s ai_stav = vygenerovano |
+| 3 | Vybrat "Vše" | Zobrazí se všechny produkty |
+
+### Scénář AI-006: AI přetextování blog článku
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Otevřít existující blog článek k úpravě | Formulář s editorem |
+| 2 | V sekci "AI Generování" kliknout "Generovat AI text" | Spinner, AI status → "Generuje" |
+| 3 | Počkat na dokončení | AiPreviewModal se otevře |
+| 4 | Pole: Krátký popis, Obsah (HTML), SEO Title, SEO Description | Side-by-side porovnání |
+| 5 | Kliknout "Přijmout vybrané" | Texty se naplní do formuláře (neuloží se rovnou) |
+| 6 | Zkontrolovat formulář | Přijaté texty ve formulářových polích |
+| 7 | Kliknout "Uložit" | Článek se uloží s AI texty |
+
+### Scénář AI-007: AI badge v seznamu blogů
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Otevřít seznam blog článků | Tabulka se sloupcem "AI" |
+| 2 | Článek s ai_stav = "ceka" | Oranžový badge "Čeká" |
+| 3 | Článek s ai_stav = "generuje" | Modrý badge "Generuje" |
+| 4 | Článek s ai_stav = "vygenerovano" | Zelený badge "Hotovo" |
+| 5 | Článek s ai_stav = "schvaleno" | Tmavě zelený badge "Schváleno" |
+
+### Scénář AI-008: E-shop nastavení tónu a cílovky
+
+| Krok | Akce | Očekávaný výsledek |
+|------|------|-------------------|
+| 1 | Otevřít nastavení e-shopu (EshopFormModal) | Formulář e-shopu |
+| 2 | Nastavit tón hlasu: "přátelský" | Hodnota uložena |
+| 3 | Nastavit cílovou skupinu: "mladí vapéři 18–35" | Hodnota uložena |
+| 4 | Zadat AI instrukce: "Používej neformální tón..." | Hodnota uložena |
+| 5 | Uložit e-shop | Toast potvrzení |
+| 6 | Spustit AI přetextování produktu | Vygenerovaný text reflektuje tón a cílovku |
+
+### Edge cases
+
+| ID | Situace | Očekávané chování |
+|----|---------|-------------------|
+| AI-E001 | API klíč chybí | Toast "API klíč není nastaven" při pokusu o generování |
+| AI-E002 | Neplatný API klíč | Toast s chybovou zprávou od Anthropic API |
+| AI-E003 | Rate limit (429) | Edge Function retry s exponential backoff (max 3x) |
+| AI-E004 | Timeout Claude API | Chyba po 30s, AI status se vrátí na "Čeká" |
+| AI-E005 | Nový článek (neuložený) | Tlačítko AI se nezobrazuje (článek musí existovat) |
+| AI-E006 | Produkt bez názvu | Generování selže s validační chybou |
+| AI-E007 | Claude vrátí nevalidní JSON | Fallback parsing (code block → regex), pokud selže → chyba |
+| AI-E008 | Hromadné generování s chybami | Progress modal zobrazí počet chyb, úspěšné se dokončí |
+| AI-E009 | Dva uživatelé generují současně | Každý dostane vlastní výsledek, ai_log zaznamenává oba |
+
+---
+
+## 24. E-shop Page Builder
+
+### Přístup
+- Administrator, Obsluha e-shopu, Majitel
+
+### Základní scénáře
+
+| ID | Scénář | Kroky | Očekávaný výsledek |
+|----|---------|-------|-------------------|
+| PB-001 | Vytvoření bloku | Otevřít Page Builder → vybrat e-shop → Přidat blok → vybrat typ (Hero Banner) → vyplnit nadpis + obrázek → Uložit | Blok se vytvoří v DB, toast "Blok vytvořen", blok se objeví na konci seznamu |
+| PB-002 | Drag & drop řazení | Přetáhnout blok na novou pozici | Pořadí všech bloků se aktualizuje v DB, UI se přeuspořádá |
+| PB-003 | Toggle aktivní/neaktivní | Kliknout toggle u bloku | Blok se přepne, neaktivní blok je šedivý v adminu a neviditelný na frontendu |
+| PB-004 | Duplikace bloku | Kliknout Duplikovat | Kopie se stejnou konfigurací, pořadí = max + 1 |
+| PB-005 | Úprava bloku | Kliknout Upravit → změnit config → Uložit | Konfigurace aktualizována v DB, toast potvrzení |
+| PB-006 | Smazání bloku | Kliknout Smazat → potvrdit | Blok odstraněn z DB a seznamu |
+
+### Frontend rendering
+
+| ID | Scénář | Kroky | Očekávaný výsledek |
+|----|---------|-------|-------------------|
+| PB-F001 | Hero Banner | Přidat hero_banner blok s nadpisem + obrázkem | Na homepage se zobrazí banner s gradient overlay a CTA tlačítkem |
+| PB-F002 | Produkt Grid | Přidat produkt_grid blok (8 produktů) | Grid 2-4 sloupce s produktovými kartami |
+| PB-F003 | Produkt Carousel | Přidat produkt_carousel blok s autoplay | Horizontálně scrollovatelný pás produktů se šipkami |
+| PB-F004 | Textový blok | Přidat text_blok s HTML obsahem | Prose stylovaný HTML obsah se správným zarovnáním |
+| PB-F005 | Kategorie sekce | Přidat kategorie_sekce blok | Dlaždice top-level kategorií |
+| PB-F006 | Newsletter | Přidat newsletter blok | Přihlašovací formulář s nadpisem a popisem |
+| PB-F007 | Výhody | Přidat vyhody blok se 3 položkami | Ikony s textem v gridu |
+| PB-F008 | Banner | Přidat banner blok s modrou barvou | Oznamovací strip s custom barvami a odkazem |
+| PB-F009 | FAQ | Přidat faq blok se 3 otázkami | Accordion s ChevronDown animací, FAQPage JSON-LD v HTML |
+| PB-F010 | Recenze | Přidat recenze blok se 3 recenzemi | Karty s hvězdičkami, citací a jménem zákazníka |
+
+### Edge cases
+
+| ID | Edge case | Očekávaný výsledek |
+|----|---------|-------------------|
+| PB-E001 | Žádný e-shop vybrán | Placeholder "Vyberte e-shop pro správu bloků" |
+| PB-E002 | Prázdná stránka (0 bloků) | Empty state s tlačítkem "Přidat první blok" |
+| PB-E003 | Neznámý typ bloku | Admin: JSON fallback editor, Frontend: null (nezobrazí se) |
+| PB-E004 | FAQ blok na homepage | FAQPage JSON-LD schema přítomné v HTML source |
+
+---
+
+## 25. E-shop Dashboard
+
+### Funkce
+
+| ID | Scénář | Kroky | Očekávaný výsledek |
+|----|---------|-------|-------------------|
+| ED-F001 | Otevření dashboardu | Klik na modul "E-shop Dashboard" | Zobrazí se výběr e-shopu, po výběru KPI karty + grafy |
+| ED-F002 | KPI karty | Otevřít dashboard s objednávkami | 4 karty: objednávky, tržby, průměrná objednávka, noví zákazníci |
+| ED-F003 | Graf tržeb | Přepnout období (týden/měsíc/rok) | Recharts graf se aktualizuje s novými daty |
+| ED-F004 | Koláč stavů | Dashboard s objednávkami různých stavů | Pie chart s barvami per stav objednávky |
+| ED-F005 | Top produkty | Dashboard s prodeji | Tabulka 10 nejprodávanějších produktů s počtem a tržbami |
+| ED-F006 | Nízký sklad | Produkty s quantity < 10 | Tabulka s produkty s nízkým skladem, červené zvýraznění |
+| ED-F007 | Filtr e-shopu | Přepnout e-shop v dropdown | Všechna data se přepočítají pro vybraný e-shop |
+
+### Edge cases
+
+| ID | Edge case | Očekávaný výsledek |
+|----|---------|-------------------|
+| ED-E001 | Žádné objednávky | KPI karty ukazují 0, grafy prázdné |
+| ED-E002 | Jen jeden e-shop | Dropdown se předvyplní automaticky |
+
+---
+
+## 26. E-shop Pohoda Export
+
+### Funkce
+
+| ID | Scénář | Kroky | Očekávaný výsledek |
+|----|---------|-------|-------------------|
+| PE-F001 | Export jednotlivé objednávky | Klik "Pohoda" v OrderDetail | Objednávka se exportuje, badge "Pohoda" se zobrazí |
+| PE-F002 | Bulk export | Klik "Export do Pohody (N)" v OrderList | Všechny neexportované objednávky se exportují, toast s výsledkem |
+| PE-F003 | Už exportovaná objednávka | Objednávka s pohodaExported=true | Tlačítko export skryté, zelený badge "Pohoda" viditelný |
+| PE-F004 | XML formát | Export objednávky s položkami + doprava + platba | Pohoda XML s invoiceHeader + řádky pro položky, dopravu, platbu |
+
+### Edge cases
+
+| ID | Edge case | Očekávaný výsledek |
+|----|---------|-------------------|
+| PE-E001 | Pohoda nedostupná | Toast s chybovou zprávou, objednávka zůstane neexportovaná |
+| PE-E002 | Částečný bulk export | Některé projdou, některé selžou — toast s detailem per objednávka |
+
+---
+
+## 27. E-shop UX — Profil a heslo
+
+### Funkce
+
+| ID | Scénář | Kroky | Očekávaný výsledek |
+|----|---------|-------|-------------------|
+| UX-F001 | Editace profilu | Klik "Upravit" → změnit jméno → "Uložit" | Profil se aktualizuje v DB, zobrazí se zelená zpráva "Profil byl uložen" |
+| UX-F002 | Změna hesla | Vyplnit současné + nové + potvrzení → submit | Heslo změněno, zelená zpráva, formulář se vyčistí |
+| UX-F003 | Zapomenuté heslo | `/ucet/zapomenute-heslo` → zadat email → odeslat | Zobrazí se potvrzení "Email odeslán", email s reset linkem přijde |
+| UX-F004 | Reset hesla | Klik na link z emailu → `/ucet/reset-hesla?token=...` | Formulář pro nové heslo, po odeslání potvrzení "Heslo změněno" |
+| UX-F005 | Checkout validace | Pokladna → submit s prázdnými poli | Červené rámečky a chybové zprávy u povinných polí |
+| UX-F006 | Dynamická doprava zdarma | Homepage header | Text "Doprava zdarma nad X Kč" z DB, ne hardcoded |
+
+### Edge cases
+
+| ID | Edge case | Očekávaný výsledek |
+|----|---------|-------------------|
+| UX-E001 | Hesla se neshodují | Červená zpráva "Hesla se neshodují" |
+| UX-E002 | Krátké heslo | Červená zpráva "Heslo musí mít alespoň 6 znaků" |
+| UX-E003 | Špatné současné heslo | Chybová zpráva z API |
+| UX-E004 | Expirovaný reset token | Stránka reset hesla zobrazí chybu "Odkaz mohl vypršet" |
+| UX-E005 | Neplatný reset link (bez tokenu) | Stránka zobrazí "Neplatný odkaz" s odkazem na nový |
+| UX-E006 | Neregistrovaný email v reset | Vždy "Email odeslán" (prevence email enumeration) |
+| UX-E007 | Nevalidní email v checkout | Červená zpráva "Neplatný formát emailu" |
+| UX-E008 | Nevalidní PSČ v checkout | Červená zpráva "PSČ musí být 5 číslic" |
+
+---
+
+*Poslední aktualizace: 2026-03-01*

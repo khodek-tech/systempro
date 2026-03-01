@@ -84,6 +84,48 @@ export type {
   Prevodka,
 } from './prevodka.types';
 
+// E-shop types
+export type {
+  Eshop,
+  Product,
+  AttributeDisplayType,
+  AttributeType,
+  AttributeValue,
+  ProductVariant,
+  VariantAttribute,
+  ProductImage,
+  Category,
+  ShopCategory,
+  ProductCategory,
+  AiStatus,
+  ShopProduct,
+  ShopProductVariant,
+  Customer,
+  AddressType,
+  CustomerAddress,
+  OrderStatus,
+  ShippingType,
+  PaymentType,
+  Order,
+  OrderItem,
+  OrderHistory,
+  ShopShipping,
+  ShopPayment,
+  BlockType,
+  PageBlock,
+  BlogPostStatus,
+  BlogPost,
+  AiGeneratedProductTexts,
+  AiGeneratedBlogTexts,
+  AiUsage,
+  AiKonfigurace,
+  FeedType,
+  FeedConfig,
+  FeedLog,
+  Redirect,
+  Review,
+} from './eshop.types';
+
 // Email types
 export type {
   EmailFolderType,

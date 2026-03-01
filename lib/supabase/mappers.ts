@@ -36,6 +36,39 @@ import type {
   EmailMessage,
   EmailRule,
   EmailSyncLog,
+  Eshop,
+  Product,
+  AttributeType,
+  AttributeDisplayType,
+  AttributeValue,
+  ProductVariant,
+  VariantAttribute,
+  ProductImage,
+  Category,
+  ProductCategory,
+  ShopCategory,
+  ShopProduct,
+  AiStatus,
+  ShopProductVariant,
+  Customer,
+  CustomerAddress,
+  AddressType,
+  Order,
+  OrderStatus,
+  OrderItem,
+  OrderHistory,
+  ShopShipping,
+  ShopPayment,
+  BlockType,
+  PageBlock,
+  BlogPost,
+  BlogPostStatus,
+  FeedConfig,
+  FeedType,
+  FeedLog,
+  Redirect,
+  Review,
+  AiKonfigurace,
 } from '@/shared/types';
 
 // =============================================================================
@@ -800,5 +833,862 @@ export function mapDbToPohodaSyncLog(row: any): PohodaSyncLog {
     trvaniMs: row.trvani_ms ?? 0,
     detail: row.detail ?? null,
     vytvoreno: row.vytvoreno,
+  };
+}
+
+// =============================================================================
+// E-SHOP (eshopy)
+// =============================================================================
+
+export function mapDbToEshop(row: any): Eshop {
+  return {
+    id: row.id,
+    name: row.nazev,
+    domain: row.domena,
+    slug: row.slug,
+    logoUrl: row.logo_url ?? undefined,
+    faviconUrl: row.favicon_url ?? undefined,
+    primaryColor: row.primarni_barva ?? '#3B82F6',
+    secondaryColor: row.sekundarni_barva ?? '#1E293B',
+    font: row.font ?? 'Inter',
+    toneOfVoice: row.ton_hlasu ?? undefined,
+    targetAudience: row.cilova_skupina ?? undefined,
+    aiInstructions: row.ai_instrukce ?? undefined,
+    contactEmail: row.kontaktni_email ?? undefined,
+    contactPhone: row.kontaktni_telefon ?? undefined,
+    ico: row.ico ?? undefined,
+    dic: row.dic ?? undefined,
+    companyName: row.nazev_firmy ?? undefined,
+    companyAddress: row.adresa_firmy ?? undefined,
+    termsAndConditions: row.obchodni_podminky ?? undefined,
+    gdprText: row.gdpr_text ?? undefined,
+    seoTitleTemplate: row.seo_title_sablona ?? undefined,
+    seoDescriptionTemplate: row.seo_description_sablona ?? undefined,
+    senderEmail: row.odesilatel_email ?? undefined,
+    senderName: row.odesilatel_jmeno ?? undefined,
+    active: row.aktivni ?? true,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapEshopToDb(data: Partial<Eshop>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.domain !== undefined) row.domena = data.domain;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.logoUrl !== undefined) row.logo_url = data.logoUrl;
+  if (data.faviconUrl !== undefined) row.favicon_url = data.faviconUrl;
+  if (data.primaryColor !== undefined) row.primarni_barva = data.primaryColor;
+  if (data.secondaryColor !== undefined) row.sekundarni_barva = data.secondaryColor;
+  if (data.font !== undefined) row.font = data.font;
+  if (data.toneOfVoice !== undefined) row.ton_hlasu = data.toneOfVoice;
+  if (data.targetAudience !== undefined) row.cilova_skupina = data.targetAudience;
+  if (data.aiInstructions !== undefined) row.ai_instrukce = data.aiInstructions;
+  if (data.contactEmail !== undefined) row.kontaktni_email = data.contactEmail;
+  if (data.contactPhone !== undefined) row.kontaktni_telefon = data.contactPhone;
+  if (data.ico !== undefined) row.ico = data.ico;
+  if (data.dic !== undefined) row.dic = data.dic;
+  if (data.companyName !== undefined) row.nazev_firmy = data.companyName;
+  if (data.companyAddress !== undefined) row.adresa_firmy = data.companyAddress;
+  if (data.termsAndConditions !== undefined) row.obchodni_podminky = data.termsAndConditions;
+  if (data.gdprText !== undefined) row.gdpr_text = data.gdprText;
+  if (data.seoTitleTemplate !== undefined) row.seo_title_sablona = data.seoTitleTemplate;
+  if (data.seoDescriptionTemplate !== undefined) row.seo_description_sablona = data.seoDescriptionTemplate;
+  if (data.senderEmail !== undefined) row.odesilatel_email = data.senderEmail;
+  if (data.senderName !== undefined) row.odesilatel_jmeno = data.senderName;
+  if (data.active !== undefined) row.aktivni = data.active;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// PRODUCTS (produkty)
+// =============================================================================
+
+export function mapDbToProduct(row: any): Product {
+  return {
+    id: row.id,
+    sku: row.sku ?? undefined,
+    name: row.nazev,
+    slug: row.slug,
+    brand: row.znacka ?? undefined,
+    manufacturer: row.vyrobce ?? undefined,
+    ean: row.ean ?? undefined,
+    weight: row.hmotnost != null ? Number(row.hmotnost) : undefined,
+    dimensions: row.rozmery ?? undefined,
+    baseDescription: row.zakladni_popis ?? undefined,
+    baseShortDescription: row.zakladni_kratky_popis ?? undefined,
+    stock: row.skladem ?? 0,
+    minStock: row.min_skladem ?? 0,
+    active: row.aktivni ?? true,
+    feedId: row.feed_id ?? undefined,
+    feedData: row.feed_data ?? undefined,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapProductToDb(data: Partial<Product>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.sku !== undefined) row.sku = data.sku;
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.brand !== undefined) row.znacka = data.brand;
+  if (data.manufacturer !== undefined) row.vyrobce = data.manufacturer;
+  if (data.ean !== undefined) row.ean = data.ean;
+  if (data.weight !== undefined) row.hmotnost = data.weight;
+  if (data.dimensions !== undefined) row.rozmery = data.dimensions;
+  if (data.baseDescription !== undefined) row.zakladni_popis = data.baseDescription;
+  if (data.baseShortDescription !== undefined) row.zakladni_kratky_popis = data.baseShortDescription;
+  if (data.stock !== undefined) row.skladem = data.stock;
+  if (data.minStock !== undefined) row.min_skladem = data.minStock;
+  if (data.active !== undefined) row.aktivni = data.active;
+  if (data.feedId !== undefined) row.feed_id = data.feedId;
+  if (data.feedData !== undefined) row.feed_data = data.feedData;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// ATTRIBUTE TYPES (atributy_typy)
+// =============================================================================
+
+export function mapDbToAttributeType(row: any): AttributeType {
+  return {
+    id: row.id,
+    name: row.nazev,
+    slug: row.slug,
+    displayType: (row.typ_zobrazeni ?? 'dropdown') as AttributeDisplayType,
+    expandInCategory: row.rozbalit_v_kategorii ?? false,
+    order: row.poradi ?? 0,
+    createdAt: row.vytvoreno,
+  };
+}
+
+export function mapAttributeTypeToDb(data: Partial<AttributeType>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.displayType !== undefined) row.typ_zobrazeni = data.displayType;
+  if (data.expandInCategory !== undefined) row.rozbalit_v_kategorii = data.expandInCategory;
+  if (data.order !== undefined) row.poradi = data.order;
+  return row;
+}
+
+// =============================================================================
+// ATTRIBUTE VALUES (atributy_hodnoty)
+// =============================================================================
+
+export function mapDbToAttributeValue(row: any): AttributeValue {
+  return {
+    id: row.id,
+    attributeTypeId: row.atribut_typ_id,
+    value: row.hodnota,
+    slug: row.slug,
+    hexColor: row.hex_barva ?? undefined,
+    order: row.poradi ?? 0,
+  };
+}
+
+export function mapAttributeValueToDb(data: Partial<AttributeValue>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.attributeTypeId !== undefined) row.atribut_typ_id = data.attributeTypeId;
+  if (data.value !== undefined) row.hodnota = data.value;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.hexColor !== undefined) row.hex_barva = data.hexColor;
+  if (data.order !== undefined) row.poradi = data.order;
+  return row;
+}
+
+// =============================================================================
+// PRODUCT VARIANTS (produkty_varianty)
+// =============================================================================
+
+export function mapDbToProductVariant(row: any): ProductVariant {
+  return {
+    id: row.id,
+    productId: row.produkt_id,
+    sku: row.sku ?? undefined,
+    name: row.nazev,
+    slug: row.slug,
+    basePrice: Number(row.cena_zakladni ?? 0),
+    stock: row.skladem ?? 0,
+    ean: row.ean ?? undefined,
+    active: row.aktivni ?? true,
+    feedId: row.feed_id ?? undefined,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapProductVariantToDb(data: Partial<ProductVariant>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.productId !== undefined) row.produkt_id = data.productId;
+  if (data.sku !== undefined) row.sku = data.sku;
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.basePrice !== undefined) row.cena_zakladni = data.basePrice;
+  if (data.stock !== undefined) row.skladem = data.stock;
+  if (data.ean !== undefined) row.ean = data.ean;
+  if (data.active !== undefined) row.aktivni = data.active;
+  if (data.feedId !== undefined) row.feed_id = data.feedId;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// VARIANT ATTRIBUTES (varianty_atributy)
+// =============================================================================
+
+export function mapDbToVariantAttribute(row: any): VariantAttribute {
+  return {
+    id: row.id,
+    variantId: row.varianta_id,
+    attributeValueId: row.atribut_hodnota_id,
+  };
+}
+
+// =============================================================================
+// PRODUCT IMAGES (produkty_obrazky)
+// =============================================================================
+
+export function mapDbToProductImage(row: any): ProductImage {
+  return {
+    id: row.id,
+    productId: row.produkt_id,
+    variantId: row.varianta_id ?? undefined,
+    url: row.url,
+    altText: row.alt_text ?? undefined,
+    order: row.poradi ?? 0,
+    isMain: row.hlavni ?? false,
+  };
+}
+
+export function mapProductImageToDb(data: Partial<ProductImage>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.productId !== undefined) row.produkt_id = data.productId;
+  if (data.variantId !== undefined) row.varianta_id = data.variantId;
+  if (data.url !== undefined) row.url = data.url;
+  if (data.altText !== undefined) row.alt_text = data.altText;
+  if (data.order !== undefined) row.poradi = data.order;
+  if (data.isMain !== undefined) row.hlavni = data.isMain;
+  return row;
+}
+
+// =============================================================================
+// CATEGORIES (kategorie)
+// =============================================================================
+
+export function mapDbToCategory(row: any): Category {
+  return {
+    id: row.id,
+    name: row.nazev,
+    slug: row.slug,
+    parentId: row.rodic_id ?? undefined,
+    description: row.popis ?? undefined,
+    order: row.poradi ?? 0,
+    active: row.aktivni ?? true,
+  };
+}
+
+export function mapCategoryToDb(data: Partial<Category>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.parentId !== undefined) row.rodic_id = data.parentId;
+  if (data.description !== undefined) row.popis = data.description;
+  if (data.order !== undefined) row.poradi = data.order;
+  if (data.active !== undefined) row.aktivni = data.active;
+  return row;
+}
+
+// =============================================================================
+// PRODUCT CATEGORIES (produkty_kategorie)
+// =============================================================================
+
+export function mapDbToProductCategory(row: any): ProductCategory {
+  return {
+    id: row.id,
+    productId: row.produkt_id,
+    categoryId: row.kategorie_id,
+    order: row.poradi ?? 0,
+  };
+}
+
+export function mapProductCategoryToDb(data: Partial<ProductCategory>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.productId !== undefined) row.produkt_id = data.productId;
+  if (data.categoryId !== undefined) row.kategorie_id = data.categoryId;
+  if (data.order !== undefined) row.poradi = data.order;
+  return row;
+}
+
+// =============================================================================
+// SHOP CATEGORIES (eshop_kategorie)
+// =============================================================================
+
+export function mapDbToShopCategory(row: any): ShopCategory {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    categoryId: row.kategorie_id,
+    nameOverride: row.nazev_override ?? undefined,
+    descriptionOverride: row.popis_override ?? undefined,
+    seoTitle: row.seo_title ?? undefined,
+    seoDescription: row.seo_description ?? undefined,
+    order: row.poradi ?? 0,
+    active: row.aktivni ?? true,
+  };
+}
+
+// =============================================================================
+// SHOP PRODUCTS (eshop_produkty)
+// =============================================================================
+
+export function mapDbToShopProduct(row: any): ShopProduct {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    productId: row.produkt_id,
+    price: Number(row.cena ?? 0),
+    priceBeforeDiscount: row.cena_pred_slevou != null ? Number(row.cena_pred_slevou) : undefined,
+    nameOverride: row.nazev_override ?? undefined,
+    shortDescription: row.kratky_popis ?? undefined,
+    longDescription: row.dlouhy_popis ?? undefined,
+    seoTitle: row.seo_title ?? undefined,
+    seoDescription: row.seo_description ?? undefined,
+    seoSlug: row.seo_slug ?? undefined,
+    aiStatus: (row.ai_stav ?? 'ceka') as AiStatus,
+    active: row.aktivni ?? true,
+    order: row.poradi ?? 0,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapShopProductToDb(data: Partial<ShopProduct>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.productId !== undefined) row.produkt_id = data.productId;
+  if (data.price !== undefined) row.cena = data.price;
+  if (data.priceBeforeDiscount !== undefined) row.cena_pred_slevou = data.priceBeforeDiscount;
+  if (data.nameOverride !== undefined) row.nazev_override = data.nameOverride;
+  if (data.shortDescription !== undefined) row.kratky_popis = data.shortDescription;
+  if (data.longDescription !== undefined) row.dlouhy_popis = data.longDescription;
+  if (data.seoTitle !== undefined) row.seo_title = data.seoTitle;
+  if (data.seoDescription !== undefined) row.seo_description = data.seoDescription;
+  if (data.seoSlug !== undefined) row.seo_slug = data.seoSlug;
+  if (data.aiStatus !== undefined) row.ai_stav = data.aiStatus;
+  if (data.active !== undefined) row.aktivni = data.active;
+  if (data.order !== undefined) row.poradi = data.order;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// SHOP CATEGORIES WRITE (eshop_kategorie → DB)
+// =============================================================================
+
+export function mapShopCategoryToDb(data: Partial<ShopCategory>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.categoryId !== undefined) row.kategorie_id = data.categoryId;
+  if (data.nameOverride !== undefined) row.nazev_override = data.nameOverride;
+  if (data.descriptionOverride !== undefined) row.popis_override = data.descriptionOverride;
+  if (data.seoTitle !== undefined) row.seo_title = data.seoTitle;
+  if (data.seoDescription !== undefined) row.seo_description = data.seoDescription;
+  if (data.order !== undefined) row.poradi = data.order;
+  if (data.active !== undefined) row.aktivni = data.active;
+  return row;
+}
+
+// =============================================================================
+// SHOP PRODUCT VARIANTS (eshop_produkty_varianty)
+// =============================================================================
+
+export function mapDbToShopProductVariant(row: any): ShopProductVariant {
+  return {
+    id: row.id,
+    shopProductId: row.eshop_produkt_id,
+    variantId: row.varianta_id,
+    priceOverride: row.cena_override != null ? Number(row.cena_override) : undefined,
+    active: row.aktivni ?? true,
+  };
+}
+
+// =============================================================================
+// SHOP PRODUCT VARIANTS WRITE (eshop_produkty_varianty → DB)
+// =============================================================================
+
+export function mapShopProductVariantToDb(data: Partial<ShopProductVariant>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopProductId !== undefined) row.eshop_produkt_id = data.shopProductId;
+  if (data.variantId !== undefined) row.varianta_id = data.variantId;
+  if (data.priceOverride !== undefined) row.cena_override = data.priceOverride;
+  if (data.active !== undefined) row.aktivni = data.active;
+  return row;
+}
+
+// =============================================================================
+// CUSTOMERS (zakaznici)
+// =============================================================================
+
+export function mapDbToCustomer(row: any): Customer {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    email: row.email,
+    firstName: row.jmeno ?? undefined,
+    lastName: row.prijmeni ?? undefined,
+    phone: row.telefon ?? undefined,
+    ageVerified: row.vek_overen ?? false,
+    active: row.aktivni ?? true,
+    createdAt: row.vytvoreno,
+    lastLoginAt: row.posledni_prihlaseni ?? undefined,
+  };
+}
+
+// =============================================================================
+// CUSTOMER ADDRESSES (zakaznici_adresy)
+// =============================================================================
+
+export function mapDbToCustomerAddress(row: any): CustomerAddress {
+  return {
+    id: row.id,
+    customerId: row.zakaznik_id,
+    type: (row.typ ?? 'dodaci') as AddressType,
+    firstName: row.jmeno ?? undefined,
+    lastName: row.prijmeni ?? undefined,
+    street: row.ulice ?? undefined,
+    city: row.mesto ?? undefined,
+    zip: row.psc ?? undefined,
+    country: row.stat ?? 'CZ',
+    isDefault: row.vychozi ?? false,
+  };
+}
+
+// =============================================================================
+// ORDERS (objednavky)
+// =============================================================================
+
+export function mapDbToOrder(row: any): Order {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    customerId: row.zakaznik_id ?? undefined,
+    orderNumber: row.cislo_objednavky,
+    status: (row.stav ?? 'nova') as OrderStatus,
+    totalPrice: Number(row.celkova_cena ?? 0),
+    shippingPrice: Number(row.doprava_cena ?? 0),
+    paymentPrice: Number(row.platba_cena ?? 0),
+    shippingType: row.doprava_typ ?? undefined,
+    paymentType: row.platba_typ ?? undefined,
+    trackingNumber: row.sledovaci_cislo ?? undefined,
+    note: row.poznamka ?? undefined,
+    internalNote: row.interni_poznamka ?? undefined,
+    pohodaExported: row.pohoda_export ?? false,
+    assignedTo: row.prirazeno_komu ?? undefined,
+    billingAddress: row.fakturacni_adresa ?? undefined,
+    shippingAddress: row.dodaci_adresa ?? undefined,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapOrderToDb(data: Partial<Order>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.customerId !== undefined) row.zakaznik_id = data.customerId;
+  if (data.orderNumber !== undefined) row.cislo_objednavky = data.orderNumber;
+  if (data.status !== undefined) row.stav = data.status;
+  if (data.totalPrice !== undefined) row.celkova_cena = data.totalPrice;
+  if (data.shippingPrice !== undefined) row.doprava_cena = data.shippingPrice;
+  if (data.paymentPrice !== undefined) row.platba_cena = data.paymentPrice;
+  if (data.shippingType !== undefined) row.doprava_typ = data.shippingType;
+  if (data.paymentType !== undefined) row.platba_typ = data.paymentType;
+  if (data.trackingNumber !== undefined) row.sledovaci_cislo = data.trackingNumber;
+  if (data.note !== undefined) row.poznamka = data.note;
+  if (data.internalNote !== undefined) row.interni_poznamka = data.internalNote;
+  if (data.pohodaExported !== undefined) row.pohoda_export = data.pohodaExported;
+  if (data.assignedTo !== undefined) row.prirazeno_komu = data.assignedTo;
+  if (data.billingAddress !== undefined) row.fakturacni_adresa = data.billingAddress;
+  if (data.shippingAddress !== undefined) row.dodaci_adresa = data.shippingAddress;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// ORDER ITEMS (objednavky_polozky)
+// =============================================================================
+
+export function mapDbToOrderItem(row: any): OrderItem {
+  return {
+    id: row.id,
+    orderId: row.objednavka_id,
+    productId: row.produkt_id ?? undefined,
+    variantId: row.varianta_id ?? undefined,
+    name: row.nazev,
+    price: Number(row.cena ?? 0),
+    quantity: row.pocet ?? 1,
+    total: Number(row.celkem ?? 0),
+  };
+}
+
+// =============================================================================
+// ORDER HISTORY (objednavky_historie)
+// =============================================================================
+
+export function mapDbToOrderHistory(row: any): OrderHistory {
+  return {
+    id: row.id,
+    orderId: row.objednavka_id,
+    statusFrom: row.stav_z ?? undefined,
+    statusTo: row.stav_na,
+    note: row.poznamka ?? undefined,
+    changedBy: row.zmenil ?? undefined,
+    createdAt: row.vytvoreno,
+  };
+}
+
+// =============================================================================
+// SHOP SHIPPING (eshop_doprava)
+// =============================================================================
+
+export function mapDbToShopShipping(row: any): ShopShipping {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    name: row.nazev,
+    type: row.typ,
+    price: Number(row.cena ?? 0),
+    freeFrom: row.zdarma_od != null ? Number(row.zdarma_od) : undefined,
+    config: row.konfigurace ?? {},
+    active: row.aktivni ?? true,
+    order: row.poradi ?? 0,
+  };
+}
+
+// =============================================================================
+// SHOP PAYMENT (eshop_platby)
+// =============================================================================
+
+export function mapDbToShopPayment(row: any): ShopPayment {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    name: row.nazev,
+    type: row.typ,
+    price: Number(row.cena ?? 0),
+    config: row.konfigurace ?? {},
+    active: row.aktivni ?? true,
+    order: row.poradi ?? 0,
+  };
+}
+
+// =============================================================================
+// CUSTOMER WRITE MAPPERS
+// =============================================================================
+
+export function mapCustomerToDb(data: Partial<Customer>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.email !== undefined) row.email = data.email;
+  if (data.firstName !== undefined) row.jmeno = data.firstName;
+  if (data.lastName !== undefined) row.prijmeni = data.lastName;
+  if (data.phone !== undefined) row.telefon = data.phone;
+  if (data.ageVerified !== undefined) row.vek_overen = data.ageVerified;
+  if (data.active !== undefined) row.aktivni = data.active;
+  return row;
+}
+
+export function mapCustomerAddressToDb(data: Partial<CustomerAddress>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.customerId !== undefined) row.zakaznik_id = data.customerId;
+  if (data.type !== undefined) row.typ = data.type;
+  if (data.firstName !== undefined) row.jmeno = data.firstName;
+  if (data.lastName !== undefined) row.prijmeni = data.lastName;
+  if (data.street !== undefined) row.ulice = data.street;
+  if (data.city !== undefined) row.mesto = data.city;
+  if (data.zip !== undefined) row.psc = data.zip;
+  if (data.country !== undefined) row.stat = data.country;
+  if (data.isDefault !== undefined) row.vychozi = data.isDefault;
+  return row;
+}
+
+// =============================================================================
+// ORDER WRITE MAPPERS
+// =============================================================================
+
+export function mapOrderItemToDb(data: Partial<OrderItem>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.orderId !== undefined) row.objednavka_id = data.orderId;
+  if (data.productId !== undefined) row.produkt_id = data.productId;
+  if (data.variantId !== undefined) row.varianta_id = data.variantId;
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.price !== undefined) row.cena = data.price;
+  if (data.quantity !== undefined) row.pocet = data.quantity;
+  if (data.total !== undefined) row.celkem = data.total;
+  return row;
+}
+
+export function mapOrderHistoryToDb(data: Partial<OrderHistory>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.orderId !== undefined) row.objednavka_id = data.orderId;
+  if (data.statusFrom !== undefined) row.stav_z = data.statusFrom;
+  if (data.statusTo !== undefined) row.stav_na = data.statusTo;
+  if (data.note !== undefined) row.poznamka = data.note;
+  if (data.changedBy !== undefined) row.zmenil = data.changedBy;
+  return row;
+}
+
+// =============================================================================
+// SHIPPING & PAYMENT WRITE MAPPERS
+// =============================================================================
+
+export function mapShopShippingToDb(data: Partial<ShopShipping>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.type !== undefined) row.typ = data.type;
+  if (data.price !== undefined) row.cena = data.price;
+  if (data.freeFrom !== undefined) row.zdarma_od = data.freeFrom;
+  if (data.config !== undefined) row.konfigurace = data.config;
+  if (data.active !== undefined) row.aktivni = data.active;
+  if (data.order !== undefined) row.poradi = data.order;
+  return row;
+}
+
+export function mapShopPaymentToDb(data: Partial<ShopPayment>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.type !== undefined) row.typ = data.type;
+  if (data.price !== undefined) row.cena = data.price;
+  if (data.config !== undefined) row.konfigurace = data.config;
+  if (data.active !== undefined) row.aktivni = data.active;
+  if (data.order !== undefined) row.poradi = data.order;
+  return row;
+}
+
+// =============================================================================
+// BLOCK TYPES (bloky_typy)
+// =============================================================================
+
+export function mapDbToBlockType(row: any): BlockType {
+  return {
+    id: row.id,
+    name: row.nazev,
+    slug: row.slug,
+    description: row.popis ?? undefined,
+    defaultConfig: row.vychozi_konfigurace ?? {},
+    configSchema: row.schema_konfigurace ?? {},
+  };
+}
+
+// =============================================================================
+// PAGE BLOCKS (stranky_bloky)
+// =============================================================================
+
+export function mapDbToPageBlock(row: any): PageBlock {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    page: row.stranka,
+    pageId: row.stranka_id ?? undefined,
+    blockTypeId: row.blok_typ_id,
+    config: row.konfigurace ?? {},
+    order: row.poradi ?? 0,
+    active: row.aktivni ?? true,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapPageBlockToDb(data: Partial<PageBlock>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.page !== undefined) row.stranka = data.page;
+  if (data.pageId !== undefined) row.stranka_id = data.pageId;
+  if (data.blockTypeId !== undefined) row.blok_typ_id = data.blockTypeId;
+  if (data.config !== undefined) row.konfigurace = data.config;
+  if (data.order !== undefined) row.poradi = data.order;
+  if (data.active !== undefined) row.aktivni = data.active;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// BLOG POSTS (blog_clanky)
+// =============================================================================
+
+export function mapDbToBlogPost(row: any): BlogPost {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    title: row.nazev,
+    slug: row.slug,
+    shortDescription: row.kratky_popis ?? undefined,
+    content: row.obsah ?? undefined,
+    imageUrl: row.obrazek_url ?? undefined,
+    seoTitle: row.seo_title ?? undefined,
+    seoDescription: row.seo_description ?? undefined,
+    authorId: row.autor_id ?? undefined,
+    status: (row.stav ?? 'koncept') as BlogPostStatus,
+    publishedAt: row.publikovano_v ?? undefined,
+    tags: row.tagy ?? [],
+    aiStatus: row.ai_stav ?? undefined,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
+  };
+}
+
+export function mapBlogPostToDb(data: Partial<BlogPost>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.title !== undefined) row.nazev = data.title;
+  if (data.slug !== undefined) row.slug = data.slug;
+  if (data.shortDescription !== undefined) row.kratky_popis = data.shortDescription;
+  if (data.content !== undefined) row.obsah = data.content;
+  if (data.imageUrl !== undefined) row.obrazek_url = data.imageUrl;
+  if (data.seoTitle !== undefined) row.seo_title = data.seoTitle;
+  if (data.seoDescription !== undefined) row.seo_description = data.seoDescription;
+  if (data.authorId !== undefined) row.autor_id = data.authorId;
+  if (data.status !== undefined) row.stav = data.status;
+  if (data.publishedAt !== undefined) row.publikovano_v = data.publishedAt;
+  if (data.tags !== undefined) row.tagy = data.tags;
+  if (data.aiStatus !== undefined) row.ai_stav = data.aiStatus;
+  row.aktualizovano = new Date().toISOString();
+  return row;
+}
+
+// =============================================================================
+// FEED CONFIG (feed_konfigurace)
+// =============================================================================
+
+export function mapDbToFeedConfig(row: any): FeedConfig {
+  return {
+    id: row.id,
+    name: row.nazev,
+    url: row.url ?? undefined,
+    type: (row.typ ?? 'csv') as FeedType,
+    delimiter: row.oddelovac ?? ';',
+    encoding: row.kodovani ?? 'utf-8',
+    mapping: row.mapovani ?? {},
+    autoSync: row.auto_sync ?? false,
+    syncInterval: row.sync_interval ?? 'daily',
+    lastSync: row.posledni_sync ?? undefined,
+    lastSyncStatus: row.posledni_sync_stav ?? undefined,
+    lastSyncLog: row.posledni_sync_log ?? undefined,
+    active: row.aktivni ?? true,
+    createdAt: row.vytvoreno,
+  };
+}
+
+export function mapFeedConfigToDb(data: Partial<FeedConfig>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.name !== undefined) row.nazev = data.name;
+  if (data.url !== undefined) row.url = data.url;
+  if (data.type !== undefined) row.typ = data.type;
+  if (data.delimiter !== undefined) row.oddelovac = data.delimiter;
+  if (data.encoding !== undefined) row.kodovani = data.encoding;
+  if (data.mapping !== undefined) row.mapovani = data.mapping;
+  if (data.autoSync !== undefined) row.auto_sync = data.autoSync;
+  if (data.syncInterval !== undefined) row.sync_interval = data.syncInterval;
+  if (data.lastSync !== undefined) row.posledni_sync = data.lastSync;
+  if (data.lastSyncStatus !== undefined) row.posledni_sync_stav = data.lastSyncStatus;
+  if (data.lastSyncLog !== undefined) row.posledni_sync_log = data.lastSyncLog;
+  if (data.active !== undefined) row.aktivni = data.active;
+  return row;
+}
+
+// =============================================================================
+// FEED LOG (feed_log)
+// =============================================================================
+
+export function mapDbToFeedLog(row: any): FeedLog {
+  return {
+    id: row.id,
+    feedId: row.feed_id,
+    type: row.typ,
+    status: row.stav,
+    newProducts: row.novych_produktu ?? 0,
+    updatedProducts: row.aktualizovano_produktu ?? 0,
+    errors: row.chyb ?? 0,
+    details: row.detaily ?? undefined,
+    startedAt: row.spusteno,
+    completedAt: row.dokonceno ?? undefined,
+  };
+}
+
+export function mapFeedLogToDb(data: Partial<FeedLog>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.feedId !== undefined) row.feed_id = data.feedId;
+  if (data.type !== undefined) row.typ = data.type;
+  if (data.status !== undefined) row.stav = data.status;
+  if (data.newProducts !== undefined) row.novych_produktu = data.newProducts;
+  if (data.updatedProducts !== undefined) row.aktualizovano_produktu = data.updatedProducts;
+  if (data.errors !== undefined) row.chyb = data.errors;
+  if (data.details !== undefined) row.detaily = data.details;
+  if (data.startedAt !== undefined) row.spusteno = data.startedAt;
+  if (data.completedAt !== undefined) row.dokonceno = data.completedAt;
+  return row;
+}
+
+// =============================================================================
+// REDIRECTS (presmerovani)
+// =============================================================================
+
+export function mapDbToRedirect(row: any): Redirect {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    oldUrl: row.stara_url,
+    newUrl: row.nova_url,
+    type: row.typ ?? 301,
+    createdAt: row.vytvoreno,
+  };
+}
+
+export function mapRedirectToDb(data: Partial<Redirect>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (data.shopId !== undefined) row.eshop_id = data.shopId;
+  if (data.oldUrl !== undefined) row.stara_url = data.oldUrl;
+  if (data.newUrl !== undefined) row.nova_url = data.newUrl;
+  if (data.type !== undefined) row.typ = data.type;
+  return row;
+}
+
+// =============================================================================
+// REVIEWS
+// =============================================================================
+
+export function mapDbToReview(row: any): Review {
+  return {
+    id: row.id,
+    shopId: row.eshop_id,
+    productId: row.produkt_id,
+    customerId: row.zakaznik_id ?? undefined,
+    name: row.jmeno,
+    email: row.email ?? undefined,
+    rating: row.hodnoceni,
+    text: row.text ?? undefined,
+    approved: row.schvaleno ?? false,
+    createdAt: row.vytvoreno,
+  };
+}
+
+// =============================================================================
+// AI KONFIGURACE
+// =============================================================================
+
+export function mapDbToAiKonfigurace(row: any): AiKonfigurace {
+  return {
+    id: row.id,
+    key: row.klic,
+    value: row.hodnota,
+    description: row.popis,
+    createdAt: row.vytvoreno,
+    updatedAt: row.aktualizovano,
   };
 }

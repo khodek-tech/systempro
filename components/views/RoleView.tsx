@@ -18,7 +18,19 @@ import { useEmailStore } from '@/stores/email-store';
 import { useManualStore } from '@/stores/manual-store';
 import { usePresenceStore } from '@/stores/presence-store';
 import { PickingView } from '@/components/prevodky/PickingView';
+import { EshopProduktyFullView } from '@/components/views/eshop-produkty-full-view';
+import { EshopEshopyFullView } from '@/components/views/eshop-eshopy-full-view';
+import { EshopObjednavkyFullView } from '@/components/views/eshop-objednavky-full-view';
 import { usePrevodkyStore } from '@/stores/prevodky-store';
+import { useEshopProduktyStore } from '@/stores/eshop-produkty-store';
+import { useEshopEshopyStore } from '@/stores/eshop-eshopy-store';
+import { useEshopObjednavkyStore } from '@/stores/eshop-objednavky-store';
+import { EshopPageBuilderFullView } from '@/components/views/eshop-page-builder-full-view';
+import { EshopBlogFullView } from '@/components/views/eshop-blog-full-view';
+import { EshopDashboardFullView } from '@/components/views/eshop-dashboard-full-view';
+import { useEshopPageBuilderStore } from '@/stores/eshop-page-builder-store';
+import { useEshopBlogStore } from '@/stores/eshop-blog-store';
+import { useEshopDashboardStore } from '@/stores/eshop-dashboard-store';
 
 interface RoleViewProps {
   /**
@@ -49,6 +61,30 @@ interface RoleViewProps {
    * Whether to show fullscreen presence view when presenceViewMode === 'view'
    */
   showPresenceFullView?: boolean;
+  /**
+   * Whether to show fullscreen eshop produkty view when produktyViewMode === 'view'
+   */
+  showEshopProduktyFullView?: boolean;
+  /**
+   * Whether to show fullscreen eshop eshopy view when eshopyViewMode === 'view'
+   */
+  showEshopEshopyFullView?: boolean;
+  /**
+   * Whether to show fullscreen eshop objednavky view when objednavkyViewMode === 'view'
+   */
+  showEshopObjednavkyFullView?: boolean;
+  /**
+   * Whether to show fullscreen page builder view when pageBuilderViewMode === 'view'
+   */
+  showEshopPageBuilderFullView?: boolean;
+  /**
+   * Whether to show fullscreen blog view when blogViewMode === 'view'
+   */
+  showEshopBlogFullView?: boolean;
+  /**
+   * Whether to show fullscreen dashboard view when dashboardViewMode === 'view'
+   */
+  showEshopDashboardFullView?: boolean;
   /**
    * Optional custom content to render instead of ModuleRenderer
    */
@@ -88,6 +124,12 @@ export function RoleView({
   showChatFullView = false,
   showEmailFullView = false,
   showPresenceFullView = false,
+  showEshopProduktyFullView = false,
+  showEshopEshopyFullView = false,
+  showEshopObjednavkyFullView = false,
+  showEshopPageBuilderFullView = false,
+  showEshopBlogFullView = false,
+  showEshopDashboardFullView = false,
   customContent,
   isWarehouse = false,
   className = '',
@@ -100,6 +142,12 @@ export function RoleView({
   const { manualViewMode } = useManualStore();
   const { presenceViewMode } = usePresenceStore();
   const { pickingPrevodkaId } = usePrevodkyStore();
+  const { produktyViewMode } = useEshopProduktyStore();
+  const { eshopyViewMode } = useEshopEshopyStore();
+  const { objednavkyViewMode } = useEshopObjednavkyStore();
+  const { pageBuilderViewMode } = useEshopPageBuilderStore();
+  const { blogViewMode } = useEshopBlogStore();
+  const { dashboardViewMode } = useEshopDashboardStore();
 
   // Fullscreen picking view has highest priority (above all)
   if (pickingPrevodkaId) {
@@ -109,6 +157,36 @@ export function RoleView({
   // Fullscreen manual view has highest priority
   if (manualViewMode === 'view') {
     return <ManualFullView />;
+  }
+
+  // Fullscreen dashboard view
+  if (showEshopDashboardFullView && dashboardViewMode === 'view') {
+    return <EshopDashboardFullView />;
+  }
+
+  // Fullscreen blog view
+  if (showEshopBlogFullView && blogViewMode === 'view') {
+    return <EshopBlogFullView />;
+  }
+
+  // Fullscreen page builder view
+  if (showEshopPageBuilderFullView && pageBuilderViewMode === 'view') {
+    return <EshopPageBuilderFullView />;
+  }
+
+  // Fullscreen eshop objednavky view
+  if (showEshopObjednavkyFullView && objednavkyViewMode === 'view') {
+    return <EshopObjednavkyFullView />;
+  }
+
+  // Fullscreen eshop eshopy view
+  if (showEshopEshopyFullView && eshopyViewMode === 'view') {
+    return <EshopEshopyFullView />;
+  }
+
+  // Fullscreen eshop produkty view
+  if (showEshopProduktyFullView && produktyViewMode === 'view') {
+    return <EshopProduktyFullView />;
   }
 
   // Fullscreen email view

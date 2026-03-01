@@ -14,6 +14,12 @@ import { useAttendanceStore } from '@/features/attendance/attendance-store';
 import { usePohodaStore } from '@/features/pohoda/pohoda-store';
 import { useMotivationStore } from '@/features/motivation/motivation-store';
 import { usePrevodkyStore } from '@/features/prevodky/prevodky-store';
+import { useEshopProduktyStore } from '@/features/eshop/eshop-produkty-store';
+import { useEshopEshopyStore } from '@/features/eshop/eshop-eshopy-store';
+import { useEshopFeedStore } from '@/features/eshop/eshop-feed-store';
+import { useEshopObjednavkyStore } from '@/features/eshop/eshop-objednavky-store';
+import { useEshopPageBuilderStore } from '@/features/eshop/eshop-page-builder-store';
+import { useEshopBlogStore } from '@/features/eshop/eshop-blog-store';
 import { LEGACY_STORAGE_KEYS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -83,6 +89,13 @@ async function initializeStores() {
     usePohodaStore.getState().fetchPohodaConfig(),
     useMotivationStore.getState().fetchSettings(),
     usePrevodkyStore.getState().fetchPrevodky(),
+    useEshopProduktyStore.getState().fetchEshopProduktyData(),
+    useEshopEshopyStore.getState().fetchEshopEshopyData(),
+    useEshopFeedStore.getState().fetchFeedData(),
+    useEshopObjednavkyStore.getState().fetchObjednavkyData(),
+    useEshopPageBuilderStore.getState().fetchPageBuilderData(),
+    useEshopBlogStore.getState().fetchBlogData(),
+    useEshopProduktyStore.getState().fetchReviews(),
   ]);
 
   // Phase 4: Start Realtime subscriptions + auto-sync polling as fallback
@@ -98,6 +111,12 @@ async function initializeStores() {
   useAbsenceStore.getState().subscribeRealtime();
   useMotivationStore.getState().subscribeRealtime();
   usePrevodkyStore.getState().subscribeRealtime();
+  useEshopProduktyStore.getState().subscribeRealtime();
+  useEshopEshopyStore.getState().subscribeRealtime();
+  useEshopFeedStore.getState().subscribeRealtime();
+  useEshopObjednavkyStore.getState().subscribeRealtime();
+  useEshopPageBuilderStore.getState().subscribeRealtime();
+  useEshopBlogStore.getState().subscribeRealtime();
   useAttendanceStore.getState().startAutoSync();
   useChatStore.getState().startAutoSync();
   useTasksStore.getState().startAutoSync();
@@ -119,6 +138,12 @@ export function cleanupSubscriptions() {
   useAbsenceStore.getState().unsubscribeRealtime();
   useMotivationStore.getState().unsubscribeRealtime();
   usePrevodkyStore.getState().unsubscribeRealtime();
+  useEshopProduktyStore.getState().unsubscribeRealtime();
+  useEshopEshopyStore.getState().unsubscribeRealtime();
+  useEshopFeedStore.getState().unsubscribeRealtime();
+  useEshopObjednavkyStore.getState().unsubscribeRealtime();
+  useEshopPageBuilderStore.getState().unsubscribeRealtime();
+  useEshopBlogStore.getState().unsubscribeRealtime();
   useAttendanceStore.getState().stopAutoSync();
   useChatStore.getState().stopAutoSync();
   useTasksStore.getState().stopAutoSync();

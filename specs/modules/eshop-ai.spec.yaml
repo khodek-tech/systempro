@@ -1,0 +1,93 @@
+module: eshop-ai-pretextovani
+version: "1.0"
+status: implemented
+
+description: |
+  AI pretextovani produktovych popisu a blog clanku pomoci Claude API.
+  Generovani probiha pres Edge Function, vysledky se zobrazuji v preview modalu.
+
+access:
+  roles: [administrator, majitel, obsluha-eshop]
+
+features:
+  ai_generate_product:
+    description: "Generovani AI textu pro shop produkt"
+    fields: [shortDescription, longDescription, seoTitle, seoDescription]
+    trigger: "Tlacitko 'AI Pretextovat' v EshopProductDetailModal"
+
+  ai_generate_blog:
+    description: "Generovani AI textu pro blog clanek"
+    fields: [shortDescription, content, seoTitle, seoDescription]
+    trigger: "Tlacitko 'AI Pretextovat' v BlogPostFormModal (sidebar)"
+
+  ai_preview:
+    description: "Nahled pred/po s moznosti prijmout/odmitnout"
+    component: AiPreviewModal
+    features:
+      - side-by-side porovnani
+      - checkboxy pro vyber poli
+      - editovatelne vygenerovane texty
+      - usage info (tokeny, cas)
+
+  ai_bulk:
+    description: "Hromadne AI generovani pro vybrane produkty"
+    trigger: "Checkbox selection + tlacitko v toolbaru EshopProductManager"
+    features:
+      - progress bar s poctem zpracovanych
+      - sekvencni zpracovani (500ms pauza)
+      - error tracking
+
+  ai_config:
+    description: "Sprava Anthropic API klice"
+    component: AiConfigPanel
+    location: "E-shop E-shopy > zalozka AI"
+
+  ai_status:
+    description: "Sledovani stavu AI pretextovani"
+    states:
+      ceka: "Ceka na pretextovani (default)"
+      generuje: "Probiha generovani"
+      vygenerovano: "Text vygenerovan, ceka na schvaleni"
+      schvaleno: "Text schvalen a aplikovan"
+
+scenarios:
+  - name: "Generovani textu pro produkt"
+    steps:
+      - "Otevrit detail shop produktu"
+      - "Kliknout 'AI Pretextovat'"
+      - "Pockat na generovani (status: generuje)"
+      - "Zobrazit AiPreviewModal s vysledky"
+    expected:
+      - "AI status se zmeni na 'vygenerovano'"
+      - "Preview ukazuje puvodni i vygenerovane texty"
+
+  - name: "Schvaleni AI textu"
+    steps:
+      - "V AiPreviewModal vybrat pole checkboxy"
+      - "Kliknout 'Prijmout vybrane'"
+    expected:
+      - "Vybrane texty se ulozi do shop produktu"
+      - "AI status se zmeni na 'schvaleno'"
+      - "Modal se zavre"
+
+  - name: "Hromadne generovani"
+    steps:
+      - "Vybrat checkboxy u vice produktu"
+      - "Kliknout 'AI Pretextovat' v bulk toolbaru"
+    expected:
+      - "Zobrazi se progress modal"
+      - "Produkty se zpracuji sekvencne"
+      - "Kazdy produkt zmeni status: ceka -> generuje -> vygenerovano"
+
+  - name: "Chybejici API klic"
+    steps:
+      - "Spustit generovani bez nastaveneho API klice"
+    expected:
+      - "Toast chyba: 'Anthropic API klic neni nastaven'"
+      - "Status se vrati na 'ceka'"
+
+edge_cases:
+  - "Rate limiting (429): Edge Function retry s exponential backoff"
+  - "Nevalidni JSON od Claude: Regex extraction fallback"
+  - "Timeout: Status se vrati na 'ceka', chyba do ai_log"
+  - "Concurrent generovani: Tlacitko disabled behem generovani"

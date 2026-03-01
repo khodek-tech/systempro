@@ -1,0 +1,177 @@
+# SYSTEM.PRO - E-shop Blog Module Specification
+# Modul pro spravu blogovych clanku pro e-shopy
+
+module:
+  id: eshop-blog
+  name: E-shop Blog
+  description: Sprava blogovych clanku pro e-shopy s WYSIWYG editorem, SEO a planovanym publikovanim
+  component: EshopBlogModule
+  store: useEshopBlogStore
+  icon: FileText
+
+access:
+  roles:
+    - role-2  # Administrator
+    - role-5  # Obsluha e-shopu
+    - role-8  # Majitel
+
+  notes:
+    - Modul je dostupny pro vsechny role spravujici e-shop
+    - Kazdy e-shop ma vlastni blog clanky
+    - Clanky jsou viditelne na frontendu pouze pokud stav = 'publikovano'
+
+data_model:
+  blogPost:
+    id: integer
+    shopId: integer  # eshop_id - FK na eshopy
+    title: string  # nazev
+    slug: string  # URL-safe identifikator, UNIQUE(eshop_id, slug)
+    shortDescription: string | null  # kratky_popis
+    content: string | null  # obsah - HTML z TipTap editoru
+    imageUrl: string | null  # obrazek_url - nahledovy obrazek
+    seoTitle: string | null  # seo_title
+    seoDescription: string | null  # seo_description
+    authorId: integer | null  # autor_id
+    status: BlogPostStatus  # stav - koncept | planovany | publikovano
+    publishedAt: string | null  # publikovano_v
+    tags: string[]  # tagy - TEXT[]
+    aiStatus: string | null  # ai_stav
+    createdAt: string  # vytvoreno
+    updatedAt: string  # aktualizovano
+
+features:
+  - id: blog-list
+    name: Seznam clanku
+    description: Tabulkovy prehled clanku s filtry
+    details:
+      - Filtr podle stavu (vse/koncepty/planovane/publikovane)
+      - Fulltextove hledani v nazvu, popisu a tazich
+      - Nahledovy obrazek, stav badge, datum, tagy
+      - Akce: nahled, upravit, publikovat/zrusit, smazat
+
+  - id: blog-editor
+    name: WYSIWYG editor
+    description: TipTap rich text editor pro obsah clanku
+    details:
+      - Toolbar s formatovanim (tucne, kurziva, podtrzeni)
+      - Nadpisy H2-H4
+      - Seznamy (odrazky, cislovane)
+      - Citace, blok kodu, horizontalni cara
+      - Vlozeni odkazu a obrazku (upload do Supabase Storage)
+      - Undo/Redo
+      - Vystup jako HTML kompatibilni s frontend prose styly
+
+  - id: blog-form
+    name: Formular clanku
+    description: Dvousloupcovy formular pro vytvoreni/upravu clanku
+    details:
+      - Levy sloupec - nazev, slug (auto z nazvu), kratky popis, WYSIWYG obsah
+      - Pravy sloupec - nahledovy obrazek, stav, planovane datum, SEO title/description, tagy, autor
+      - Auto-generace slugu z nazvu (ceska diakritika)
+      - Tagy s autocomplete z existujicich tagu
+      - Drag & drop upload obrazku
+
+  - id: scheduled-publishing
+    name: Planovane publikovani
+    description: Moznost naplanovat automaticke publikovani v budoucnosti
+    details:
+      - Stav 'planovany' s datem publikovani
+      - pg_cron job kazdych 2 minut kontroluje a publikuje
+      - Frontend nezobrazi planovane clanky (RLS filtruje na 'publikovano')
+
+  - id: blog-preview
+    name: Nahled clanku
+    description: Nahled clanku ve stylu frontendu
+    details:
+      - Prose prose-slate styly
+      - Sanitizace HTML pres DOMPurify
+      - Zobrazeni metadat (datum, tagy, obrazek)
+
+  - id: image-upload
+    name: Upload obrazku
+    description: Nahrani obrazku do Supabase Storage
+    details:
+      - Nahledovy obrazek clanku (drag & drop)
+      - Inline obrazky v TipTap editoru
+      - Ulozeni do eshop-images/blog/{postId}/
+
+  - id: per-shop-filter
+    name: Per-shop filtrovani
+    description: Kazdy e-shop ma vlastni blog
+    details:
+      - E-shop selektor v headeru
+      - Zobrazeni pouze clanku pro vybrany e-shop
+      - Prazdny stav pokud neni vybran e-shop
+
+  - id: frontend-blog
+    name: Frontend blog stranky
+    description: SSR blog stranky na eshop-frontend
+    details:
+      - /blog - listing s paginaci a tagy
+      - /blog/[slug] - detail s JSON-LD ArticleSchema, related posts
+      - /blog/tag/[tag] - filtrovani podle tagu
+      - /blog/feed.xml - RSS feed
+
+scenarios:
+  - id: create-post
+    name: Vytvoreni noveho clanku
+    steps:
+      - Uzivatel klikne na modul "E-shop Blog"
+      - Vybere e-shop v selektoru
+      - Klikne "Novy clanek"
+      - Vyplni nazev (slug se vygeneruje automaticky)
+      - Napise obsah v WYSIWYG editoru
+      - Nahraje nahledovy obrazek
+      - Vyplni SEO pole a tagy
+      - Zvoli stav (koncept/publikovat/naplanovat)
+      - Klikne "Ulozit"
+    expected:
+      - Clanek se ulozi do DB
+      - Toast "Clanek vytvoren"
+      - Modal se zavre
+      - Clanek se objevi v seznamu
+
+  - id: publish-post
+    name: Publikovani clanku
+    steps:
+      - Uzivatel klikne na ikonu publikovani u konceptu
+    expected:
+      - Stav se zmeni na 'publikovano'
+      - Datum publikovani se nastavi na ted
+      - Clanek je viditelny na frontendu
+
+  - id: schedule-post
+    name: Planovane publikovani
+    steps:
+      - Uzivatel ve formulari zvoli stav "Naplanovat"
+      - Nastavi datum v budoucnosti
+      - Ulozi clanek
+    expected:
+      - Stav = 'planovany'
+      - Po dosazeni datumu pg_cron prepne na 'publikovano'
+      - Clanek se objevi na frontendu
+
+  - id: unpublish-post
+    name: Zruseni publikovani
+    steps:
+      - Uzivatel klikne na ikonu "Vratit do konceptu" u publikovaneho clanku
+    expected:
+      - Stav se zmeni na 'koncept'
+      - Clanek zmizi z frontendu
+
+edge_cases:
+  - id: duplicate-slug
+    description: Pokus o vytvoreni clanku se stejnym slugem v ramci e-shopu
+    expected: Toast "Clanek s timto slugem jiz existuje"
+
+  - id: no-shop-selected
+    description: Zadny e-shop neni vybran
+    expected: Zobrazeni placeholder "Vyberte e-shop"
+
+  - id: empty-blog
+    description: E-shop nema zadne clanky
+    expected: Prazdny stav s informaci a moznosti vytvorit clanek
+
+  - id: scheduled-past-date
+    description: Uzivatel naplanuje clanek s datem v minulosti
+    expected: Validace zabrání uložení (min date = teď)
