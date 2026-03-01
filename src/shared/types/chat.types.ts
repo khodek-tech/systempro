@@ -47,3 +47,37 @@ export interface ChatGroup {
   createdAt: string;
   createdBy: string;
 }
+
+/**
+ * Summary of a chat group for sidebar display (from DB RPC).
+ * Avoids fetching all messages just to show last message preview + unread count.
+ */
+export interface ChatGroupSummary {
+  groupId: string;
+  lastMessageText: string;
+  lastMessageUserId: string;
+  lastMessageAt: string;
+  totalCount: number;
+  unreadCount: number;
+}
+
+/**
+ * Pagination state for messages within a single group.
+ */
+export interface ChatGroupPaginationState {
+  messages: ChatMessage[];
+  hasMore: boolean;
+  loading: boolean;
+  oldestLoadedAt: string | null;
+}
+
+/**
+ * A single search result from fulltext DB search.
+ */
+export interface ChatSearchResult {
+  messageId: string;
+  groupId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+}

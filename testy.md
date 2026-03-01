@@ -212,6 +212,38 @@
 | 7 | Změnit název a členy | Změny uloženy |
 | 8 | Smazat skupinu | Skupina smazána |
 
+#### CHAT-004: Fulltext vyhledávání přes DB
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít skupinu | Konverzace zobrazena |
+| 2 | Do pole "Hledat ve zprávách..." zadat text | Text v inputu, debounce 300ms |
+| 3 | Počkat na výsledky | Overlay panel s výsledky pod headerem |
+| 4 | Zkontrolovat výsledky | Jméno odesílatele, čas, preview textu |
+| 5 | Kliknout na výsledek z jiné skupiny | Navigace do skupiny, scroll na zprávu |
+| 6 | Kliknout X pro vymazání | Overlay zmizí |
+| 7 | Hledat text starší než 50 zpráv | Nalezeno (hledá v celé DB, ne jen v načtených) |
+
+#### CHAT-012: Paginace — infinite scroll
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Otevřít skupinu s 70+ zprávami | Posledních 50 zpráv se načte, scrollnuto na konec |
+| 2 | Scrollnout rychle nahoru | Spinner nahoře, starší zprávy se načítají |
+| 3 | Starší zprávy se načtou | Scroll pozice se zachová (nepřeskočí) |
+| 4 | Otevřít skupinu s <50 zprávami | Všechny zprávy najednou, žádný spinner |
+| 5 | Zkontrolovat sidebar | Zobrazuje souhrny (preview, čas, unread) bez načítání zpráv |
+
+#### CHAT-013: Oddělovač nepřečtených zpráv
+
+| # | Krok | Očekávaný výsledek |
+|---|------|-------------------|
+| 1 | Nechat jiného uživatele poslat zprávy | Zprávy odeslány |
+| 2 | Otevřít skupinu s nepřečtenými | Červený oddělovač "Nové zprávy" viditelný |
+| 3 | Zkontrolovat scroll pozici | Automaticky scrollnuto na oddělovač (instant) |
+| 4 | Zkontrolovat oddělovač | Zobrazuje se jen před zprávami od jiných |
+| 5 | Přepnout na jinou skupinu a zpět | Oddělovač zmizí (vše přečtené) |
+
 #### CHAT-006: Realtime multi-klient
 
 | # | Krok | Očekávaný výsledek |
@@ -290,6 +322,8 @@
 | CHAT-E005 | DM se sebou samým | Aktuální uživatel se nezobrazuje v modalu |
 | CHAT-E006 | Duplicitní DM | Otevře existující DM místo vytvoření nové |
 | CHAT-E007 | Admin nastavení nevidí DM | Pouze skupiny typu "group" v tabulce |
+| CHAT-E008 | Skupina s <50 zprávami | Všechny zprávy načteny, hasMore=false, žádný spinner |
+| CHAT-E009 | Přepnutí skupiny při vyhledávání | Výsledky zůstanou, klik naviguje správně |
 
 ---
 

@@ -15,6 +15,8 @@ import type {
   ChatGroupType,
   ChatMessage,
   ChatReadStatus,
+  ChatGroupSummary,
+  ChatSearchResult,
   AttendanceRecord,
   ModuleDefinition,
   ModuleConfig,
@@ -337,6 +339,29 @@ export function mapChatReadStatusToDb(status: ChatReadStatus): Record<string, an
     id_uzivatele: status.userId,
     id_posledni_prectene_zpravy: status.lastReadMessageId,
     precteno: status.lastReadAt,
+  };
+}
+
+// Chat group summary (from RPC get_chat_group_summaries)
+export function mapDbToChatGroupSummary(row: any): ChatGroupSummary {
+  return {
+    groupId: row.group_id,
+    lastMessageText: row.last_message_text ?? '',
+    lastMessageUserId: row.last_message_user_id ?? '',
+    lastMessageAt: row.last_message_at ?? '',
+    totalCount: Number(row.total_count) || 0,
+    unreadCount: Number(row.unread_count) || 0,
+  };
+}
+
+// Chat search result (from RPC search_chat_messages)
+export function mapDbToChatSearchResult(row: any): ChatSearchResult {
+  return {
+    messageId: row.message_id,
+    groupId: row.group_id,
+    userId: row.user_id,
+    text: row.message_text,
+    createdAt: row.created_at,
   };
 }
 

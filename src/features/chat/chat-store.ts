@@ -6,6 +6,9 @@ import {
   ChatReadStatus,
   ChatReactionType,
   ChatAttachment,
+  ChatGroupSummary,
+  ChatGroupPaginationState,
+  ChatSearchResult,
 } from '@/shared/types';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -15,24 +18,33 @@ import {
   mapChatMessageToDb,
   mapDbToChatReadStatus,
   mapChatReadStatusToDb,
+  mapDbToChatGroupSummary,
+  mapDbToChatSearchResult,
 } from '@/lib/supabase/mappers';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { getAdminRoleId } from '@/core/stores/store-helpers';
-import { getLastMessageInGroup, sortGroupsByLastMessage } from './chat-helpers';
+import { sortGroupsBySummary } from './chat-helpers';
+
+const MESSAGES_PAGE_SIZE = 50;
 
 let _chatVisibilityHandler: (() => void) | null = null;
+let _searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface ChatState {
   groups: ChatGroup[];
-  messages: ChatMessage[];
+  groupMessages: Record<string, ChatGroupPaginationState>;
+  groupSummaries: Record<string, ChatGroupSummary>;
   readStatuses: ChatReadStatus[];
   _loaded: boolean;
   _loading: boolean;
   chatViewMode: 'card' | 'view';
   selectedGroupId: string | null;
-  searchQuery: string;
+  groupFilterQuery: string;
+  messageSearchQuery: string;
+  messageSearchResults: ChatSearchResult[];
+  messageSearchLoading: boolean;
   isGroupFormOpen: boolean;
   editingGroupId: string | null;
   isNewDmOpen: boolean;
@@ -44,12 +56,20 @@ interface ChatState {
 interface ChatActions {
   // Fetch
   fetchChatData: () => Promise<void>;
+  fetchGroupSummaries: () => Promise<void>;
+  fetchMessagesForGroup: (groupId: string) => Promise<void>;
+  loadOlderMessages: (groupId: string) => Promise<void>;
 
   // View mode actions
   openChatView: () => void;
   closeChatView: () => void;
   selectGroup: (groupId: string | null) => void;
-  setSearchQuery: (query: string) => void;
+  setGroupFilterQuery: (query: string) => void;
+
+  // Search
+  searchMessages: (query: string) => void;
+  clearMessageSearch: () => void;
+  navigateToSearchResult: (result: ChatSearchResult) => Promise<void>;
 
   // Message actions
   sendMessage: (
@@ -92,20 +112,54 @@ interface ChatActions {
   getGroupsForUser: (userId: string) => ChatGroup[];
   getMessagesForGroup: (groupId: string) => ChatMessage[];
   getUnreadCountForUser: (userId: string) => number;
-  getUnreadCountForGroup: (groupId: string, userId: string) => number;
+  getUnreadCountForGroup: (groupId: string) => number;
   getGroupById: (groupId: string) => ChatGroup | undefined;
+}
+
+/**
+ * Helper: find a message across all loaded group messages
+ */
+function findMessageInGroups(
+  groupMessages: Record<string, ChatGroupPaginationState>,
+  messageId: string,
+): ChatMessage | undefined {
+  for (const state of Object.values(groupMessages)) {
+    const found = state.messages.find((m) => m.id === messageId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
+ * Helper: update messages in a specific group's pagination state
+ */
+function updateGroupMessages(
+  groupMessages: Record<string, ChatGroupPaginationState>,
+  groupId: string,
+  updater: (messages: ChatMessage[]) => ChatMessage[],
+): Record<string, ChatGroupPaginationState> {
+  const state = groupMessages[groupId];
+  if (!state) return groupMessages;
+  return {
+    ...groupMessages,
+    [groupId]: { ...state, messages: updater(state.messages) },
+  };
 }
 
 export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   // Initial state
   groups: [],
-  messages: [],
+  groupMessages: {},
+  groupSummaries: {},
   readStatuses: [],
   _loaded: false,
   _loading: false,
   chatViewMode: 'card',
   selectedGroupId: null,
-  searchQuery: '',
+  groupFilterQuery: '',
+  messageSearchQuery: '',
+  messageSearchResults: [],
+  messageSearchLoading: false,
   isGroupFormOpen: false,
   editingGroupId: null,
   isNewDmOpen: false,
@@ -113,40 +167,323 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   _realtimeChannel: null,
   _autoSyncInterval: null,
 
-  // Fetch
+  // Fetch — loads groups, read statuses, and summaries (NOT all messages)
   fetchChatData: async () => {
     set({ _loading: true });
     const supabase = createClient();
 
-    const [groupsResult, messagesResult, readStatusResult] = await Promise.all([
+    const [groupsResult, readStatusResult] = await Promise.all([
       supabase.from('chat_skupiny').select('*'),
-      supabase.from('chat_zpravy').select('*'),
       supabase.from('chat_stav_precteni').select('*'),
     ]);
 
     if (!groupsResult.error && groupsResult.data &&
-        !messagesResult.error && messagesResult.data &&
         !readStatusResult.error && readStatusResult.data) {
       set({
         groups: groupsResult.data.map(mapDbToChatGroup),
-        messages: messagesResult.data.map(mapDbToChatMessage),
         readStatuses: readStatusResult.data.map(mapDbToChatReadStatus),
         _loaded: true,
         _loading: false,
       });
+      // Fetch summaries separately (uses RPC)
+      await get().fetchGroupSummaries();
     } else {
       logger.error('Failed to fetch chat data');
       set({ _loading: false });
     }
   },
 
+  fetchGroupSummaries: async () => {
+    const currentUser = useAuthStore.getState().currentUser;
+    if (!currentUser) return;
+
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('get_chat_group_summaries', {
+      p_user_id: currentUser.id,
+    });
+
+    if (error) {
+      logger.error('Failed to fetch group summaries');
+      return;
+    }
+
+    if (data) {
+      const summaries: Record<string, ChatGroupSummary> = {};
+      for (const row of data) {
+        const summary = mapDbToChatGroupSummary(row);
+        summaries[summary.groupId] = summary;
+      }
+      set({ groupSummaries: summaries });
+    }
+  },
+
+  fetchMessagesForGroup: async (groupId) => {
+    const existing = get().groupMessages[groupId];
+    if (existing?.loading) return;
+
+    set((state) => ({
+      groupMessages: {
+        ...state.groupMessages,
+        [groupId]: {
+          messages: existing?.messages || [],
+          hasMore: existing?.hasMore ?? true,
+          loading: true,
+          oldestLoadedAt: existing?.oldestLoadedAt ?? null,
+        },
+      },
+    }));
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('chat_zpravy')
+      .select('*')
+      .eq('id_skupiny', groupId)
+      .order('vytvoreno', { ascending: false })
+      .limit(MESSAGES_PAGE_SIZE);
+
+    if (error) {
+      logger.error('Failed to fetch messages for group');
+      set((state) => ({
+        groupMessages: {
+          ...state.groupMessages,
+          [groupId]: {
+            messages: existing?.messages || [],
+            hasMore: false,
+            loading: false,
+            oldestLoadedAt: existing?.oldestLoadedAt ?? null,
+          },
+        },
+      }));
+      return;
+    }
+
+    const messages = (data || []).map(mapDbToChatMessage).reverse(); // ASC order
+    const hasMore = (data || []).length >= MESSAGES_PAGE_SIZE;
+    const oldestLoadedAt = messages.length > 0 ? messages[0].createdAt : null;
+
+    set((state) => ({
+      groupMessages: {
+        ...state.groupMessages,
+        [groupId]: { messages, hasMore, loading: false, oldestLoadedAt },
+      },
+    }));
+  },
+
+  loadOlderMessages: async (groupId) => {
+    const state = get().groupMessages[groupId];
+    if (!state || state.loading || !state.hasMore || !state.oldestLoadedAt) return;
+
+    set((s) => ({
+      groupMessages: {
+        ...s.groupMessages,
+        [groupId]: { ...state, loading: true },
+      },
+    }));
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('chat_zpravy')
+      .select('*')
+      .eq('id_skupiny', groupId)
+      .lt('vytvoreno', state.oldestLoadedAt)
+      .order('vytvoreno', { ascending: false })
+      .limit(MESSAGES_PAGE_SIZE);
+
+    if (error) {
+      logger.error('Failed to load older messages');
+      set((s) => ({
+        groupMessages: {
+          ...s.groupMessages,
+          [groupId]: { ...state, loading: false },
+        },
+      }));
+      return;
+    }
+
+    const olderMessages = (data || []).map(mapDbToChatMessage).reverse();
+    const hasMore = (data || []).length >= MESSAGES_PAGE_SIZE;
+    const oldestLoadedAt = olderMessages.length > 0
+      ? olderMessages[0].createdAt
+      : state.oldestLoadedAt;
+
+    set((s) => {
+      const current = s.groupMessages[groupId];
+      return {
+        groupMessages: {
+          ...s.groupMessages,
+          [groupId]: {
+            messages: [...olderMessages, ...(current?.messages || [])],
+            hasMore,
+            loading: false,
+            oldestLoadedAt,
+          },
+        },
+      };
+    });
+  },
+
   // View mode actions
   openChatView: () => set({ chatViewMode: 'view' }),
-  closeChatView: () => set({ chatViewMode: 'card', selectedGroupId: null, searchQuery: '' }),
+  closeChatView: () => set({
+    chatViewMode: 'card',
+    selectedGroupId: null,
+    groupFilterQuery: '',
+    messageSearchQuery: '',
+    messageSearchResults: [],
+  }),
 
-  selectGroup: (groupId) => set({ selectedGroupId: groupId }),
+  selectGroup: (groupId) => {
+    set({ selectedGroupId: groupId, messageSearchQuery: '', messageSearchResults: [] });
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
+    if (groupId) {
+      // Lazy-load messages if not already loaded
+      const existing = get().groupMessages[groupId];
+      if (!existing) {
+        get().fetchMessagesForGroup(groupId);
+      }
+
+      // Mark as read immediately
+      const currentUser = useAuthStore.getState().currentUser;
+      if (currentUser) {
+        get().markGroupAsRead(groupId, currentUser.id);
+      }
+    }
+  },
+
+  setGroupFilterQuery: (query) => set({ groupFilterQuery: query }),
+
+  // Search
+  searchMessages: (query) => {
+    set({ messageSearchQuery: query });
+
+    if (_searchDebounceTimer) clearTimeout(_searchDebounceTimer);
+
+    if (!query.trim()) {
+      set({ messageSearchResults: [], messageSearchLoading: false });
+      return;
+    }
+
+    set({ messageSearchLoading: true });
+
+    _searchDebounceTimer = setTimeout(async () => {
+      const currentUser = useAuthStore.getState().currentUser;
+      if (!currentUser) {
+        set({ messageSearchLoading: false });
+        return;
+      }
+
+      const { groups } = get();
+      const isAdmin = useAuthStore.getState().activeRoleId === getAdminRoleId();
+      const userGroupIds = isAdmin
+        ? groups.map((g) => g.id)
+        : groups.filter((g) => g.memberIds.includes(currentUser.id)).map((g) => g.id);
+
+      if (userGroupIds.length === 0) {
+        set({ messageSearchResults: [], messageSearchLoading: false });
+        return;
+      }
+
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('search_chat_messages', {
+        p_user_id: currentUser.id,
+        p_query: query.trim(),
+        p_group_ids: userGroupIds,
+        p_limit: 50,
+        p_offset: 0,
+      });
+
+      // Only update if query hasn't changed during fetch
+      if (get().messageSearchQuery !== query) return;
+
+      if (error) {
+        logger.error('Failed to search messages');
+        set({ messageSearchResults: [], messageSearchLoading: false });
+        return;
+      }
+
+      set({
+        messageSearchResults: (data || []).map(mapDbToChatSearchResult),
+        messageSearchLoading: false,
+      });
+    }, 300);
+  },
+
+  clearMessageSearch: () => {
+    if (_searchDebounceTimer) clearTimeout(_searchDebounceTimer);
+    set({ messageSearchQuery: '', messageSearchResults: [], messageSearchLoading: false });
+  },
+
+  navigateToSearchResult: async (result) => {
+    const { selectedGroupId, groupMessages } = get();
+
+    // Switch group if needed
+    if (selectedGroupId !== result.groupId) {
+      set({ selectedGroupId: result.groupId });
+
+      // Load messages for the target group
+      const existing = groupMessages[result.groupId];
+      if (!existing) {
+        await get().fetchMessagesForGroup(result.groupId);
+      }
+    }
+
+    // Check if message is already loaded
+    const gmState = get().groupMessages[result.groupId];
+    const messageExists = gmState?.messages.some((m) => m.id === result.messageId);
+
+    if (!messageExists) {
+      // Load messages around the search result
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('chat_zpravy')
+        .select('*')
+        .eq('id_skupiny', result.groupId)
+        .lte('vytvoreno', result.createdAt)
+        .order('vytvoreno', { ascending: false })
+        .limit(MESSAGES_PAGE_SIZE);
+
+      if (!error && data) {
+        const olderMessages = data.map(mapDbToChatMessage).reverse();
+        const oldestLoadedAt = olderMessages.length > 0 ? olderMessages[0].createdAt : null;
+
+        // Also fetch some newer messages after the result
+        const { data: newerData } = await supabase
+          .from('chat_zpravy')
+          .select('*')
+          .eq('id_skupiny', result.groupId)
+          .gt('vytvoreno', result.createdAt)
+          .order('vytvoreno', { ascending: true })
+          .limit(MESSAGES_PAGE_SIZE);
+
+        const newerMessages = (newerData || []).map(mapDbToChatMessage);
+        const allMessages = [...olderMessages, ...newerMessages];
+        const hasMore = data.length >= MESSAGES_PAGE_SIZE;
+
+        set((s) => ({
+          groupMessages: {
+            ...s.groupMessages,
+            [result.groupId]: {
+              messages: allMessages,
+              hasMore,
+              loading: false,
+              oldestLoadedAt,
+            },
+          },
+        }));
+      }
+    }
+
+    // Scroll to message with highlight (handled by ChatConversation component via state)
+    // We use a small timeout to allow React to render
+    setTimeout(() => {
+      const el = document.getElementById(`msg-${result.messageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-yellow-400', 'rounded-2xl');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-yellow-400', 'rounded-2xl'), 2000);
+      }
+    }, 200);
+  },
 
   // Message actions
   sendMessage: async (groupId, userId, text, attachments = [], replyToMessageId = null) => {
@@ -170,10 +507,42 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      messages: [...state.messages, newMessage],
-      replyingToMessageId: null,
-    }));
+    // Append to groupMessages
+    set((state) => {
+      const gmState = state.groupMessages[groupId];
+      const updatedGroupMessages = gmState
+        ? {
+            ...state.groupMessages,
+            [groupId]: {
+              ...gmState,
+              messages: [...gmState.messages, newMessage],
+            },
+          }
+        : state.groupMessages;
+
+      // Update summary
+      const updatedSummaries = {
+        ...state.groupSummaries,
+        [groupId]: {
+          ...(state.groupSummaries[groupId] || {
+            groupId,
+            totalCount: 0,
+            unreadCount: 0,
+          }),
+          groupId,
+          lastMessageText: text,
+          lastMessageUserId: userId,
+          lastMessageAt: newMessage.createdAt,
+          totalCount: (state.groupSummaries[groupId]?.totalCount || 0) + 1,
+        },
+      };
+
+      return {
+        groupMessages: updatedGroupMessages,
+        groupSummaries: updatedSummaries,
+        replyingToMessageId: null,
+      };
+    });
 
     // Mark as read for sender
     await get().markGroupAsRead(groupId, userId);
@@ -182,8 +551,8 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   setReplyingTo: (messageId) => set({ replyingToMessageId: messageId }),
 
   deleteMessage: async (messageId) => {
-    const { messages } = get();
-    const msg = messages.find((m) => m.id === messageId);
+    const { groupMessages } = get();
+    const msg = findMessageInGroups(groupMessages, messageId);
     if (!msg) return;
 
     const currentUser = useAuthStore.getState().currentUser;
@@ -198,13 +567,17 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     }
 
     set((state) => ({
-      messages: state.messages.filter((m) => m.id !== messageId),
+      groupMessages: updateGroupMessages(
+        state.groupMessages,
+        msg.groupId,
+        (msgs) => msgs.filter((m) => m.id !== messageId),
+      ),
     }));
   },
 
   addReaction: async (messageId, userId, reactionType) => {
-    const { messages } = get();
-    const msg = messages.find((m) => m.id === messageId);
+    const { groupMessages } = get();
+    const msg = findMessageInGroups(groupMessages, messageId);
     if (!msg) return;
 
     // Check if user already has this reaction
@@ -230,15 +603,19 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     }
 
     set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === messageId ? { ...m, reactions: updatedReactions } : m
+      groupMessages: updateGroupMessages(
+        state.groupMessages,
+        msg.groupId,
+        (msgs) => msgs.map((m) =>
+          m.id === messageId ? { ...m, reactions: updatedReactions } : m
+        ),
       ),
     }));
   },
 
   removeReaction: async (messageId, userId, reactionType) => {
-    const { messages } = get();
-    const msg = messages.find((m) => m.id === messageId);
+    const { groupMessages } = get();
+    const msg = findMessageInGroups(groupMessages, messageId);
     if (!msg) return;
 
     const updatedReactions = msg.reactions.filter(
@@ -253,18 +630,23 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     }
 
     set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === messageId ? { ...m, reactions: updatedReactions } : m
+      groupMessages: updateGroupMessages(
+        state.groupMessages,
+        msg.groupId,
+        (msgs) => msgs.map((m) =>
+          m.id === messageId ? { ...m, reactions: updatedReactions } : m
+        ),
       ),
     }));
   },
 
   // Read status actions
   markGroupAsRead: async (groupId, userId) => {
-    const { messages } = get();
-    const lastMessage = getLastMessageInGroup(groupId, messages);
+    const gmState = get().groupMessages[groupId];
+    const messages = gmState?.messages || [];
+    if (messages.length === 0) return;
 
-    if (!lastMessage) return;
+    const lastMessage = messages[messages.length - 1];
 
     const readStatus: ChatReadStatus = {
       groupId,
@@ -283,24 +665,29 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       return;
     }
 
-    const { readStatuses } = get();
-    const existingStatus = readStatuses.find(
-      (s) => s.groupId === groupId && s.userId === userId
-    );
+    set((state) => {
+      const existing = state.readStatuses.find(
+        (s) => s.groupId === groupId && s.userId === userId
+      );
 
-    if (existingStatus) {
-      set((state) => ({
-        readStatuses: state.readStatuses.map((s) =>
-          s.groupId === groupId && s.userId === userId
-            ? { ...s, lastReadMessageId: lastMessage.id, lastReadAt: readStatus.lastReadAt }
-            : s
-        ),
-      }));
-    } else {
-      set((state) => ({
-        readStatuses: [...state.readStatuses, readStatus],
-      }));
-    }
+      const updatedReadStatuses = existing
+        ? state.readStatuses.map((s) =>
+            s.groupId === groupId && s.userId === userId
+              ? { ...s, lastReadMessageId: lastMessage.id, lastReadAt: readStatus.lastReadAt }
+              : s
+          )
+        : [...state.readStatuses, readStatus];
+
+      // Update summary unread count
+      const updatedSummaries = state.groupSummaries[groupId]
+        ? {
+            ...state.groupSummaries,
+            [groupId]: { ...state.groupSummaries[groupId], unreadCount: 0 },
+          }
+        : state.groupSummaries;
+
+      return { readStatuses: updatedReadStatuses, groupSummaries: updatedSummaries };
+    });
   },
 
   // Group management actions
@@ -368,13 +755,20 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      groups: state.groups.filter((g) => g.id !== groupId),
-      messages: state.messages.filter((m) => m.groupId !== groupId),
-      readStatuses: state.readStatuses.filter((s) => s.groupId !== groupId),
-      selectedGroupId:
-        state.selectedGroupId === groupId ? null : state.selectedGroupId,
-    }));
+    set((state) => {
+      const updatedGroupMessages = { ...state.groupMessages };
+      delete updatedGroupMessages[groupId];
+      const updatedSummaries = { ...state.groupSummaries };
+      delete updatedSummaries[groupId];
+      return {
+        groups: state.groups.filter((g) => g.id !== groupId),
+        groupMessages: updatedGroupMessages,
+        groupSummaries: updatedSummaries,
+        readStatuses: state.readStatuses.filter((s) => s.groupId !== groupId),
+        selectedGroupId:
+          state.selectedGroupId === groupId ? null : state.selectedGroupId,
+      };
+    });
   },
 
   // Direct messages
@@ -450,10 +844,50 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           const newMsg = mapDbToChatMessage(payload.new);
-          const exists = get().messages.some((m) => m.id === newMsg.id);
-          if (!exists) {
-            set({ messages: [...get().messages, newMsg] });
+          const groupId = newMsg.groupId;
+
+          // If group messages are loaded, append
+          const gmState = get().groupMessages[groupId];
+          if (gmState) {
+            const exists = gmState.messages.some((m) => m.id === newMsg.id);
+            if (!exists) {
+              set((state) => ({
+                groupMessages: {
+                  ...state.groupMessages,
+                  [groupId]: {
+                    ...gmState,
+                    messages: [...gmState.messages, newMsg],
+                  },
+                },
+              }));
+            }
           }
+
+          // Always update summary
+          set((state) => ({
+            groupSummaries: {
+              ...state.groupSummaries,
+              [groupId]: {
+                ...(state.groupSummaries[groupId] || {
+                  groupId,
+                  totalCount: 0,
+                  unreadCount: 0,
+                }),
+                groupId,
+                lastMessageText: newMsg.text,
+                lastMessageUserId: newMsg.userId,
+                lastMessageAt: newMsg.createdAt,
+                totalCount: (state.groupSummaries[groupId]?.totalCount || 0) + 1,
+                // Increment unread if not from current user and not viewing that group
+                unreadCount:
+                  (state.groupSummaries[groupId]?.unreadCount || 0) +
+                  (newMsg.userId !== useAuthStore.getState().currentUser?.id &&
+                   state.selectedGroupId !== groupId
+                    ? 1
+                    : 0),
+              },
+            },
+          }));
         },
       )
       .on(
@@ -466,11 +900,15 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           const updated = mapDbToChatMessage(payload.new);
-          set({
-            messages: get().messages.map((m) =>
-              m.id === updated.id ? { ...m, ...updated } : m,
+          set((state) => ({
+            groupMessages: updateGroupMessages(
+              state.groupMessages,
+              updated.groupId,
+              (msgs) => msgs.map((m) =>
+                m.id === updated.id ? { ...m, ...updated } : m
+              ),
             ),
-          });
+          }));
         },
       )
       .on(
@@ -484,9 +922,20 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
         (payload: any) => {
           const deletedId = payload.old?.id;
           if (deletedId) {
-            set({
-              messages: get().messages.filter((m) => m.id !== deletedId),
-            });
+            // Find which group this message belongs to and remove it
+            const { groupMessages: gm } = get();
+            for (const [gid, gState] of Object.entries(gm)) {
+              if (gState.messages.some((m) => m.id === deletedId)) {
+                set((state) => ({
+                  groupMessages: updateGroupMessages(
+                    state.groupMessages,
+                    gid,
+                    (msgs) => msgs.filter((m) => m.id !== deletedId),
+                  ),
+                }));
+                break;
+              }
+            }
           }
         },
       )
@@ -534,24 +983,22 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       )
       .subscribe((status, err) => {
         if (err) logger.error(`[chat-realtime] ${status}:`, err);
-        // Re-fetch data after reconnect to catch missed events
+        // Re-fetch summaries + active group messages after reconnect
         if (status === 'SUBSCRIBED' && get()._loaded) {
+          get().fetchGroupSummaries();
+
+          // Refresh active group messages
+          const activeGroupId = get().selectedGroupId;
+          if (activeGroupId) {
+            get().fetchMessagesForGroup(activeGroupId);
+          }
+
+          // Refresh groups and read statuses
           const supabaseRefresh = createClient();
           Promise.all([
-            supabaseRefresh.from('chat_zpravy').select('*'),
             supabaseRefresh.from('chat_stav_precteni').select('*'),
             supabaseRefresh.from('chat_skupiny').select('*'),
-          ]).then(([msgsResult, readResult, groupsResult]) => {
-            if (!msgsResult.error && msgsResult.data) {
-              const freshMessages = msgsResult.data.map(mapDbToChatMessage);
-              const current = get().messages;
-              // Merge: keep local messages, add any missing from DB
-              const currentIds = new Set(current.map((m) => m.id));
-              const newMessages = freshMessages.filter((m) => !currentIds.has(m.id));
-              if (newMessages.length > 0) {
-                set({ messages: [...current, ...newMessages] });
-              }
-            }
+          ]).then(([readResult, groupsResult]) => {
             if (!readResult.error && readResult.data) {
               set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
             }
@@ -578,31 +1025,67 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
     set({ _realtimeChannel: null });
   },
 
-  // Auto-sync polling
+  // Auto-sync polling — now lightweight (summaries + read statuses + active group only)
   startAutoSync: () => {
     get().stopAutoSync();
 
     const syncNow = () => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
 
+      // Refresh summaries (lightweight)
+      get().fetchGroupSummaries();
+
+      // Refresh read statuses
       const supabase = createClient();
-      Promise.all([
-        supabase.from('chat_zpravy').select('*'),
-        supabase.from('chat_stav_precteni').select('*'),
-        supabase.from('chat_skupiny').select('*'),
-      ]).then(([msgsResult, readResult, groupsResult]) => {
-        if (!msgsResult.error && msgsResult.data) {
-          set({ messages: msgsResult.data.map(mapDbToChatMessage) });
+      supabase.from('chat_stav_precteni').select('*').then(({ data, error }) => {
+        if (!error && data) {
+          set({ readStatuses: data.map(mapDbToChatReadStatus) });
         }
-        if (!readResult.error && readResult.data) {
-          set({ readStatuses: readResult.data.map(mapDbToChatReadStatus) });
-        }
-        if (!groupsResult.error && groupsResult.data) {
-          set({ groups: groupsResult.data.map(mapDbToChatGroup) });
-        }
-      }).catch(() => {
-        logger.error('[chat-autosync] sync failed');
       });
+
+      // Refresh groups
+      supabase.from('chat_skupiny').select('*').then(({ data, error }) => {
+        if (!error && data) {
+          set({ groups: data.map(mapDbToChatGroup) });
+        }
+      });
+
+      // Refresh active group messages (fetch new ones since last loaded)
+      const activeGroupId = get().selectedGroupId;
+      if (activeGroupId) {
+        const gmState = get().groupMessages[activeGroupId];
+        if (gmState && gmState.messages.length > 0) {
+          const lastMsg = gmState.messages[gmState.messages.length - 1];
+          supabase
+            .from('chat_zpravy')
+            .select('*')
+            .eq('id_skupiny', activeGroupId)
+            .gt('vytvoreno', lastMsg.createdAt)
+            .order('vytvoreno', { ascending: true })
+            .then(({ data, error: fetchError }) => {
+              if (!fetchError && data && data.length > 0) {
+                const newMessages = data.map(mapDbToChatMessage);
+                set((state) => {
+                  const current = state.groupMessages[activeGroupId];
+                  if (!current) return state;
+                  // Deduplicate
+                  const existingIds = new Set(current.messages.map((m) => m.id));
+                  const uniqueNew = newMessages.filter((m) => !existingIds.has(m.id));
+                  if (uniqueNew.length === 0) return state;
+                  return {
+                    groupMessages: {
+                      ...state.groupMessages,
+                      [activeGroupId]: {
+                        ...current,
+                        messages: [...current.messages, ...uniqueNew],
+                      },
+                    },
+                  };
+                });
+              }
+            });
+        }
+      }
     };
 
     _chatVisibilityHandler = () => {
@@ -628,76 +1111,38 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
 
   // Getters
   getGroupsForUser: (userId) => {
-    const { groups, messages } = get();
+    const { groups, groupSummaries } = get();
     const isAdmin = useAuthStore.getState().activeRoleId === getAdminRoleId();
     const userGroups = isAdmin
       ? groups
       : groups.filter((g) => g.memberIds.includes(userId));
 
-    return sortGroupsByLastMessage(userGroups, messages);
+    return sortGroupsBySummary(userGroups, groupSummaries);
   },
 
   getMessagesForGroup: (groupId) => {
-    const { messages, searchQuery } = get();
-    let groupMessages = messages.filter((m) => m.groupId === groupId);
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      groupMessages = groupMessages.filter((m) =>
-        m.text.toLowerCase().includes(query)
-      );
-    }
-
-    return groupMessages.sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    const gmState = get().groupMessages[groupId];
+    return gmState?.messages || [];
   },
 
   getUnreadCountForUser: (userId) => {
-    const { groups, messages, readStatuses } = get();
+    const { groups, groupSummaries } = get();
     let totalUnread = 0;
-
     const userGroups = groups.filter((g) => g.memberIds.includes(userId));
 
     for (const group of userGroups) {
-      const groupMessages = messages.filter(
-        (m) => m.groupId === group.id && m.userId !== userId
-      );
-      const readStatus = readStatuses.find(
-        (s) => s.groupId === group.id && s.userId === userId
-      );
-
-      if (!readStatus) {
-        totalUnread += groupMessages.length;
-      } else {
-        const lastReadTime = new Date(readStatus.lastReadAt).getTime();
-        totalUnread += groupMessages.filter(
-          (m) => new Date(m.createdAt).getTime() > lastReadTime
-        ).length;
+      const summary = groupSummaries[group.id];
+      if (summary) {
+        totalUnread += summary.unreadCount;
       }
     }
 
     return totalUnread;
   },
 
-  getUnreadCountForGroup: (groupId, userId) => {
-    const { messages, readStatuses } = get();
-    const groupMessages = messages.filter(
-      (m) => m.groupId === groupId && m.userId !== userId
-    );
-
-    const readStatus = readStatuses.find(
-      (s) => s.groupId === groupId && s.userId === userId
-    );
-
-    if (!readStatus) {
-      return groupMessages.length;
-    }
-
-    const lastReadTime = new Date(readStatus.lastReadAt).getTime();
-    return groupMessages.filter(
-      (m) => new Date(m.createdAt).getTime() > lastReadTime
-    ).length;
+  getUnreadCountForGroup: (groupId) => {
+    const summary = get().groupSummaries[groupId];
+    return summary?.unreadCount || 0;
   },
 
   getGroupById: (groupId) => {

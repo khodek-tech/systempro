@@ -2,7 +2,7 @@
  * Chat helper functions
  */
 
-import { ChatMessage, ChatReactionType, ChatGroup, ChatReadStatus } from '@/shared/types';
+import { ChatMessage, ChatReactionType, ChatGroup, ChatReadStatus, ChatGroupSummary } from '@/shared/types';
 import { useAuthStore } from '@/core/stores/auth-store';
 import { useUsersStore } from '@/core/stores/users-store';
 import { getAdminRoleId } from '@/core/stores/store-helpers';
@@ -132,6 +132,24 @@ export function sortGroupsByLastMessage(
     if (!lastB) return -1;
 
     return new Date(lastB.createdAt).getTime() - new Date(lastA.createdAt).getTime();
+  });
+}
+
+/**
+ * Sort groups by summary data (last message time from DB).
+ * Preferred over sortGroupsByLastMessage — uses pre-computed summaries.
+ */
+export function sortGroupsBySummary(
+  groups: ChatGroup[],
+  summaries: Record<string, ChatGroupSummary>,
+): ChatGroup[] {
+  return [...groups].sort((a, b) => {
+    const sa = summaries[a.id];
+    const sb = summaries[b.id];
+    if (!sa && !sb) return 0;
+    if (!sa) return 1;
+    if (!sb) return -1;
+    return new Date(sb.lastMessageAt).getTime() - new Date(sa.lastMessageAt).getTime();
   });
 }
 

@@ -5,7 +5,7 @@ import { ChatGroup } from '@/types';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUsersStore } from '@/stores/users-store';
-import { formatMessageTime, getLastMessageInGroup, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
+import { formatMessageTime, getDirectGroupDisplayName, getDirectGroupBothNames } from '@/features/chat';
 import { cn } from '@/lib/utils';
 
 interface ChatGroupItemProps {
@@ -16,12 +16,12 @@ interface ChatGroupItemProps {
 }
 
 export function ChatGroupItem({ group, isSelected, onClick, isOthersDm }: ChatGroupItemProps) {
-  const { messages, getUnreadCountForGroup } = useChatStore();
+  const { groupSummaries, getUnreadCountForGroup } = useChatStore();
   const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
 
-  const lastMessage = getLastMessageInGroup(group.id, messages);
-  const unreadCount = currentUser ? getUnreadCountForGroup(group.id, currentUser.id) : 0;
+  const summary = groupSummaries[group.id];
+  const unreadCount = getUnreadCountForGroup(group.id);
 
   const isDirect = group.type === 'direct';
   const displayName = isDirect
@@ -32,11 +32,13 @@ export function ChatGroupItem({ group, isSelected, onClick, isOthersDm }: ChatGr
         : 'Neznámý'
     : group.name;
 
-  const lastMessageUser = lastMessage ? getUserById(lastMessage.userId) : null;
-  const lastMessagePreview = lastMessage
+  const lastMessageUser = summary?.lastMessageUserId
+    ? getUserById(summary.lastMessageUserId)
+    : null;
+  const lastMessagePreview = summary?.lastMessageText
     ? isDirect
-      ? lastMessage.text
-      : `${lastMessageUser?.fullName.split(' ')[0] || 'Někdo'}: ${lastMessage.text}`
+      ? summary.lastMessageText
+      : `${lastMessageUser?.fullName.split(' ')[0] || 'Někdo'}: ${summary.lastMessageText}`
     : 'Žádné zprávy';
 
   return (
@@ -75,9 +77,9 @@ export function ChatGroupItem({ group, isSelected, onClick, isOthersDm }: ChatGr
           )}
           <p className="text-sm text-slate-500 truncate mt-1">{lastMessagePreview}</p>
         </div>
-        {lastMessage && (
+        {summary?.lastMessageAt && (
           <span className="text-xs text-slate-400 whitespace-nowrap">
-            {formatMessageTime(lastMessage.createdAt)}
+            {formatMessageTime(summary.lastMessageAt)}
           </span>
         )}
       </div>

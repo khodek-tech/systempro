@@ -14,6 +14,7 @@ export {
   canUserAccessGroup,
   getLastMessageInGroup,
   sortGroupsByLastMessage,
+  sortGroupsBySummary,
   getDirectGroupDisplayName,
   getDirectGroupBothNames,
   getMessageDeliveryStatus,

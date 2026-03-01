@@ -60,6 +60,27 @@ data_model:
     name: string
     size: number
 
+  chatGroupSummary:
+    groupId: string
+    lastMessageText: string
+    lastMessageUserId: string
+    lastMessageAt: ISO8601
+    totalCount: number
+    unreadCount: number
+
+  chatGroupPaginationState:
+    messages: ChatMessage[]
+    hasMore: boolean
+    loading: boolean
+    oldestLoadedAt: ISO8601 | null
+
+  chatSearchResult:
+    messageId: string
+    groupId: string
+    userId: string
+    text: string
+    createdAt: ISO8601
+
 features:
   - id: view_groups
     name: Zobrazení skupin
@@ -93,13 +114,40 @@ features:
       - Nepřečtené se počítají od lastReadAt
       - Vlastní zprávy se nepočítají do nepřečtených
 
-  - id: search
-    name: Vyhledávání
-    description: Vyhledávání v zprávách aktuální skupiny
+  - id: pagination
+    name: Paginace zpráv
+    description: Lazy-loading zpráv po 50 na skupinu s infinite scrollem
     acceptance_criteria:
-      - Filtruje zprávy obsahující hledaný text
-      - Case-insensitive vyhledávání
-      - Vyhledává pouze v aktuálně otevřené skupině
+      - Při otevření skupiny se načte posledních 50 zpráv
+      - Scroll nahoru k začátku spustí načtení dalších 50 starších zpráv
+      - Scroll pozice se zachová po načtení starších zpráv (nepřeskočí)
+      - Spinner se zobrazuje při načítání starších zpráv
+      - Zprávy se nenačítají, dokud uživatel skupinu neotevře (lazy loading)
+      - Sidebar zobrazuje souhrny (poslední zpráva, čas, unread) bez načítání všech zpráv
+
+  - id: unread_separator
+    name: Oddělovač nepřečtených zpráv
+    description: Vizuální červená linie "Nové zprávy" mezi přečtenými a nepřečtenými
+    acceptance_criteria:
+      - Při otevření skupiny se zobrazí červený oddělovač před první nepřečtenou zprávou
+      - Oddělovač obsahuje text "Nové zprávy" s červenými linkami
+      - Scroll automaticky najede na oddělovač (pokud existuje), jinak na konec
+      - Oddělovač se zobrazuje jen pro zprávy od jiných uživatelů
+      - Po označení jako přečtené oddělovač zůstane na místě (snapshot při mount)
+
+  - id: search
+    name: Fulltext vyhledávání v DB
+    description: Vyhledávání přes celou historii zpráv v databázi (ne jen načtené)
+    acceptance_criteria:
+      - Hledací pole "Hledat ve zprávách..." v headeru konverzace
+      - Vyhledává přes celou DB historii všech skupin uživatele (RPC funkce)
+      - Case-insensitive vyhledávání (ILIKE)
+      - Debounce 300ms na vstupu
+      - Výsledky zobrazeny jako overlay panel pod headerem
+      - Každý výsledek zobrazuje: jméno odesílatele, čas, preview textu
+      - Klik na výsledek naviguje do příslušné skupiny a scrollne na zprávu
+      - X tlačítko pro vymazání vyhledávání
+      - Loading indikátor během vyhledávání
 
   - id: group_management
     name: Správa skupin (admin)
@@ -240,18 +288,57 @@ scenarios:
       - Změny se projeví okamžitě pro všechny členy
 
   - id: CHAT-004
-    name: Vyhledávání v konverzaci
+    name: Fulltext vyhledávání přes DB
     preconditions:
-      - Skupina obsahuje několik zpráv s různým textem
+      - Uživatel je členem skupin s více než 50 zprávami
+      - Existuje zpráva starší než posledních 50 zpráv s unikátním textem
     steps:
       - Otevřu skupinu
-      - Do vyhledávacího pole zadám text
-      - Zobrazí se pouze zprávy obsahující text
-      - Vymažu vyhledávání
-      - Zobrazí se všechny zprávy
+      - Do vyhledávacího pole "Hledat ve zprávách..." zadám text
+      - Pod headerem se zobrazí overlay panel s výsledky
+      - Každý výsledek ukazuje jméno odesílatele, čas a preview textu
+      - Kliknu na výsledek z jiné skupiny
+      - Naviguje se do příslušné skupiny
+      - Kliknu na X pro vymazání hledání
+      - Overlay zmizí
     expected:
-      - Filtrování funguje okamžitě
-      - Case-insensitive
+      - Vyhledávání najde zprávy i mimo aktuálně načtených 50
+      - Výsledky ze všech skupin uživatele
+      - Case-insensitive (ILIKE)
+      - Debounce 300ms
+
+  - id: CHAT-012
+    name: Paginace — infinite scroll
+    preconditions:
+      - Skupina obsahuje více než 50 zpráv
+    steps:
+      - Otevřu skupinu s 70+ zprávami
+      - Vidím posledních 50 zpráv (scrollnuto na konec)
+      - Scrollnu rychle nahoru k začátku
+      - Zobrazí se spinner a načtou se starší zprávy
+      - Scroll pozice se zachová (nevrátí se na začátek)
+    expected:
+      - Prvotní načtení jen 50 zpráv
+      - Scroll nahoru (scrollTop < 100) spustí loadOlderMessages
+      - Po prepend starších zpráv se zachová scroll pozice
+      - hasMore = false pokud se načte méně než 50
+
+  - id: CHAT-013
+    name: Oddělovač nepřečtených zpráv
+    preconditions:
+      - Jiný uživatel poslal nové zprávy do skupiny
+      - Aktuální uživatel skupinu ještě neotevřel
+    steps:
+      - Otevřu skupinu s nepřečtenými zprávami
+      - Mezi přečtenými a nepřečtenými je červený oddělovač "Nové zprávy"
+      - Scroll automaticky najede na oddělovač
+      - Označení jako přečtené proběhne ihned
+      - Oddělovač zůstane viditelný (snapshot)
+    expected:
+      - Červená linie s textem "Nové zprávy" je viditelná
+      - Scroll na oddělovač (instant, ne smooth)
+      - Oddělovač se nezobrazuje u vlastních zpráv
+      - Po přepnutí na jinou skupinu a zpět oddělovač zmizí (všechno přečtené)
 
   - id: CHAT-005
     name: Přístup do skupin podle členství
@@ -410,3 +497,19 @@ edge_cases:
     expected: >
       V tabulce se zobrazují pouze skupiny typu "group".
       DM konverzace se nezobrazují v admin nastavení.
+
+  - id: CHAT-E008
+    name: Skupina s méně než 50 zprávami
+    description: Skupina má méně zpráv než PAGE_SIZE
+    expected: >
+      Všechny zprávy se načtou na první pokus.
+      hasMore = false, infinite scroll se nespouští.
+      Spinner nahoře se nezobrazuje.
+
+  - id: CHAT-E009
+    name: Přepnutí skupiny při aktivním vyhledávání
+    description: Uživatel má otevřené vyhledávání a přepne skupinu
+    expected: >
+      Vyhledávání zůstává aktivní (je cross-group).
+      Výsledky z jiných skupin jsou stále klikatelné.
+      Klik na výsledek naviguje do správné skupiny.

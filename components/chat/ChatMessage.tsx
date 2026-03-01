@@ -20,12 +20,14 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, onReply, deliveryStatus }: ChatMessageProps) {
-  const { addReaction, removeReaction, deleteMessage, messages } = useChatStore();
+  const { addReaction, removeReaction, deleteMessage, getMessagesForGroup } = useChatStore();
   const { currentUser } = useAuthStore();
   const { getUserById } = useUsersStore();
 
+  // Look up reply-to message in the same group's loaded messages
+  const groupMsgs = getMessagesForGroup(message.groupId);
   const replyToMessage = message.replyToMessageId
-    ? messages.find((m) => m.id === message.replyToMessageId)
+    ? groupMsgs.find((m) => m.id === message.replyToMessageId)
     : null;
   const replyToSender = replyToMessage ? getUserById(replyToMessage.userId) : null;
 

@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { Search, MessageCirclePlus, ChevronDown, ChevronRight } from 'lucide-react';
 import { useChatStore } from '@/stores/chat-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { getDirectGroupDisplayName, getDirectGroupBothNames, sortGroupsByLastMessage } from '@/features/chat';
+import { getDirectGroupDisplayName, getDirectGroupBothNames, sortGroupsBySummary } from '@/features/chat';
 import { getAdminRoleId } from '@/core/stores/store-helpers';
 import { ChatGroupItem } from './ChatGroupItem';
 import { ChatNewDmModal } from './ChatNewDmModal';
 
 export function ChatGroupList() {
-  const { selectedGroupId, selectGroup, getGroupsForUser, searchQuery, setSearchQuery, openNewDm, messages } =
+  const { selectedGroupId, selectGroup, getGroupsForUser, groupFilterQuery, setGroupFilterQuery, openNewDm, groupSummaries } =
     useChatStore();
   const { currentUser, activeRoleId } = useAuthStore();
   const [showOthersDms, setShowOthersDms] = useState(false);
@@ -18,9 +18,9 @@ export function ChatGroupList() {
   const isAdmin = activeRoleId === getAdminRoleId();
   const groups = currentUser ? getGroupsForUser(currentUser.id) : [];
 
-  const filteredGroups = searchQuery.trim()
+  const filteredGroups = groupFilterQuery.trim()
     ? groups.filter((g) => {
-        const query = searchQuery.toLowerCase();
+        const query = groupFilterQuery.toLowerCase();
         if (g.type === 'direct' && currentUser) {
           const displayName = isAdmin && !g.memberIds.includes(currentUser.id)
             ? getDirectGroupBothNames(g)
@@ -35,11 +35,11 @@ export function ChatGroupList() {
   const visibleGroups = filteredGroups.filter(
     (g) => currentUser && g.memberIds.includes(currentUser.id)
   );
-  const othersConversations = sortGroupsByLastMessage(
+  const othersConversations = sortGroupsBySummary(
     filteredGroups.filter(
       (g) => currentUser && !g.memberIds.includes(currentUser.id)
     ),
-    messages
+    groupSummaries
   );
 
   return (
@@ -57,9 +57,9 @@ export function ChatGroupList() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Hledat skupinu nebo zprávu..."
+            value={groupFilterQuery}
+            onChange={(e) => setGroupFilterQuery(e.target.value)}
+            placeholder="Hledat skupinu..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-300 transition-colors"
           />
         </div>
@@ -69,7 +69,7 @@ export function ChatGroupList() {
       <div className="flex-1 overflow-y-auto">
         {visibleGroups.length === 0 && othersConversations.length === 0 ? (
           <div className="p-4 text-center text-slate-500 text-sm">
-            {searchQuery.trim() ? 'Žádné konverzace nenalezeny' : 'Nejste členem žádné skupiny'}
+            {groupFilterQuery.trim() ? 'Žádné konverzace nenalezeny' : 'Nejste členem žádné skupiny'}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">

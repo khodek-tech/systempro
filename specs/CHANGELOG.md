@@ -2,6 +2,29 @@
 
 Všechny změny ve specifikacích jsou zaznamenány v tomto souboru.
 
+## [2.15.0] - 2026-03-01
+
+### Změněno
+
+#### Chat: Paginace, Oddělovač nepřečtených, Fulltext vyhledávání
+- **Paginace zpráv**: Lazy-loading posledních 50 zpráv na skupinu místo načítání VŠECH zpráv naráz
+  - Infinite scroll nahoru pro starší zprávy s zachováním scroll pozice
+  - `groupMessages: Record<string, ChatGroupPaginationState>` nahrazuje `messages: ChatMessage[]`
+  - Sidebar souhrny přes RPC `get_chat_group_summaries` (nový typ `ChatGroupSummary`)
+- **Oddělovač nepřečtených**: Červená linie "Nové zprávy" mezi přečtenými a nepřečtenými zprávami
+  - Automatický scroll na oddělovač při otevření skupiny
+  - Snapshot `firstUnreadTimestamp` při mount — nezměnitelný po markAsRead
+- **Fulltext vyhledávání přes DB**: RPC `search_chat_messages` s pg_trgm ILIKE
+  - Hledá přes celou historii všech skupin uživatele (ne jen načtené zprávy)
+  - Debounce 300ms, overlay panel s výsledky, navigace na výsledek
+- **DB migrace**: Indexy `(id_skupiny, vytvoreno DESC)`, pg_trgm extension + GIN index
+- **Nové typy**: `ChatGroupSummary`, `ChatGroupPaginationState`, `ChatSearchResult`
+- **Nové mappery**: `mapDbToChatGroupSummary`, `mapDbToChatSearchResult`
+- **Store refaktor**: Nové akce `fetchGroupSummaries`, `fetchMessagesForGroup`, `loadOlderMessages`, `searchMessages`, `navigateToSearchResult`
+- **Komponenty**: ChatConversation (infinite scroll, unread separator, DB search), ChatGroupItem (summaries), ChatGroupList (summaries řazení)
+- **Performance**: `fetchChatData` nenačítá žádné zprávy — pouze groups + readStatuses + summaries
+- **Auto-sync**: Refresh pouze summaries + readStatuses + aktivní skupiny (ne všech zpráv)
+
 ## [2.14.0] - 2026-02-26
 
 ### Přidáno

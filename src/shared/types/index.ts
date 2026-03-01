@@ -60,6 +60,9 @@ export type {
   ChatMessage,
   ChatReadStatus,
   ChatGroup,
+  ChatGroupSummary,
+  ChatGroupPaginationState,
+  ChatSearchResult,
 } from './chat.types';
 
 // Pohoda types
